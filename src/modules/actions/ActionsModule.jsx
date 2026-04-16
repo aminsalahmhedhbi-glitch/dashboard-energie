@@ -75,8 +75,8 @@ const ActionsModule = ({ onBack, user }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#eef2f7] p-4 sm:p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#eef2f7] px-3 py-4 sm:px-4 sm:py-6 lg:px-5">
+      <div className="w-full">
         <ModuleHeader
           title="Actions"
           subtitle="Pilotage du plan d'actions global et suivi PDCA"

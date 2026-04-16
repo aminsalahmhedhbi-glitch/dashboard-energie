@@ -614,7 +614,7 @@ export default function UtilitiesModule({ onBack, user }) {
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#f4f7fb] text-slate-800">
-      <div className="sticky top-0 z-40 px-4 py-3 lg:px-6">
+      <div className="sticky top-0 z-40 px-3 py-3 sm:px-4 lg:px-5">
         <ModuleHeader
           title="Gouvernance et Engagement"
           subtitle="Contexte, leadership, parties intéressées et base documentaire"

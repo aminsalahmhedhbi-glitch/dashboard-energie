@@ -120,7 +120,7 @@ export default function RHModule({ onBack, userRole, user }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7fb] p-4 md:p-8 font-sans text-gray-800">
+    <div className="min-h-screen bg-[#f4f7fb] px-3 py-4 sm:px-4 md:py-8 lg:px-5 font-sans text-gray-800">
       
       <ModuleHeader
         title="Compétences et Sensibilisation"

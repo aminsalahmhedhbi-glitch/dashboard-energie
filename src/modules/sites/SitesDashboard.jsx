@@ -24,7 +24,7 @@ import {
 import { BrandLogo, FallbackLogo } from '../../components/branding/BrandLogo';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
-import { API_BASE, apiFetch, saveCollectionItem as saveData } from '../../lib/api';
+import { apiFetch, saveCollectionItem as saveData } from '../../lib/api';
 import { useData } from '../../hooks/useData';
 
 const useIsMobile = () => {
@@ -43,17 +43,19 @@ const useIsMobile = () => {
 
 const useLiveEnergy = (siteKey = 'MEGRINE') => {
   const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchEnergy = async () => {
       try {
-        const res = await fetch(
-          `${API_BASE}/api/energy?site=${encodeURIComponent(siteKey)}`
+        const json = await apiFetch(
+          `/api/energy?site=${encodeURIComponent(siteKey)}`
         );
-        const json = await res.json();
-        setData(json);
+        setData(json || null);
+        setError(null);
       } catch (error) {
-        console.error('Erreur API:', error);
+        console.error('Erreur API énergie:', error);
+        setError(error.message || 'Mesures indisponibles');
       }
     };
 
@@ -62,12 +64,12 @@ const useLiveEnergy = (siteKey = 'MEGRINE') => {
     return () => clearInterval(interval);
   }, [siteKey]);
 
-  return data;
+  return { data, error };
 };
 
 const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
   const isMobileView = useIsMobile();
-  const lastEnergy = useLiveEnergy(siteKey);
+  const { data: lastEnergy, error } = useLiveEnergy(siteKey);
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
@@ -95,6 +97,12 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
           <h4 className="text-base font-black text-slate-800">{title}</h4>
         </div>
       )}
+
+      {error ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          Mesures temps réel momentanément indisponibles pour {siteKey}. Le suivi reprendra dès que les données seront accessibles.
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -787,11 +795,49 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     );
   };
 
+  const SiteTabs = () => (
+    <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+            Navigation multi-sites
+          </div>
+          <div className="mt-1 text-sm font-medium text-slate-600">
+            Changez de site pour suivre ses KPI, son historique et ses mesures PAC2200.
+          </div>
+        </div>
+
+        <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
+          {Object.keys(sitesDataState).map((key) => (
+            <button
+              key={key}
+              onClick={() => setActiveSiteTab(key)}
+              className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition-all ${
+                activeSiteTab === key
+                  ? 'border-blue-900 bg-blue-900 text-white shadow-sm'
+                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                {activeSiteTab === key ? (
+                  <CheckCircle2 size={14} />
+                ) : (
+                  <MapPin size={14} className="text-slate-400" />
+                )}
+                {sitesDataState[key].name}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="bg-slate-50 min-h-screen pb-20 relative font-sans text-slate-600">
         <PrintStyles />
-        <div className="sticky top-0 z-40 px-4 py-3 sm:px-6">
-            <div className="max-w-7xl mx-auto">
+        <div className="sticky top-0 z-40 px-3 py-3 sm:px-4 lg:px-5">
+            <div className="w-full">
                 <ModuleHeader
                     title="Pilotage et Revues Énergétiques"
                     subtitle="Vision globale, indicateurs de performance et revues multi-sites"
@@ -825,6 +871,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         )}
 
         <main className="max-w-7xl mx-auto p-6 animate-in fade-in duration-500">
+            <SiteTabs />
             <PerformanceWidget />
 
             {['MEGRINE', 'ELKHADHRA', 'NAASSEN'].includes(activeSiteTab) && (

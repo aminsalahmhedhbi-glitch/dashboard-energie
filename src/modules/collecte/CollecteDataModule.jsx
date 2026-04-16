@@ -176,15 +176,16 @@ export default function CollecteDataModule({ onBack, userRole, user }) {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
-      
-      <ModuleHeader
-        title="Plan de Comptage et Mesurage"
-        subtitle="Cartographie de l'instrumentation et suivi des facteurs pertinents"
-        icon={Activity}
-        user={user}
-        onHomeClick={onBack}
-        className="mb-6"
-      />
+      <div className="sticky top-0 z-40 px-3 py-3 sm:px-4 lg:px-5">
+        <ModuleHeader
+          title="Plan de Comptage et Mesurage"
+          subtitle="Cartographie de l'instrumentation et suivi des facteurs pertinents"
+          icon={Activity}
+          user={user}
+          onHomeClick={onBack}
+          className="mb-6"
+        />
+      </div>
       {false && (
       <div className="bg-white px-8 py-6 mb-6 shadow-sm flex items-center justify-between rounded-b-3xl">
         <div className="flex items-center gap-4">

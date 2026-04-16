@@ -30,7 +30,7 @@ const ModuleHeader = ({
 
   return (
     <div
-      className={`rounded-[1.75rem] border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5 ${className}`}
+      className={`w-full overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5 ${className}`}
     >
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 items-start gap-3 sm:gap-4">
@@ -50,27 +50,27 @@ const ModuleHeader = ({
             </div>
           ) : null}
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-black tracking-tight text-blue-900 sm:text-xl">
               {title}
             </h1>
-            <div className="mt-1 text-sm font-medium text-slate-500">{subtitle}</div>
+            <div className="mt-1 break-words text-sm font-medium text-slate-500">{subtitle}</div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
           {actions ? (
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               {actions}
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-right">
               <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                 Utilisateur
               </div>
-              <div className="text-sm font-black text-slate-800 sm:text-base">
+              <div className="break-words text-sm font-black text-slate-800 sm:text-base">
                 {userLabel}
               </div>
             </div>

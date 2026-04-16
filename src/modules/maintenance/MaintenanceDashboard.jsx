@@ -79,7 +79,7 @@ export default function MaintenanceDashboard({ onBack, user }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F4F7FB] font-sans text-slate-800 pb-12">
-      <div className="sticky top-0 z-40 px-4 py-3 lg:px-6">
+      <div className="sticky top-0 z-40 px-3 py-3 sm:px-4 lg:px-5">
         <ModuleHeader
           title="Gestion des Actifs Énergétiques"
           subtitle="Planning, gammes, métrologie et parc utilités multi-sites"

@@ -949,8 +949,8 @@ const StegModule = ({ onBack, userRole, user }) => {
     
   return (
     <div className="bg-slate-50 min-h-screen pb-10">
-        <div className="sticky top-0 z-30 px-3 py-3 sm:px-4">
-            <div className="max-w-7xl mx-auto">
+        <div className="sticky top-0 z-30 px-3 py-3 sm:px-4 lg:px-5">
+            <div className="w-full">
                 <ModuleHeader
                     title="Dépenses Énergétiques"
                     subtitle={
