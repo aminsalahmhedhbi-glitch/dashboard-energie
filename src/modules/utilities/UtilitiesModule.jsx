@@ -10,12 +10,12 @@ import {
   FolderOpen,
   Globe,
   Landmark,
-  SquareStack,
   Leaf,
   MapPin,
   Plus,
   Scale,
   ScanLine,
+  Shield,
   ShieldCheck,
   Target,
   Trash2,
@@ -618,7 +618,7 @@ export default function UtilitiesModule({ onBack, user }) {
         <ModuleHeader
           title="Gouvernance et Engagement"
           subtitle="Contexte, leadership, parties intéressées et base documentaire"
-          icon={SquareStack}
+          icon={Shield}
           user={user}
           onHomeClick={onBack}
           actions={
@@ -647,7 +647,7 @@ export default function UtilitiesModule({ onBack, user }) {
             </button>
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-[#233876]">
-                <SquareStack className="h-5 w-5" />
+                <Shield className="h-5 w-5" />
               </div>
               <div>
                 <h1 className="text-[19px] font-black uppercase tracking-wide text-slate-900">

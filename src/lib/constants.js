@@ -1,10 +1,10 @@
 import {
   ClipboardList,
   Database,
-  Factory,
   GraduationCap,
   LayoutGrid,
   ListChecks,
+  Shield,
   Users,
   Wind,
   Wrench,
@@ -92,7 +92,7 @@ export const DASHBOARD_MODULES = [
     title: 'Gouvernance et Engagement',
     description:
       'Définition de la politique énergétique, analyse du contexte (enjeux, parties intéressées) et gestion documentaire centralisée.',
-    icon: Factory,
+    icon: Shield,
     allowedRoles: ['ADMIN', 'EQUIPE_ENERGIE'],
   },
   {
