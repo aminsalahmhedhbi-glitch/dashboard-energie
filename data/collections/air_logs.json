@@ -1,0 +1,296 @@
+[
+  {
+    "id": 1776175274651,
+    "type": "WEEKLY_REPORT",
+    "week": "2026-W10",
+    "compName": "Compresseur 1",
+    "lastRun": "22838",
+    "newRun": "22838",
+    "lastLoad": "7932",
+    "newLoad": "7932",
+    "description": "",
+    "lastMaint": {
+      "oilFilter": 22838,
+      "airFilter": 22838,
+      "separator": 22838,
+      "oil": 22838,
+      "general": 22838
+    },
+    "runDelta": 0,
+    "loadDelta": 0,
+    "loadRate": 0,
+    "utilRate": 0,
+    "energyKwh": 0,
+    "costHT": 0,
+    "maintStatus": {
+      "oilFilter": {
+        "remaining": 2000
+      },
+      "airFilter": {
+        "remaining": 2000
+      },
+      "separator": {
+        "remaining": 2000
+      },
+      "oil": {
+        "remaining": 2000
+      },
+      "general": {
+        "remaining": 500
+      }
+    },
+    "_createdAt": "2026-04-14T15:01:14"
+  },
+  {
+    "id": 1776175296299,
+    "type": "WEEKLY_REPORT",
+    "week": "2026-W11",
+    "compName": "Compresseur 1",
+    "lastRun": "22838",
+    "newRun": "22862",
+    "lastLoad": "7932",
+    "newLoad": "7942",
+    "description": "",
+    "lastMaint": {
+      "oilFilter": 22838,
+      "airFilter": 22838,
+      "separator": 22838,
+      "oil": 22838,
+      "general": 22838
+    },
+    "runDelta": 24,
+    "loadDelta": 10,
+    "loadRate": 41.66666666666667,
+    "utilRate": 50.526315789473685,
+    "energyKwh": 343.2,
+    "costHT": 99.87119999999999,
+    "maintStatus": {
+      "oilFilter": {
+        "remaining": 1976
+      },
+      "airFilter": {
+        "remaining": 1976
+      },
+      "separator": {
+        "remaining": 1976
+      },
+      "oil": {
+        "remaining": 1976
+      },
+      "general": {
+        "remaining": 476
+      }
+    },
+    "_createdAt": "2026-04-14T15:01:36"
+  },
+  {
+    "id": 1776175325036,
+    "type": "WEEKLY_REPORT",
+    "week": "2026-W12",
+    "compName": "Compresseur 1",
+    "lastRun": "22862",
+    "newRun": "22892",
+    "lastLoad": "7942",
+    "newLoad": "7957",
+    "description": "",
+    "lastMaint": {
+      "oilFilter": 22838,
+      "airFilter": 22838,
+      "separator": 22838,
+      "oil": 22838,
+      "general": 22838
+    },
+    "runDelta": 30,
+    "loadDelta": 15,
+    "loadRate": 50,
+    "utilRate": 63.1578947368421,
+    "energyKwh": 462,
+    "costHT": 134.44199999999998,
+    "maintStatus": {
+      "oilFilter": {
+        "remaining": 1946
+      },
+      "airFilter": {
+        "remaining": 1946
+      },
+      "separator": {
+        "remaining": 1946
+      },
+      "oil": {
+        "remaining": 1946
+      },
+      "general": {
+        "remaining": 446
+      }
+    },
+    "_createdAt": "2026-04-14T15:02:05"
+  },
+  {
+    "id": 1776175362364,
+    "type": "WEEKLY_REPORT",
+    "week": "2026-W13",
+    "compName": "Compresseur 1",
+    "lastRun": "22892",
+    "newRun": "22908",
+    "lastLoad": "7957",
+    "newLoad": "7962",
+    "description": "",
+    "lastMaint": {
+      "oilFilter": 22838,
+      "airFilter": 22838,
+      "separator": 22838,
+      "oil": 22838,
+      "general": 22838
+    },
+    "runDelta": 16,
+    "loadDelta": 5,
+    "loadRate": 31.25,
+    "utilRate": 33.68421052631579,
+    "energyKwh": 206.8,
+    "costHT": 60.1788,
+    "maintStatus": {
+      "oilFilter": {
+        "remaining": 1930
+      },
+      "airFilter": {
+        "remaining": 1930
+      },
+      "separator": {
+        "remaining": 1930
+      },
+      "oil": {
+        "remaining": 1930
+      },
+      "general": {
+        "remaining": 430
+      }
+    },
+    "_createdAt": "2026-04-14T15:02:42"
+  },
+  {
+    "id": 1776175489268,
+    "type": "WEEKLY_REPORT",
+    "week": "2026-W10",
+    "compName": "Compresseur 2",
+    "lastRun": "15506",
+    "newRun": "15506",
+    "lastLoad": "5988",
+    "newLoad": "5988",
+    "description": "",
+    "lastMaint": {
+      "oilFilter": 15506,
+      "airFilter": 15506,
+      "separator": 15506,
+      "oil": 15506,
+      "general": 15506
+    },
+    "runDelta": 0,
+    "loadDelta": 0,
+    "loadRate": 0,
+    "utilRate": 0,
+    "energyKwh": 0,
+    "costHT": 0,
+    "maintStatus": {
+      "oilFilter": {
+        "remaining": 2000
+      },
+      "airFilter": {
+        "remaining": 2000
+      },
+      "separator": {
+        "remaining": 2000
+      },
+      "oil": {
+        "remaining": 2000
+      },
+      "general": {
+        "remaining": 500
+      }
+    },
+    "_createdAt": "2026-04-14T15:04:49"
+  },
+  {
+    "id": 1776176386263,
+    "type": "WEEKLY_REPORT",
+    "week": "2026-W11",
+    "compName": "Compresseur 2",
+    "lastRun": "15506",
+    "newRun": "15541",
+    "lastLoad": "5988",
+    "newLoad": "5597",
+    "description": "",
+    "lastMaint": {
+      "oilFilter": 15588,
+      "airFilter": 15588,
+      "separator": 15588,
+      "oil": 15588,
+      "general": 15588
+    },
+    "runDelta": 35,
+    "loadDelta": 0,
+    "loadRate": 0,
+    "utilRate": 73.68421052631578,
+    "energyKwh": 308,
+    "costHT": 89.628,
+    "maintStatus": {
+      "oilFilter": {
+        "remaining": 2047
+      },
+      "airFilter": {
+        "remaining": 2047
+      },
+      "separator": {
+        "remaining": 2047
+      },
+      "oil": {
+        "remaining": 2047
+      },
+      "general": {
+        "remaining": 547
+      }
+    },
+    "_createdAt": "2026-04-14T15:19:46"
+  },
+  {
+    "id": 1776176445239,
+    "type": "WEEKLY_REPORT",
+    "week": "2026-W13",
+    "compName": "Compresseur 2",
+    "lastRun": "15588",
+    "newRun": "15638",
+    "lastLoad": "6012",
+    "newLoad": "6023",
+    "description": "",
+    "lastMaint": {
+      "oilFilter": 15588,
+      "airFilter": 15588,
+      "separator": 15588,
+      "oil": 15588,
+      "general": 15588
+    },
+    "runDelta": 50,
+    "loadDelta": 11,
+    "loadRate": 22,
+    "utilRate": 105.26315789473684,
+    "energyKwh": 585.2,
+    "costHT": 170.2932,
+    "maintStatus": {
+      "oilFilter": {
+        "remaining": 1950
+      },
+      "airFilter": {
+        "remaining": 1950
+      },
+      "separator": {
+        "remaining": 1950
+      },
+      "oil": {
+        "remaining": 1950
+      },
+      "general": {
+        "remaining": 450
+      }
+    },
+    "_createdAt": "2026-04-14T15:20:45"
+  }
+]

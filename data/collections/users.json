@@ -1,0 +1,23 @@
+[
+  {
+    "username": "nidhal",
+    "password": "1234",
+    "role": "EQUIPE_ENERGIE",
+    "id": 1776325562244,
+    "_createdAt": "2026-04-16T08:46:02"
+  },
+  {
+    "username": "houssem",
+    "password": "1234",
+    "role": "DIRECTION",
+    "id": 1776325575675,
+    "_createdAt": "2026-04-16T08:46:15"
+  },
+  {
+    "username": "salah",
+    "password": "1234",
+    "role": "ADMIN",
+    "id": 1776325587926,
+    "_createdAt": "2026-04-16T08:46:27"
+  }
+]
