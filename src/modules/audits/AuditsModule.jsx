@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   CalendarDays,
@@ -15,6 +15,7 @@ import {
 import { BrandLogo } from '../../components/branding/BrandLogo';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
+import { apiFetch } from '../../lib/api';
 
 const INITIAL_AUDITS = [
   { id: 'AUD-2026-01', ref: 'AUD-INT-01', refInterne: 'AFNOR-INT-01', type: 'Interne', champ: 'Air comprimé', site: 'Usine Nord', datePrevue: '2026-04-10', dateReelle: '', objectif: 'Réduire les pertes sur le réseau d’air comprimé.', equipe: ['Sarah Mansour', 'Ahmed Ben Ali'], documents: ['Plan d’audit', 'Checklist air comprimé'], constats: [] },
@@ -49,6 +50,26 @@ const AuditsModule = ({ onBack, user }) => {
 
   const selectedAudit = useMemo(() => audits.find((audit) => audit.id === selectedId) || null, [audits, selectedId]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const loadAudits = async () => {
+      try {
+        const data = await apiFetch('/api/audits');
+        if (mounted && Array.isArray(data) && data.length > 0) {
+          setAudits(data);
+        }
+      } catch (error) {
+        console.error('Erreur chargement audits:', error);
+      }
+    };
+
+    loadAudits();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const metrics = useMemo(() => {
     if (!draft) return { count: 0, actionRate: 0, progressRate: 0 };
     const count = draft.constats.length;
@@ -63,11 +84,21 @@ const AuditsModule = ({ onBack, user }) => {
     setDetailTab('constats');
   };
 
-  const saveDetail = () => {
-    setAudits((prev) => prev.map((audit) => (audit.id === draft.id ? draft : audit)));
+  const saveDetail = async () => {
+    try {
+      const saved = await apiFetch(`/api/audits/${draft.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(draft),
+      });
+      setAudits((prev) => prev.map((audit) => (audit.id === saved.id ? saved : audit)));
+      setDraft(saved);
+    } catch (error) {
+      console.error('Erreur sauvegarde audit:', error);
+      setAudits((prev) => prev.map((audit) => (audit.id === draft.id ? draft : audit)));
+    }
   };
 
-  const createAudit = (e) => {
+  const createAudit = async (e) => {
     e.preventDefault();
     const newAudit = {
       id: `AUD-${Date.now()}`,
@@ -83,17 +114,34 @@ const AuditsModule = ({ onBack, user }) => {
       documents: [],
       constats: [],
     };
-    setAudits((prev) => [newAudit, ...prev]);
+    try {
+      const saved = await apiFetch('/api/audits', {
+        method: 'POST',
+        body: JSON.stringify(newAudit),
+      });
+      setAudits((prev) => [saved, ...prev.filter((audit) => audit.id !== saved.id)]);
+    } catch (error) {
+      console.error('Erreur création audit:', error);
+      setAudits((prev) => [newAudit, ...prev]);
+    }
     setForm(EMPTY_FORM);
     setShowCreate(false);
   };
 
-  const deleteAudit = (id) => {
+  const deleteAudit = async (id) => {
     if (!window.confirm('Voulez-vous vraiment supprimer cet audit ?')) return;
-    setAudits((prev) => prev.filter((audit) => audit.id !== id));
-    if (selectedId === id) {
-      setSelectedId(null);
-      setDraft(null);
+    try {
+      await apiFetch(`/api/audits/${id}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('Erreur suppression audit:', error);
+    } finally {
+      setAudits((prev) => prev.filter((audit) => audit.id !== id));
+      if (selectedId === id) {
+        setSelectedId(null);
+        setDraft(null);
+      }
     }
   };
 

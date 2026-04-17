@@ -20,6 +20,7 @@ import {
   Target
 } from 'lucide-react';
 import ModuleHeader from '../../components/layout/ModuleHeader';
+import { useModuleState } from '../../hooks/useModuleState';
 
 // --- MOCK DATA ET RÈGLES MÉTIER ---
 
@@ -68,13 +69,26 @@ const configurationsInteressement = [
   { id: 4, kpi: 'Conformité Nouveaux Achats', poids: '20%', impacte: 'Resp. Achats, Resp. Site' },
 ];
 
+const INITIAL_RH_STATE = {
+  collaborateurs,
+  matriceCompetences,
+  sessionsFormation,
+  configurationsInteressement,
+};
+
 export default function RHModule({ onBack, userRole, user }) {
   const [activeTab, setActiveTab] = useState('responsables');
   const [searchTerm, setSearchTerm] = useState('');
+  const { data: rhData } = useModuleState('rh_module', INITIAL_RH_STATE);
+  const collaborateursData = rhData.collaborateurs || collaborateurs;
+  const matriceCompetencesData = rhData.matriceCompetences || matriceCompetences;
+  const sessionsFormationData = rhData.sessionsFormation || sessionsFormation;
+  const configurationsInteressementData =
+    rhData.configurationsInteressement || configurationsInteressement;
 
   // --- UTILES ---
   const calculerTauxGlobalCompetence = (collabId) => {
-    const comp = matriceCompetences[collabId];
+    const comp = matriceCompetencesData[collabId];
     if (!comp) return 0;
     const cles = Object.keys(comp);
     let totalScore = 0;
@@ -228,7 +242,7 @@ export default function RHModule({ onBack, userRole, user }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {collaborateurs.map((c) => {
+                  {collaborateursData.map((c) => {
                     const taux = calculerTauxGlobalCompetence(c.id);
                     const status = getCompetenceStatus(taux);
                     
@@ -279,7 +293,7 @@ export default function RHModule({ onBack, userRole, user }) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {collaborateurs.filter(c => matriceCompetences[c.id]).map(collab => (
+              {collaborateursData.filter(c => matriceCompetencesData[c.id]).map(collab => (
                 <div key={collab.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                   <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
                     <div>
@@ -288,7 +302,7 @@ export default function RHModule({ onBack, userRole, user }) {
                     </div>
                   </div>
                   <div className="p-4 space-y-4">
-                    {Object.entries(matriceCompetences[collab.id]).map(([critere, niveaux], idx) => {
+                    {Object.entries(matriceCompetencesData[collab.id]).map(([critere, niveaux], idx) => {
                       const gap = niveaux.requis - niveaux.actuel;
                       return (
                         <div key={idx} className="bg-white">
@@ -351,7 +365,7 @@ export default function RHModule({ onBack, userRole, user }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {sessionsFormation.map((s) => (
+                  {sessionsFormationData.map((s) => (
                     <tr key={s.id} className="hover:bg-blue-50/30">
                       <td className="p-4 text-gray-700 font-medium whitespace-nowrap"><Clock size={14} className="inline mr-1 text-gray-400"/> {s.date}</td>
                       <td className="p-4 font-bold text-[#1e3989]">{s.theme}</td>
@@ -397,7 +411,7 @@ export default function RHModule({ onBack, userRole, user }) {
               <div className="lg:col-span-2 bg-gray-50 rounded-xl p-5 border border-gray-200">
                 <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2"><Target size={18}/> Règles de calcul actuelles</h3>
                 <div className="space-y-2">
-                  {configurationsInteressement.map(conf => (
+                  {configurationsInteressementData.map(conf => (
                     <div key={conf.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
                       <div>
                         <div className="font-semibold text-sm text-[#1e3989]">{conf.kpi}</div>
@@ -442,7 +456,7 @@ export default function RHModule({ onBack, userRole, user }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {collaborateurs.filter(c => c.equipeEnergie).map(c => (
+                  {collaborateursData.filter(c => c.equipeEnergie).map(c => (
                     <tr key={c.id} className="hover:bg-blue-50/30">
                       <td className="p-4 font-bold text-[#1e3989]">{c.nom}</td>
                       <td className="p-4 text-gray-700">{c.role}</td>

@@ -7,6 +7,7 @@ import {
   ArrowLeft, BookOpen, HelpCircle, Factory, Building2, Zap, Trash2, MapPin, Thermometer
 } from 'lucide-react';
 import ModuleHeader from '../../components/layout/ModuleHeader';
+import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
 
 // ==========================================
 // 1. DONNÉES INITIALES & MOCKS
@@ -56,19 +57,43 @@ const INITIAL_PLANNING = [
   { id: 3, year: 2026, month: 3, equipement: "Climatisation Showroom", operation: "Nettoyage filtres", statut: "Reporté", agent: "Prestataire", note: "Repoussé au 25/04", dateRealisation: "", rapport: "", causeAnnulation: "" }
 ];
 
+const INITIAL_MAINTENANCE_STATE = {
+  tasks: INITIAL_PLANNING,
+  metroEquipments: INITIAL_METROLOGIE,
+  sites: INITIAL_SITES,
+  utilEquipements: INITIAL_EQUIPEMENTS_UTILITES,
+  typesEquipement: INITIAL_TYPES_UTILITES,
+  gammes: INITIAL_GAMMES,
+};
+
 // ==========================================
 // COMPOSANT PRINCIPAL (ROOT)
 // ==========================================
 export default function MaintenanceDashboard({ onBack, user }) {
   const [activeTab, setActiveTab] = useState('planning');
+  const { data: maintenanceState, setData: setMaintenanceState } = useModuleState(
+    'maintenance_dashboard_module',
+    INITIAL_MAINTENANCE_STATE
+  );
+  const createSliceSetter = (key) => (updater) =>
+    setMaintenanceState((prev) => ({
+      ...prev,
+      [key]: resolveUpdater(prev[key], updater),
+    }));
 
-  // États Globaux
-  const [tasks, setTasks] = useState(INITIAL_PLANNING);
-  const [metroEquipments, setMetroEquipments] = useState(INITIAL_METROLOGIE);
-  const [sites, setSites] = useState(INITIAL_SITES);
-  const [utilEquipements, setUtilEquipements] = useState(INITIAL_EQUIPEMENTS_UTILITES);
-  const [typesEquipement, setTypesEquipement] = useState(INITIAL_TYPES_UTILITES);
-  const [gammes, setGammes] = useState(INITIAL_GAMMES);
+  const tasks = maintenanceState.tasks || INITIAL_PLANNING;
+  const metroEquipments = maintenanceState.metroEquipments || INITIAL_METROLOGIE;
+  const sites = maintenanceState.sites || INITIAL_SITES;
+  const utilEquipements = maintenanceState.utilEquipements || INITIAL_EQUIPEMENTS_UTILITES;
+  const typesEquipement = maintenanceState.typesEquipement || INITIAL_TYPES_UTILITES;
+  const gammes = maintenanceState.gammes || INITIAL_GAMMES;
+
+  const setTasks = createSliceSetter('tasks');
+  const setMetroEquipments = createSliceSetter('metroEquipments');
+  const setSites = createSliceSetter('sites');
+  const setUtilEquipements = createSliceSetter('utilEquipements');
+  const setTypesEquipement = createSliceSetter('typesEquipement');
+  const setGammes = createSliceSetter('gammes');
 
   const tabs = [
     { id: 'planning', title: 'Planning & Suivi', desc: 'Suivi Annuel', icon: CalendarDays, tag: 'PLN' },

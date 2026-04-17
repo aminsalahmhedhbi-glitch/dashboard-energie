@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Home,
   ListChecks,
@@ -9,6 +9,7 @@ import {
 import { BrandLogo } from '../../components/branding/BrandLogo';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
+import { apiFetch } from '../../lib/api';
 
 const INITIAL_ACTIONS = [
   {
@@ -58,7 +59,27 @@ const ActionsModule = ({ onBack, user }) => {
     [actions]
   );
 
-  const handleCreate = (e) => {
+  useEffect(() => {
+    let mounted = true;
+
+    const loadActions = async () => {
+      try {
+        const data = await apiFetch('/api/actions');
+        if (mounted && Array.isArray(data) && data.length > 0) {
+          setActions(data);
+        }
+      } catch (error) {
+        console.error('Erreur chargement actions:', error);
+      }
+    };
+
+    loadActions();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleCreate = async (e) => {
     e.preventDefault();
     const nextNumber = String(actions.length + 1).padStart(3, '0');
     const newAction = {
@@ -69,7 +90,16 @@ const ActionsModule = ({ onBack, user }) => {
       responsable: form.responsable,
       avancement: 0,
     };
-    setActions((prev) => [...prev, newAction]);
+    try {
+      const saved = await apiFetch('/api/actions', {
+        method: 'POST',
+        body: JSON.stringify(newAction),
+      });
+      setActions((prev) => [...prev.filter((item) => item.id !== saved.id), saved]);
+    } catch (error) {
+      console.error('Erreur création action:', error);
+      setActions((prev) => [...prev, newAction]);
+    }
     setForm(EMPTY_FORM);
     setShowCreate(false);
   };

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
+import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
 
 const INITIAL_PESTEL = {
   Politique: [{ id: 1, text: 'Reglementations etatiques importation', energy: false }],
@@ -211,6 +212,16 @@ const INITIAL_DOCUMENTS = [
   },
 ];
 
+const INITIAL_MODULE_STATE = {
+  pestel: INITIAL_PESTEL,
+  swot: INITIAL_SWOT,
+  enjeux: INITIAL_ENJEUX,
+  stakeholders: INITIAL_STAKEHOLDERS,
+  perimetre: INITIAL_PERIMETRE,
+  axes: INITIAL_AXES,
+  documents: INITIAL_DOCUMENTS,
+};
+
 const TABS = [
   {
     id: 'pestel',
@@ -392,18 +403,36 @@ function ModalFrame({ title, children, onClose, maxWidth = 'max-w-lg' }) {
 
 export default function UtilitiesModule({ onBack, user }) {
   const [activeTab, setActiveTab] = useState('pestel');
-  const [pestel, setPestel] = useState(INITIAL_PESTEL);
-  const [swot, setSwot] = useState(INITIAL_SWOT);
-  const [enjeux, setEnjeux] = useState(INITIAL_ENJEUX);
-  const [stakeholders, setStakeholders] = useState(INITIAL_STAKEHOLDERS);
-  const [perimetre, setPerimetre] = useState(INITIAL_PERIMETRE);
-  const [axes, setAxes] = useState(INITIAL_AXES);
-  const [documents, setDocuments] = useState(INITIAL_DOCUMENTS);
+  const { data: moduleData, setData: setModuleData } = useModuleState(
+    'governance_engagement_module',
+    INITIAL_MODULE_STATE
+  );
+  const pestel = moduleData.pestel || INITIAL_PESTEL;
+  const swot = moduleData.swot || INITIAL_SWOT;
+  const enjeux = moduleData.enjeux || INITIAL_ENJEUX;
+  const stakeholders = moduleData.stakeholders || INITIAL_STAKEHOLDERS;
+  const perimetre = moduleData.perimetre || INITIAL_PERIMETRE;
+  const axes = moduleData.axes || INITIAL_AXES;
+  const documents = moduleData.documents || INITIAL_DOCUMENTS;
   const [documentSearch, setDocumentSearch] = useState('');
   const [genericModal, setGenericModal] = useState(emptyGenericModal);
   const [attenteModalOpen, setAttenteModalOpen] = useState(false);
   const [attenteForm, setAttenteForm] = useState(emptyAttenteForm);
   const [docForm, setDocForm] = useState(emptyDocForm);
+
+  const createSliceSetter = (key) => (updater) =>
+    setModuleData((prev) => ({
+      ...prev,
+      [key]: resolveUpdater(prev[key], updater),
+    }));
+
+  const setPestel = createSliceSetter('pestel');
+  const setSwot = createSliceSetter('swot');
+  const setEnjeux = createSliceSetter('enjeux');
+  const setStakeholders = createSliceSetter('stakeholders');
+  const setPerimetre = createSliceSetter('perimetre');
+  const setAxes = createSliceSetter('axes');
+  const setDocuments = createSliceSetter('documents');
 
   const filteredDocuments = useMemo(() => {
     const query = documentSearch.trim().toLowerCase();

@@ -73,6 +73,10 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
+    setHistory([]);
+  }, [siteKey]);
+
+  useEffect(() => {
     if (!lastEnergy) return;
 
     setHistory((prev) => [
@@ -101,6 +105,12 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
       {error ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
           Mesures temps réel momentanément indisponibles pour {siteKey}. Le suivi reprendra dès que les données seront accessibles.
+        </div>
+      ) : null}
+
+      {!error && !lastEnergy ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
+          Aucune mesure instantanée n’a encore été reçue pour {siteKey}.
         </div>
       ) : null}
 
@@ -797,38 +807,27 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   const SiteTabs = () => (
     <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
-            Navigation multi-sites
-          </div>
-          <div className="mt-1 text-sm font-medium text-slate-600">
-            Changez de site pour suivre ses KPI, son historique et ses mesures PAC2200.
-          </div>
-        </div>
-
-        <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
-          {Object.keys(sitesDataState).map((key) => (
-            <button
-              key={key}
-              onClick={() => setActiveSiteTab(key)}
-              className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition-all ${
-                activeSiteTab === key
-                  ? 'border-blue-900 bg-blue-900 text-white shadow-sm'
-                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                {activeSiteTab === key ? (
-                  <CheckCircle2 size={14} />
-                ) : (
-                  <MapPin size={14} className="text-slate-400" />
-                )}
-                {sitesDataState[key].name}
-              </span>
-            </button>
-          ))}
-        </div>
+      <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
+        {Object.keys(sitesDataState).map((key) => (
+          <button
+            key={key}
+            onClick={() => setActiveSiteTab(key)}
+            className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition-all ${
+              activeSiteTab === key
+                ? 'border-blue-900 bg-blue-900 text-white shadow-sm'
+                : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              {activeSiteTab === key ? (
+                <CheckCircle2 size={14} />
+              ) : (
+                <MapPin size={14} className="text-slate-400" />
+              )}
+              {sitesDataState[key].name}
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );

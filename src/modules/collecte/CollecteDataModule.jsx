@@ -4,6 +4,7 @@ import {
   Edit, Trash2, Activity, Zap, Wind, Droplets, Sun, Box, Monitor, AlertCircle, CheckCircle2, Info, PlusCircle, X
 } from 'lucide-react';
 import ModuleHeader from '../../components/layout/ModuleHeader';
+import { useModuleState } from '../../hooks/useModuleState';
 
 // --- DONNÉES DE RÉFÉRENCE (Sans abréviations) ---
 const ENERGIE_TYPES = ['Électricité', 'Gaz Naturel', 'Gazole', 'Solaire (Photovoltaïque)', 'Air Comprimé'];
@@ -83,7 +84,7 @@ const INITIAL_DATA = [
 ];
 
 export default function CollecteDataModule({ onBack, userRole, user }) {
-  const [plans, setPlans] = useState(INITIAL_DATA);
+  const { data: plans, setData: setPlans } = useModuleState('collecte_data_module', INITIAL_DATA);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState(null);

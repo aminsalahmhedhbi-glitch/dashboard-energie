@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
   Clock3,
@@ -10,6 +10,7 @@ import {
 import { BrandLogo } from '../../components/branding/BrandLogo';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
+import { apiFetch } from '../../lib/api';
 
 const INITIAL_REUNIONS = [
   {
@@ -50,7 +51,27 @@ const ReunionsModule = ({ onBack, user }) => {
     [reunions]
   );
 
-  const handleCreate = (e) => {
+  useEffect(() => {
+    let mounted = true;
+
+    const loadMeetings = async () => {
+      try {
+        const data = await apiFetch('/api/meetings');
+        if (mounted && Array.isArray(data) && data.length > 0) {
+          setReunions(data);
+        }
+      } catch (error) {
+        console.error('Erreur chargement réunions:', error);
+      }
+    };
+
+    loadMeetings();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleCreate = async (e) => {
     e.preventDefault();
     const newReunion = {
       id: `REU-${Date.now()}`,
@@ -62,7 +83,16 @@ const ReunionsModule = ({ onBack, user }) => {
       site: form.site || 'Siège',
       ordreJour: form.ordreJour,
     };
-    setReunions((prev) => [newReunion, ...prev]);
+    try {
+      const saved = await apiFetch('/api/meetings', {
+        method: 'POST',
+        body: JSON.stringify(newReunion),
+      });
+      setReunions((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
+    } catch (error) {
+      console.error('Erreur création réunion:', error);
+      setReunions((prev) => [newReunion, ...prev]);
+    }
     setForm(EMPTY_FORM);
     setShowCreate(false);
   };

@@ -6,3 +6,6 @@ env/
 .env
 .DS_Store
 .github/agents/
+data/app.db
+data/*.db
+*.sqlite3
