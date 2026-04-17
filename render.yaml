@@ -1,4 +1,24 @@
 services:
+  - type: pserv
+    name: dashboard-energie-mysql
+    runtime: docker
+    repo: https://github.com/render-examples/mysql.git
+    plan: starter
+    autoDeploy: false
+    disk:
+      name: mysql-data
+      mountPath: /var/lib/mysql
+      sizeGB: 10
+    envVars:
+      - key: MYSQL_DATABASE
+        value: smen_italcar
+      - key: MYSQL_USER
+        value: smen_user
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_ROOT_PASSWORD
+        sync: false
+
   - type: web
     name: dashboard-energie-api
     runtime: python
@@ -12,3 +32,30 @@ services:
         value: 3.11.9
       - key: FRONTEND_ORIGIN
         sync: false
+      - key: MYSQL_HOST
+        fromService:
+          type: pserv
+          name: dashboard-energie-mysql
+          property: host
+      - key: MYSQL_PORT
+        fromService:
+          type: pserv
+          name: dashboard-energie-mysql
+          property: port
+      - key: MYSQL_USER
+        fromService:
+          type: pserv
+          name: dashboard-energie-mysql
+          envVarKey: MYSQL_USER
+      - key: MYSQL_PASSWORD
+        fromService:
+          type: pserv
+          name: dashboard-energie-mysql
+          envVarKey: MYSQL_PASSWORD
+      - key: MYSQL_DATABASE
+        fromService:
+          type: pserv
+          name: dashboard-energie-mysql
+          envVarKey: MYSQL_DATABASE
+      - key: LEGACY_FALLBACK_ENABLED
+        value: "false"
