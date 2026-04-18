@@ -18,6 +18,8 @@ services:
         sync: false
       - key: MYSQL_ROOT_PASSWORD
         sync: false
+      - key: MYSQL_ROOT_HOST
+        value: "%"
 
   - type: web
     name: dashboard-energie-api
@@ -43,19 +45,10 @@ services:
           name: dashboard-energie-mysql
           property: port
       - key: MYSQL_USER
-        fromService:
-          type: pserv
-          name: dashboard-energie-mysql
-          envVarKey: MYSQL_USER
+        value: smen_user
       - key: MYSQL_PASSWORD
-        fromService:
-          type: pserv
-          name: dashboard-energie-mysql
-          envVarKey: MYSQL_PASSWORD
+        sync: false
       - key: MYSQL_DATABASE
-        fromService:
-          type: pserv
-          name: dashboard-energie-mysql
-          envVarKey: MYSQL_DATABASE
+        value: smen_italcar
       - key: LEGACY_FALLBACK_ENABLED
         value: "false"
