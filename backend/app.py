@@ -388,6 +388,25 @@ def ensure_runtime_schema_compatibility() -> None:
         db.session.commit()
         existing_columns.add(column_name)
 
+    def ensure_timestamp_columns(table_name: str) -> None:
+        if table_name not in inspector.get_table_names():
+            return
+        existing_columns = column_names(table_name)
+        add_column_if_missing(
+            table_name,
+            existing_columns,
+            "created_at",
+            f"ALTER TABLE {table_name} ADD COLUMN created_at DATETIME NULL",
+            [f"UPDATE {table_name} SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL"],
+        )
+        add_column_if_missing(
+            table_name,
+            existing_columns,
+            "updated_at",
+            f"ALTER TABLE {table_name} ADD COLUMN updated_at DATETIME NULL",
+            [f"UPDATE {table_name} SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"],
+        )
+
     if "users" in inspector.get_table_names():
         users_columns = column_names("users")
         boolean_type = "BOOLEAN" if dialect != "mysql" else "TINYINT(1)"
@@ -419,6 +438,9 @@ def ensure_runtime_schema_compatibility() -> None:
             "ALTER TABLE users ADD COLUMN updated_at DATETIME NULL",
             ["UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"],
         )
+
+    for table_name in ("site_histories", "air_logs", "billing_records", "module_states"):
+        ensure_timestamp_columns(table_name)
 
 
 def upsert_pac_measurement(payload: dict[str, Any], site_override: str | None = None) -> PacMeasurement:
