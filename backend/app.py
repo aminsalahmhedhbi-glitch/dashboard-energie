@@ -365,6 +365,62 @@ def merge_payload_dict(payload: dict[str, Any], **updates: Any) -> dict[str, Any
     return merged
 
 
+def ensure_runtime_schema_compatibility() -> None:
+    inspector = inspect(db.engine)
+    dialect = db.engine.dialect.name
+
+    def column_names(table_name: str) -> set[str]:
+        return {column["name"] for column in inspector.get_columns(table_name)}
+
+    def add_column_if_missing(
+        table_name: str,
+        existing_columns: set[str],
+        column_name: str,
+        ddl_sql: str,
+        follow_up_sql: list[str] | None = None,
+    ) -> None:
+        if column_name in existing_columns:
+            return
+        logger.warning("Auto-migration: ajout colonne %s.%s", table_name, column_name)
+        db.session.execute(text(ddl_sql))
+        for statement in follow_up_sql or []:
+            db.session.execute(text(statement))
+        db.session.commit()
+        existing_columns.add(column_name)
+
+    if "users" in inspector.get_table_names():
+        users_columns = column_names("users")
+        boolean_type = "BOOLEAN" if dialect != "mysql" else "TINYINT(1)"
+
+        add_column_if_missing(
+            "users",
+            users_columns,
+            "full_name",
+            "ALTER TABLE users ADD COLUMN full_name VARCHAR(255) NULL",
+        )
+        add_column_if_missing(
+            "users",
+            users_columns,
+            "is_active",
+            f"ALTER TABLE users ADD COLUMN is_active {boolean_type} NOT NULL DEFAULT 1",
+            ["UPDATE users SET is_active = 1 WHERE is_active IS NULL"],
+        )
+        add_column_if_missing(
+            "users",
+            users_columns,
+            "created_at",
+            "ALTER TABLE users ADD COLUMN created_at DATETIME NULL",
+            ["UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL"],
+        )
+        add_column_if_missing(
+            "users",
+            users_columns,
+            "updated_at",
+            "ALTER TABLE users ADD COLUMN updated_at DATETIME NULL",
+            ["UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"],
+        )
+
+
 def upsert_pac_measurement(payload: dict[str, Any], site_override: str | None = None) -> PacMeasurement:
     site_code = get_site_key(site_override or payload.get("site") or payload.get("siteCode"))
     measured_at = (
@@ -605,6 +661,7 @@ def ensure_schema() -> None:
         if table.name not in existing_tables:
             table.create(bind=db.engine, checkfirst=False)
             existing_tables.add(table.name)
+    ensure_runtime_schema_compatibility()
 
 
 def create_app() -> Flask:
@@ -670,34 +727,57 @@ def create_app() -> Flask:
 
         counts: dict[str, int] = {}
         samples: dict[str, Any] = {}
+        errors: dict[str, str] = {}
 
         for table_name, model in table_map.items():
-            counts[table_name] = model.query.count()
+            try:
+                counts[table_name] = model.query.count()
+            except Exception as exc:
+                counts[table_name] = -1
+                errors[table_name] = str(exc)
 
-        first_user = User.query.order_by(User.created_at.asc()).first()
-        first_meeting = Meeting.query.order_by(Meeting.created_at.asc()).first()
-        first_audit = Audit.query.order_by(Audit.created_at.asc()).first()
-        first_action = ActionItem.query.order_by(ActionItem.created_at.asc()).first()
-        first_billing = BillingRecord.query.order_by(BillingRecord.created_at.asc()).first()
+        try:
+            first_user = User.query.order_by(User.created_at.asc()).first()
+            if first_user:
+                user_payload = first_user.to_dict()
+                user_payload.pop("password", None)
+                samples["firstUser"] = user_payload
+        except Exception as exc:
+            errors["firstUser"] = str(exc)
 
-        if first_user:
-            user_payload = first_user.to_dict()
-            user_payload.pop("password", None)
-            samples["firstUser"] = user_payload
-        if first_meeting:
-            samples["firstMeeting"] = first_meeting.to_dict()
-        if first_audit:
-            samples["firstAudit"] = first_audit.to_dict(include_findings=False)
-        if first_action:
-            samples["firstAction"] = first_action.to_dict()
-        if first_billing:
-            billing_payload = first_billing.to_dict()
-            samples["firstBillingRecord"] = {
-                "id": billing_payload.get("id"),
-                "recordDate": billing_payload.get("recordDate"),
-                "siteName": billing_payload.get("siteName"),
-                "totalFinalTTC": billing_payload.get("totalFinalTTC"),
-            }
+        try:
+            first_meeting = Meeting.query.order_by(Meeting.created_at.asc()).first()
+            if first_meeting:
+                samples["firstMeeting"] = first_meeting.to_dict()
+        except Exception as exc:
+            errors["firstMeeting"] = str(exc)
+
+        try:
+            first_audit = Audit.query.order_by(Audit.created_at.asc()).first()
+            if first_audit:
+                samples["firstAudit"] = first_audit.to_dict(include_findings=False)
+        except Exception as exc:
+            errors["firstAudit"] = str(exc)
+
+        try:
+            first_action = ActionItem.query.order_by(ActionItem.created_at.asc()).first()
+            if first_action:
+                samples["firstAction"] = first_action.to_dict()
+        except Exception as exc:
+            errors["firstAction"] = str(exc)
+
+        try:
+            first_billing = BillingRecord.query.order_by(BillingRecord.created_at.asc()).first()
+            if first_billing:
+                billing_payload = first_billing.to_dict()
+                samples["firstBillingRecord"] = {
+                    "id": billing_payload.get("id"),
+                    "recordDate": billing_payload.get("recordDate"),
+                    "siteName": billing_payload.get("siteName"),
+                    "totalFinalTTC": billing_payload.get("totalFinalTTC"),
+                }
+        except Exception as exc:
+            errors["firstBillingRecord"] = str(exc)
 
         return json_response(
             {
@@ -707,6 +787,7 @@ def create_app() -> Flask:
                 },
                 "counts": counts,
                 "samples": samples,
+                "errors": errors,
             }
         )
 
