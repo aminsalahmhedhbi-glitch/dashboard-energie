@@ -15,27 +15,50 @@ from backend.legacy_store import iter_legacy_pac_measurements, read_billing_rows
 from scripts.import_legacy_to_db import DEFAULT_ACTIONS, DEFAULT_AUDITS, DEFAULT_MEETINGS
 
 API_BASE = "https://dashboard-energie-api.onrender.com"
-PAC_BATCH_SIZE = 1000
+PAC_BATCH_SIZE = 500
 REQUEST_TIMEOUT = 120
+RETRYABLE_HTTP_CODES = {502, 503, 504}
+MAX_RETRIES = 6
 
 
 def api_request(path: str, method: str = "GET", payload: Any = None) -> Any:
     url = f"{API_BASE}{path}"
-    data = None
-    headers = {"Accept": "application/json"}
+    last_error: Exception | None = None
 
-    if payload is not None:
-        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        headers["Content-Type"] = "application/json"
+    for attempt in range(1, MAX_RETRIES + 1):
+        data = None
+        headers = {"Accept": "application/json"}
 
-    req = request.Request(url, data=data, headers=headers, method=method)
-    try:
-        with request.urlopen(req, timeout=REQUEST_TIMEOUT) as response:
-            raw = response.read().decode("utf-8")
-            return json.loads(raw) if raw else None
-    except error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"{method} {path} failed: {exc.code} {detail}") from exc
+        if payload is not None:
+            data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+
+        req = request.Request(url, data=data, headers=headers, method=method)
+        try:
+            with request.urlopen(req, timeout=REQUEST_TIMEOUT) as response:
+                raw = response.read().decode("utf-8")
+                return json.loads(raw) if raw else None
+        except error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            if exc.code in RETRYABLE_HTTP_CODES and attempt < MAX_RETRIES:
+                wait_seconds = attempt * 5
+                print(f"  retry {attempt}/{MAX_RETRIES} sur {method} {path} -> HTTP {exc.code}, attente {wait_seconds}s")
+                time.sleep(wait_seconds)
+                last_error = exc
+                continue
+            raise RuntimeError(f"{method} {path} failed: {exc.code} {detail}") from exc
+        except Exception as exc:
+            if attempt < MAX_RETRIES:
+                wait_seconds = attempt * 5
+                print(f"  retry {attempt}/{MAX_RETRIES} sur {method} {path} -> {exc}, attente {wait_seconds}s")
+                time.sleep(wait_seconds)
+                last_error = exc
+                continue
+            raise
+
+    if last_error is not None:
+        raise last_error
+    return None
 
 
 def chunked(items: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]]:
@@ -117,19 +140,24 @@ def main() -> None:
         lambda _row: "/api/actions",
     )
 
-    if counts.get("pac_measurements", 0) > 0:
-        print(f"- pac_measurements: deja present ({counts.get('pac_measurements', 0)}), import saute")
+    pac_rows = iter_legacy_pac_measurements()
+    existing_pac_count = counts.get("pac_measurements", 0)
+    if existing_pac_count >= len(pac_rows):
+        print(f"- pac_measurements: deja present ({existing_pac_count}), import termine")
     else:
-        pac_rows = iter_legacy_pac_measurements()
-        batches = chunked(pac_rows, PAC_BATCH_SIZE)
-        print(f"- pac_measurements: {len(pac_rows)} mesure(s) a importer en {len(batches)} lot(s)")
-        imported = 0
+        remaining_rows = pac_rows[existing_pac_count:]
+        batches = chunked(remaining_rows, PAC_BATCH_SIZE)
+        print(
+            f"- pac_measurements: reprise a partir de {existing_pac_count}, "
+            f"{len(remaining_rows)} mesure(s) restantes en {len(batches)} lot(s)"
+        )
+        imported = existing_pac_count
         for index, batch in enumerate(batches, start=1):
             response = api_request("/api/pac-measurements/bulk", method="POST", payload=batch)
             imported += int(response.get("imported", 0))
-            print(f"  lot {index}/{len(batches)} -> +{response.get('imported', 0)}")
-            time.sleep(0.1)
-        print(f"- pac_measurements: {imported} mesure(s) importees")
+            print(f"  lot {index}/{len(batches)} -> +{response.get('imported', 0)} (total {imported})")
+            time.sleep(0.2)
+        print(f"- pac_measurements: {imported} mesure(s) importees au total")
 
     final_summary = api_request("/api/db-summary")
     print("\nVerification finale :")
