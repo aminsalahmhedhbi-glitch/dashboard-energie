@@ -50,9 +50,232 @@ logging.basicConfig(
 )
 logger = logging.getLogger("energy-backend")
 
+FACTURE_SITE_REGISTRY = {
+    "MEGRINE": {
+        "siteId": "1",
+        "siteName": "MT 1 - Mégrine",
+        "siteType": "MT",
+        "aliases": ["MEGRINE", "Mégrine", "Megrine", "MEG-001", "MT 1 - Megrine"],
+    },
+    "ELKHADHRA": {
+        "siteId": "2",
+        "siteName": "MT 2 - El Khadhra",
+        "siteType": "MT",
+        "aliases": ["ELKHADHRA", "EL KHADHRA", "ELK-002", "MT 2 - El Khadhra"],
+    },
+    "NAASSEN": {
+        "siteId": "3",
+        "siteName": "MT 3 - Naassen",
+        "siteType": "MT",
+        "aliases": ["NAASSEN", "NAS-003", "MT 3 - Naassen"],
+    },
+    "LAC": {
+        "siteId": "4",
+        "siteName": "BT 1 - Showroom Lac",
+        "siteType": "BT_PV",
+        "aliases": ["LAC", "SHOWROOM LAC", "LAC-001", "BT 1 - Showroom Lac"],
+    },
+    "AZUR": {
+        "siteId": "5",
+        "siteName": "BT 2 - Azur City",
+        "siteType": "BT",
+        "aliases": ["AZUR", "AZUR CITY", "AZU-002", "BT 2 - Azur City"],
+    },
+    "CARTHAGE": {
+        "siteId": "6",
+        "siteName": "BT 3 - Avenue de Carthage",
+        "siteType": "BT",
+        "aliases": [
+            "CARTHAGE",
+            "AVENUE DE CARTHAGE",
+            "RUE DE CARTHAGE",
+            "CAR-003",
+            "BT 3 - Avenue de Carthage",
+        ],
+    },
+    "CHARGUEYAA": {
+        "siteId": "7",
+        "siteName": "BT 4 - Showroom Charguia",
+        "siteType": "BT",
+        "aliases": [
+            "CHARGUEYAA",
+            "CHARGUIA",
+            "CHG-004",
+            "BT 4 - Showroom Charguia",
+            "SHOWROOM CHARGUIA",
+        ],
+    },
+}
+
+FACTURE_SITE_BY_ID = {
+    meta["siteId"]: {"siteKey": site_key, **meta}
+    for site_key, meta in FACTURE_SITE_REGISTRY.items()
+}
+
 
 def json_response(payload: Any, status: int = 200):
     return jsonify(payload), status
+
+
+def normalize_site_token(value: Any) -> str:
+    return (
+        str(value or "")
+        .strip()
+        .lower()
+        .replace("é", "e")
+        .replace("è", "e")
+        .replace("ê", "e")
+        .replace("ë", "e")
+        .replace("à", "a")
+        .replace("â", "a")
+        .replace("î", "i")
+        .replace("ï", "i")
+        .replace("ô", "o")
+        .replace("ö", "o")
+        .replace("ù", "u")
+        .replace("û", "u")
+        .replace("ü", "u")
+    )
+
+
+def resolve_facture_site_from_value(value: Any) -> dict[str, str] | None:
+    normalized = normalize_site_token(value)
+    if not normalized:
+        return None
+
+    if normalized in FACTURE_SITE_BY_ID:
+        return FACTURE_SITE_BY_ID[normalized]
+
+    for site_key, meta in FACTURE_SITE_REGISTRY.items():
+        candidates = {site_key, meta["siteId"], meta["siteName"], *meta["aliases"]}
+        if normalized in {normalize_site_token(item) for item in candidates}:
+            return {"siteKey": site_key, **meta}
+
+    return None
+
+
+def resolve_facture_site(payload: dict[str, Any]) -> dict[str, str] | None:
+    candidates = [
+        payload.get("siteKey"),
+        payload.get("site"),
+        payload.get("siteId"),
+        payload.get("siteName"),
+        payload.get("siteCode"),
+        payload.get("code"),
+    ]
+    for candidate in candidates:
+        resolved = resolve_facture_site_from_value(candidate)
+        if resolved is not None:
+            return resolved
+    return None
+
+
+def billing_record_site_meta(record: BillingRecord) -> dict[str, str] | None:
+    payload = record.payload or {}
+    candidates = [
+        record.site_id,
+        record.site_name,
+        payload.get("siteKey"),
+        payload.get("site"),
+        payload.get("siteCode"),
+        payload.get("code"),
+    ]
+    for candidate in candidates:
+        resolved = resolve_facture_site_from_value(candidate)
+        if resolved is not None:
+            return resolved
+    return None
+
+
+def billing_record_matches_site(record: BillingRecord, site_filter: str | None) -> bool:
+    if not site_filter:
+        return True
+
+    resolved = resolve_facture_site_from_value(site_filter)
+    if resolved is None:
+        normalized_filter = normalize_site_token(site_filter)
+        return normalized_filter in {
+            normalize_site_token(record.site_id),
+            normalize_site_token(record.site_name),
+            normalize_site_token((record.payload or {}).get("siteCode")),
+            normalize_site_token((record.payload or {}).get("code")),
+        }
+
+    return record.site_id == resolved["siteId"] or normalize_site_token(record.site_name) == normalize_site_token(
+        resolved["siteName"]
+    )
+
+
+def billing_record_sort_key(record: BillingRecord) -> tuple[str, str]:
+    return (
+        str(record.record_date or ""),
+        str(record.billing_timestamp or record.created_at or ""),
+    )
+
+
+def facture_payload_from_record(record: BillingRecord) -> dict[str, Any]:
+    site_meta = billing_record_site_meta(record)
+    return record.to_facture_dict(site_key=site_meta["siteKey"] if site_meta else None)
+
+
+def validate_facture_payload(payload: dict[str, Any]) -> tuple[bool, str | None]:
+    record_date = str(payload.get("date") or payload.get("recordDate") or "").strip()
+    if not record_date or len(record_date) < 7:
+        return False, "Le champ date (format YYYY-MM) est obligatoire"
+
+    if resolve_facture_site(payload) is None:
+        return False, "Le champ site est obligatoire et doit correspondre à un site connu"
+
+    consumption = payload.get("consommationKwh", payload.get("consommation_kwh", payload.get("billedKwh")))
+    if consumption in (None, ""):
+        consumption = payload.get("consumptionGrid", payload.get("energyRecorded"))
+    if consumption in (None, ""):
+        return False, "Le champ consommation_kwh est obligatoire"
+
+    return True, None
+
+
+def build_facture_record_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    site_meta = resolve_facture_site(payload)
+    if site_meta is None:
+        raise ValueError("Site de facture introuvable")
+
+    record_date = str(payload.get("date") or payload.get("recordDate") or "").strip()
+    consommation = payload.get("consommationKwh", payload.get("consommation_kwh", payload.get("billedKwh")))
+    if consommation in (None, ""):
+        consommation = payload.get("consumptionGrid", payload.get("energyRecorded"))
+
+    pmax = payload.get("pmaxKva", payload.get("pmax_kva", payload.get("maxPower", payload.get("Pmax"))))
+    cos_phi = payload.get("cosPhi", payload.get("cos_phi"))
+    prix = payload.get("prixDt", payload.get("prix_dt", payload.get("netToPay", payload.get("totalFinalTTC"))))
+
+    record_id = payload.get("id") or payload.get("invoiceId") or make_string_id("FACT-")
+    timestamp = payload.get("timestamp") or now_iso()
+    consommation_value = safe_float(consommation)
+    prix_value = safe_float(prix)
+    pmax_value = safe_float(pmax)
+    cos_phi_value = safe_float(cos_phi)
+
+    legacy_payload = merge_payload_dict(
+        payload,
+        id=record_id,
+        recordDate=record_date,
+        timestamp=timestamp,
+        siteId=site_meta["siteId"],
+        siteName=payload.get("siteName") or site_meta["siteName"],
+        siteType=payload.get("siteType") or site_meta["siteType"],
+        site=site_meta["siteKey"],
+        siteKey=site_meta["siteKey"],
+        billedKwh=consommation_value,
+        consumptionGrid=consommation_value,
+        maxPower=pmax_value,
+        Pmax=pmax_value,
+        cosPhi=cos_phi_value,
+        netToPay=prix_value,
+        totalFinalTTC=prix_value,
+        prixDt=prix_value,
+    )
+    return legacy_payload
 
 
 def resolve_cors_origins() -> list[str]:
@@ -574,6 +797,117 @@ def create_app() -> Flask:
             return json_response(rows)
 
         return json_response([])
+
+    @app.get("/api/factures")
+    def list_factures():
+        limit = max(1, min(request.args.get("limit", DEFAULT_BILLING_LIMIT, type=int), 1000))
+        site_filter = request.args.get("site") or request.args.get("siteKey") or request.args.get("siteId")
+        site_type = request.args.get("siteType")
+        record_date = request.args.get("date") or request.args.get("recordDate")
+
+        records = BillingRecord.query.all()
+        if site_type:
+            records = [record for record in records if str(record.site_type or "") == str(site_type)]
+        if record_date:
+            records = [record for record in records if str(record.record_date or "") == str(record_date)]
+        if site_filter:
+            records = [record for record in records if billing_record_matches_site(record, site_filter)]
+
+        records = sorted(records, key=billing_record_sort_key, reverse=True)
+        rows = [facture_payload_from_record(record) for record in records[:limit]]
+        if rows:
+            return json_response(rows)
+
+        if legacy_enabled():
+            legacy_rows = read_billing_rows()
+            normalized_rows = []
+            for row in legacy_rows:
+                site_meta = resolve_facture_site(row)
+                consommation = row.get("billedKwh", row.get("consumptionGrid", row.get("energyRecorded")))
+                pmax = row.get("Pmax", row.get("maxPower"))
+                prix = row.get("netToPay", row.get("totalFinalTTC"))
+                normalized_rows.append(
+                    {
+                        **row,
+                        "site": site_meta["siteKey"] if site_meta else row.get("siteName"),
+                        "siteKey": site_meta["siteKey"] if site_meta else None,
+                        "date": row.get("recordDate"),
+                        "consommationKwh": safe_float(consommation),
+                        "consommation_kwh": safe_float(consommation),
+                        "pmaxKva": safe_float(pmax),
+                        "pmax_kva": safe_float(pmax),
+                        "cosPhi": safe_float(row.get("cosPhi")),
+                        "cos_phi": safe_float(row.get("cosPhi")),
+                        "prixDt": safe_float(prix),
+                        "prix_dt": safe_float(prix),
+                    }
+                )
+            if site_filter:
+                normalized_rows = [
+                    row for row in normalized_rows
+                    if billing_record_matches_site(
+                        BillingRecord(
+                            site_id=str(row.get("siteId") or ""),
+                            site_name=str(row.get("siteName") or ""),
+                            site_type=str(row.get("siteType") or ""),
+                            record_date=str(row.get("recordDate") or row.get("date") or ""),
+                            payload=row,
+                        ),
+                        site_filter,
+                    )
+                ]
+            if record_date:
+                normalized_rows = [
+                    row for row in normalized_rows
+                    if str(row.get("date") or row.get("recordDate") or "") == str(record_date)
+                ]
+            if site_type:
+                normalized_rows = [
+                    row for row in normalized_rows
+                    if str(row.get("siteType") or "") == str(site_type)
+                ]
+            normalized_rows.sort(
+                key=lambda row: (
+                    str(row.get("date") or row.get("recordDate") or ""),
+                    str(row.get("timestamp") or row.get("_createdAt") or ""),
+                ),
+                reverse=True,
+            )
+            return json_response(normalized_rows[:limit])
+
+        return json_response([])
+
+    @app.post("/api/factures")
+    def create_facture():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return json_response({"error": "Payload JSON invalide"}, 400)
+
+        is_valid, error_message = validate_facture_payload(payload)
+        if not is_valid:
+            return json_response({"error": error_message}, 400)
+
+        record_payload = build_facture_record_payload(payload)
+        record = upsert_billing_record(record_payload)
+        synced_history = sync_site_history_from_billing(record_payload)
+        db.session.commit()
+        return json_response(
+            {
+                "message": "Facture enregistrée",
+                "saved": facture_payload_from_record(record),
+                "siteHistorySync": synced_history.to_dict() if synced_history else None,
+            },
+            201,
+        )
+
+    @app.delete("/api/factures/<item_id>")
+    def delete_facture(item_id: str):
+        record = db.session.get(BillingRecord, item_id)
+        if record is None:
+            return json_response({"error": "Facture introuvable"}, 404)
+        db.session.delete(record)
+        db.session.commit()
+        return json_response({"message": "Facture supprimée"})
 
     @app.post("/api/save-billing")
     def save_billing():

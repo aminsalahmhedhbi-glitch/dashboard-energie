@@ -25,7 +25,9 @@ import { BrandLogo, FallbackLogo } from '../../components/branding/BrandLogo';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
 import { apiFetch, saveCollectionItem as saveData } from '../../lib/api';
+import { buildFactureInsights, getFactureMetrics, getFactureMonthKey } from '../../lib/factures';
 import { useData } from '../../hooks/useData';
+import { useFactures } from '../../hooks/useFactures';
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(() =>
@@ -248,6 +250,11 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   // Pour simplifier l'historique sur le serveur simple, on charge tout 'site_history'
   const { data: allHistory } = useData('site_history');
+  const { factures: siteFactures, loading: facturesLoading } = useFactures({
+    site: activeSiteTab,
+    intervalMs: 15000,
+    limit: 500,
+  });
 
   const [sitesDataState, setSitesDataState] = useState({
     MEGRINE: { 
@@ -519,6 +526,71 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const currentData = sitesDataState[activeSiteTab];
   const currentYear = new Date().getFullYear(); 
   const currentMonthIdx = new Date().getMonth() - 1; 
+  const factureInsights = useMemo(
+    () => buildFactureInsights(siteFactures, { currentDate: new Date() }),
+    [siteFactures]
+  );
+  const factureMonthlyChartData = useMemo(
+    () =>
+      factureInsights.monthlyRows.slice(-12).map((row) => ({
+        month: row.monthLabel,
+        consommation: row.consommationKwh,
+        cout: row.prixDt,
+      })),
+    [factureInsights]
+  );
+  const recentSiteFactures = useMemo(
+    () => factureInsights.recentFactures.slice(0, 8),
+    [factureInsights]
+  );
+  const factureHistoryByYear = useMemo(() => {
+    const createMonthSet = () => ({
+      months: Array(12).fill(''),
+      grid: Array(12).fill(''),
+      pvProd: Array(12).fill(''),
+      pvExport: Array(12).fill(''),
+    });
+
+    const addValue = (bucket, field, monthIndex, rawValue) => {
+      const numeric = Number(rawValue);
+      if (!Number.isFinite(numeric) || numeric <= 0) return;
+      const previous = Number(bucket[field][monthIndex] || 0);
+      bucket[field][monthIndex] = String(Number((previous + numeric).toFixed(2)));
+    };
+
+    return siteFactures.reduce((acc, facture) => {
+      const monthKey = getFactureMonthKey(facture);
+      if (!monthKey) return acc;
+
+      const year = monthKey.slice(0, 4);
+      const monthIndex = Number(monthKey.slice(5, 7)) - 1;
+      if (monthIndex < 0 || monthIndex > 11) return acc;
+
+      const bucket = acc[year] || createMonthSet();
+      const metrics = getFactureMetrics(facture);
+
+      if (activeSiteTab === 'LAC') {
+        addValue(bucket, 'grid', monthIndex, metrics.consommationKwh);
+        addValue(bucket, 'pvProd', monthIndex, facture?.productionPv ?? facture?.production_pv);
+        addValue(bucket, 'pvExport', monthIndex, facture?.pvExport ?? facture?.pv_export);
+      } else {
+        addValue(bucket, 'months', monthIndex, metrics.consommationKwh);
+      }
+
+      acc[year] = bucket;
+      return acc;
+    }, {});
+  }, [activeSiteTab, siteFactures]);
+
+  const getFactureBackedHistoryValues = (year, type = 'months') => {
+    if (year === 'REF') {
+      return getSiteData(activeSiteTab, year, type);
+    }
+
+    return factureHistoryByYear[String(year)]?.[type] || getSiteData(activeSiteTab, year, type);
+  };
+
+  const isFactureBackedYear = (year) => year !== 'REF' && Boolean(factureHistoryByYear[String(year)]);
 
   const PerformanceWidget = () => {
       const refMonths = getSiteData(activeSiteTab, 'REF', activeSiteTab === 'LAC' ? 'grid' : 'months');
@@ -536,7 +608,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
           valCurMonth += Math.max(0, curProd - curExp);
       }
 
-      const diffMonth = valRefMonth > 0 ? ((valCurMonth - valRefMonth) / valRefMonth) * 100 : 0;
+      let diffMonth = valRefMonth > 0 ? ((valCurMonth - valRefMonth) / valRefMonth) * 100 : 0;
       let sumRefYTD = 0, sumCurYTD = 0;
 
       for (let i = 0; i <= currentMonthIdx; i++) {
@@ -554,8 +626,26 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
           sumCurYTD += c;
       }
 
-      const diffYTD = sumRefYTD > 0 ? ((sumCurYTD - sumRefYTD) / sumRefYTD) * 100 : 0;
-      const monthName = new Date(currentYear, currentMonthIdx).toLocaleString('fr-FR', { month: 'long' });
+      let diffYTD = sumRefYTD > 0 ? ((sumCurYTD - sumRefYTD) / sumRefYTD) * 100 : 0;
+      let monthName = new Date(currentYear, currentMonthIdx).toLocaleString('fr-FR', { month: 'long' });
+
+      if (factureInsights.hasData) {
+          valRefMonth = factureInsights.referenceMonthValue;
+          valCurMonth = factureInsights.currentMonthValue;
+          diffMonth = factureInsights.diffMonth;
+          sumRefYTD = factureInsights.referenceYtdValue;
+          sumCurYTD = factureInsights.currentYtdValue;
+          diffYTD = factureInsights.diffYtd;
+          monthName = factureInsights.analysisMonthLabel;
+      }
+
+      if (!factureInsights.hasData) {
+          return (
+              <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+                  Aucune facture disponible pour {currentData.name}. Les indicateurs mensuels et cumulés apparaîtront dès qu’une facture sera enregistrée dans Dépenses Énergétiques.
+              </div>
+          );
+      }
 
       return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -727,12 +817,13 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   // --- WIDGET VISION 2030 (Ex-VisionWidget) ---
   const VisionWidget = () => {
     // Calcul de la conso 2024 (Basé sur l'historique dispo)
-    const months2024 = getSiteData(activeSiteTab, 2024, activeSiteTab === 'LAC' ? 'grid' : 'months');
-    const total2024 = months2024.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+    const total2024 = Number(factureInsights.yearlyTotals?.[2024] || 0);
     
     // Projection 2025 (Basé sur 2024 pour l'instant ou partiel 2025)
-    const months2025 = getSiteData(activeSiteTab, 2025, activeSiteTab === 'LAC' ? 'grid' : 'months');
-    const total2025 = months2025.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+    const total2026 = Number(factureInsights.yearlyTotals?.[2026] || 0);
+    const total2025 = Number(factureInsights.yearlyTotals?.[2025] || 0);
+    const displayCurrentBase = total2025 > 0 ? total2025 : total2024;
+    const displayCurrentYear = total2026 > 0 ? total2026 : displayCurrentBase;
     const display2025 = total2025 > 0 ? total2025 : total2024; // Si 2025 vide, on affiche prévision basée sur 2024
 
     // Cibles
@@ -740,8 +831,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     const renewableTarget = currentData.targets?.renewable2030 || 20;
     
     // Baseline (Ref)
-    const monthsRef = getSiteData(activeSiteTab, 'REF', activeSiteTab === 'LAC' ? 'grid' : 'months');
-    const totalRef = monthsRef.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+    const totalRef = factureInsights.referenceYtdValue > 0 ? factureInsights.referenceYtdValue : (total2025 || total2024);
     
     const targetConso2030 = totalRef * (1 - (reductionTarget / 100));
 
@@ -768,8 +858,8 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                         <div className="text-[10px] uppercase font-bold text-emerald-300">Conso 2024</div>
                     </div>
                      <div>
-                        <div className="text-3xl font-black">{display2025.toLocaleString()} <span className="text-sm font-normal text-emerald-400">kWh</span></div>
-                        <div className="text-[10px] uppercase font-bold text-emerald-300">Conso 2025 </div>
+                        <div className="text-3xl font-black">{displayCurrentYear.toLocaleString()} <span className="text-sm font-normal text-emerald-400">kWh</span></div>
+                        <div className="text-[10px] uppercase font-bold text-emerald-300">Conso actuelle</div>
                     </div>
                     <div>
                         <div className="text-3xl font-black text-emerald-300 border-b-2 border-emerald-400 inline-block">{targetConso2030.toLocaleString()} <span className="text-sm font-normal text-emerald-400">kWh</span></div>
@@ -872,6 +962,74 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         <main className="max-w-7xl mx-auto p-6 animate-in fade-in duration-500">
             <SiteTabs />
             <PerformanceWidget />
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
+                <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                    <div>
+                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center">
+                            <BarChart3 className="mr-2 text-blue-900" size={18} />
+                            Historique Énergétique
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Historique automatiquement calculé depuis les factures enregistrées dans Dépenses Énergétiques.
+                        </p>
+                    </div>
+                    <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">
+                        Source unique : base de données factures
+                    </div>
+                </div>
+
+                {facturesLoading && !factureInsights.hasData ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                        Chargement des factures du site...
+                    </div>
+                ) : factureMonthlyChartData.length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                        Aucune facture disponible pour générer l’historique de consommation.
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-[2fr,1fr] gap-6">
+                        <div className="h-[360px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={factureMonthlyChartData} margin={{ top: 10, right: 16, left: 0, bottom: 16 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                                    <YAxis tick={{ fontSize: 11 }} />
+                                    <Tooltip
+                                        formatter={(value, name) => {
+                                            if (name === 'Coût') return [`${Number(value).toLocaleString('fr-FR')} DT`, name];
+                                            return [`${Number(value).toLocaleString('fr-FR')} kWh`, name];
+                                        }}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="consommation" name="Consommation" fill="#1e3a8a" radius={[8, 8, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Dernières factures</div>
+                            <div className="space-y-2">
+                                {recentSiteFactures.length === 0 ? (
+                                    <div className="text-sm text-slate-400 italic">Aucune facture récente.</div>
+                                ) : (
+                                    recentSiteFactures.map((facture) => (
+                                        <div key={facture.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                                            <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-700">
+                                                <span>{facture.date || facture.recordDate || '-'}</span>
+                                                <span className="text-emerald-700">{Number(facture.prixDt ?? facture.netToPay ?? 0).toLocaleString('fr-FR')} DT</span>
+                                            </div>
+                                            <div className="mt-1 text-xs text-slate-500">
+                                                Conso <b>{Number(facture.consommationKwh ?? facture.billedKwh ?? facture.consumptionGrid ?? 0).toLocaleString('fr-FR')}</b> kWh
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {['MEGRINE', 'ELKHADHRA', 'NAASSEN'].includes(activeSiteTab) && (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
@@ -1094,32 +1252,40 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                              <>
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <div className="w-32 text-xs font-bold text-blue-900 uppercase">Réseau STEG</div>
-                                                    {getSiteData('LAC', year, 'grid').map((val, i) => (
-                                                        <input key={i} type="number" className="w-20 p-2 text-center text-xs border rounded focus:border-blue-900 outline-none" placeholder="-"
-                                                            value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'grid')} />
+                                                    {getFactureBackedHistoryValues(year, 'grid').map((val, i) => (
+                                                        <input key={i} type="number" className={`w-20 p-2 text-center text-xs border rounded outline-none ${isFactureBackedYear(year) ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed' : 'focus:border-blue-900'}`} placeholder="-"
+                                                            value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'grid')} readOnly={isFactureBackedYear(year)} title={isFactureBackedYear(year) ? 'Valeur alimentee automatiquement depuis les factures' : 'Valeur modifiable'} />
                                                     ))}
                                                 </div>
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <div className="w-32 text-xs font-bold text-orange-600 uppercase">Prod. PV</div>
-                                                    {getSiteData('LAC', year, 'pvProd').map((val, i) => (
-                                                        <input key={i} type="number" className="w-20 p-2 text-center text-xs border border-orange-200 rounded focus:border-orange-600 outline-none bg-orange-50" placeholder="-"
-                                                            value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'pvProd')} />
+                                                    {getFactureBackedHistoryValues(year, 'pvProd').map((val, i) => (
+                                                        <input key={i} type="number" className={`w-20 p-2 text-center text-xs border rounded outline-none ${isFactureBackedYear(year) ? 'border-orange-200 bg-orange-50 text-orange-700 cursor-not-allowed' : 'border-orange-200 focus:border-orange-600 bg-orange-50'}`} placeholder="-"
+                                                            value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'pvProd')} readOnly={isFactureBackedYear(year)} title={isFactureBackedYear(year) ? 'Valeur alimentee automatiquement depuis les factures' : 'Valeur modifiable'} />
                                                     ))}
                                                 </div>
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <div className="w-32 text-xs font-bold text-green-600 uppercase">Export STEG</div>
-                                                    {getSiteData('LAC', year, 'pvExport').map((val, i) => (
-                                                        <input key={i} type="number" className="w-20 p-2 text-center text-xs border border-green-200 rounded focus:border-green-600 outline-none bg-green-50" placeholder="-"
-                                                            value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'pvExport')} />
+                                                    {getFactureBackedHistoryValues(year, 'pvExport').map((val, i) => (
+                                                        <input key={i} type="number" className={`w-20 p-2 text-center text-xs border rounded outline-none ${isFactureBackedYear(year) ? 'border-green-200 bg-green-50 text-green-700 cursor-not-allowed' : 'border-green-200 focus:border-green-600 bg-green-50'}`} placeholder="-"
+                                                            value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'pvExport')} readOnly={isFactureBackedYear(year)} title={isFactureBackedYear(year) ? 'Valeur alimentee automatiquement depuis les factures' : 'Valeur modifiable'} />
                                                     ))}
                                                 </div>
                                              </>
                                          ) : (
                                              <div className="flex items-center gap-2 mb-2">
                                                  <div className="w-32 text-xs font-bold text-slate-600 uppercase">Consommation</div>
-                                                 {getSiteData(activeSiteTab, year).map((val, i) => (
-                                                     <input key={i} type="number" className="w-20 p-2 text-center text-xs border rounded focus:border-blue-900 outline-none" placeholder="-"
-                                                         value={val} onChange={e => handleHistoryChange(year, i, e.target.value)} />
+                                                 {getFactureBackedHistoryValues(year).map((val, i) => (
+                                                     <input
+                                                         key={i}
+                                                         type="number"
+                                                         className={`w-20 p-2 text-center text-xs border rounded outline-none ${isFactureBackedYear(year) ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed' : 'focus:border-blue-900'}`}
+                                                         placeholder="-"
+                                                         value={val}
+                                                         onChange={e => handleHistoryChange(year, i, e.target.value)}
+                                                         readOnly={isFactureBackedYear(year)}
+                                                         title={isFactureBackedYear(year) ? 'Valeur alimentee automatiquement depuis les factures' : 'Valeur modifiable'}
+                                                     />
                                                  ))}
                                              </div>
                                          )}

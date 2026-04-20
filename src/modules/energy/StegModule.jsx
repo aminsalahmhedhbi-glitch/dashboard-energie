@@ -24,8 +24,9 @@ import {
 import { BrandLogo, FallbackLogo } from '../../components/branding/BrandLogo';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
-import { API_BASE, apiFetch, saveCollectionItem as saveData } from '../../lib/api';
+import { apiFetch, saveCollectionItem as saveData } from '../../lib/api';
 import { useData } from '../../hooks/useData';
+import { emitFacturesChanged } from '../../hooks/useFactures';
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(() =>
@@ -47,8 +48,7 @@ const useLiveEnergy = () => {
   useEffect(() => {
     const fetchEnergy = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/energy`);
-        const json = await res.json();
+        const json = await apiFetch('/api/energy');
         console.log("LIVE DATA:", json); // باش نتأكد يخدم
         setData(json);
       } catch (err) {
@@ -206,6 +206,15 @@ const StegModule = ({ onBack, userRole, user }) => {
   const [logs, setLogs] = useState([]);
   const [billingHistory, setBillingHistory] = useState([]);
   const { data: siteHistoryRecords } = useData('site_history');
+  const SITE_KEYS_BY_ID = {
+    1: 'MEGRINE',
+    2: 'ELKHADHRA',
+    3: 'NAASSEN',
+    4: 'LAC',
+    5: 'AZUR',
+    6: 'CARTHAGE',
+    7: 'CHARGUEYAA'
+  };
   
   const SITES = [
     { id: 1, name: "MT 1 - Mégrine", code: "MEG-001", type: "MT", icon: Factory },
@@ -436,7 +445,7 @@ const StegModule = ({ onBack, userRole, user }) => {
  //history state for billing 
  const fetchBillingHistory = async () => {
     try {
-        const data = await apiFetch('/api/billing-history?limit=500');
+        const data = await apiFetch('/api/factures?limit=500');
 
         const sortedData = Array.isArray(data)
             ? [...data].sort((a, b) => {
@@ -463,12 +472,13 @@ const StegModule = ({ onBack, userRole, user }) => {
     if (!confirmed) return;
 
     try {
-        await apiFetch(`/api/billing/${billingId}`, {
+        await apiFetch(`/api/factures/${billingId}`, {
             method: 'DELETE'
         });
 
         setNotification({ msg: "Facture supprimée du PC", type: 'success' });
         await fetchBillingHistory();
+        emitFacturesChanged();
     } catch (error) {
         console.error(error);
         setNotification({ msg: "Erreur suppression facture", type: 'error' });
@@ -486,32 +496,32 @@ const StegModule = ({ onBack, userRole, user }) => {
     const metrics = calculateMetrics();
 
     const newLog = {
-        id: Date.now(),
+        id: `FACT-${Date.now()}`,
+        date: formData.date,
         recordDate: formData.date,
         timestamp: new Date().toLocaleTimeString('fr-FR'),
+        site: SITE_KEYS_BY_ID[currentSite],
         siteId: currentSite,
         siteName: site.name,
         siteType: site.type,
+        consommationKwh: Number(metrics.billedKwh ?? metrics.consumptionGrid ?? metrics.energyRecorded ?? 0),
+        pmaxKva: parseFloat(formData.maxPower) || 0,
+        cosPhi: parseFloat(formData.cosPhi) || 0,
+        prixDt: Number(metrics.netToPay ?? metrics.totalFinalTTC ?? 0),
         Pmax: parseFloat(formData.maxPower) || 0,
         ...formData,
         ...metrics
     };
 
     try {
-        const response = await fetch(`${API_BASE}/api/save-billing`, {
+        await apiFetch('/api/factures', {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
             body: JSON.stringify(newLog)
         });
-
-        if (!response.ok) {
-            throw new Error("Erreur serveur");
-        }
         
         setNotification({ msg: "Relevé enregistré ", type: 'success' });
         await fetchBillingHistory();
+        emitFacturesChanged();
 
         setFormData(prev => ({
             ...prev,

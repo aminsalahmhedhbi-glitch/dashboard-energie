@@ -142,6 +142,34 @@ class BillingRecord(TimestampMixin, db.Model):
         )
         return data
 
+    def to_facture_dict(self, site_key: str | None = None) -> dict:
+        consommation = (
+            self.billed_kwh
+            if self.billed_kwh is not None
+            else self.consumption_grid
+        )
+        pmax = self.max_power
+        cos_phi = self.cos_phi
+        prix = self.net_to_pay if self.net_to_pay is not None else self.total_final_ttc
+
+        data = self.to_dict()
+        data.update(
+            {
+                "site": site_key or self.site_name,
+                "siteKey": site_key,
+                "date": self.record_date,
+                "consommationKwh": consommation,
+                "consommation_kwh": consommation,
+                "pmaxKva": pmax,
+                "pmax_kva": pmax,
+                "cosPhi": cos_phi,
+                "cos_phi": cos_phi,
+                "prixDt": prix,
+                "prix_dt": prix,
+            }
+        )
+        return data
+
 
 class SiteHistory(TimestampMixin, db.Model):
     __tablename__ = "site_histories"
