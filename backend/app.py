@@ -429,6 +429,64 @@ def create_app() -> Flask:
             }
         )
 
+    @app.get("/api/db-summary")
+    def db_summary():
+        table_map = {
+            "users": User,
+            "pac_measurements": PacMeasurement,
+            "billing_records": BillingRecord,
+            "site_histories": SiteHistory,
+            "air_logs": AirLogEntry,
+            "meetings": Meeting,
+            "meeting_minutes": MeetingMinute,
+            "audits": Audit,
+            "audit_findings": AuditFinding,
+            "actions": ActionItem,
+            "module_states": ModuleState,
+        }
+
+        counts: dict[str, int] = {}
+        samples: dict[str, Any] = {}
+
+        for table_name, model in table_map.items():
+            counts[table_name] = model.query.count()
+
+        first_user = User.query.order_by(User.created_at.asc()).first()
+        first_meeting = Meeting.query.order_by(Meeting.created_at.asc()).first()
+        first_audit = Audit.query.order_by(Audit.created_at.asc()).first()
+        first_action = ActionItem.query.order_by(ActionItem.created_at.asc()).first()
+        first_billing = BillingRecord.query.order_by(BillingRecord.created_at.asc()).first()
+
+        if first_user:
+            user_payload = first_user.to_dict()
+            user_payload.pop("password", None)
+            samples["firstUser"] = user_payload
+        if first_meeting:
+            samples["firstMeeting"] = first_meeting.to_dict()
+        if first_audit:
+            samples["firstAudit"] = first_audit.to_dict(include_findings=False)
+        if first_action:
+            samples["firstAction"] = first_action.to_dict()
+        if first_billing:
+            billing_payload = first_billing.to_dict()
+            samples["firstBillingRecord"] = {
+                "id": billing_payload.get("id"),
+                "recordDate": billing_payload.get("recordDate"),
+                "siteName": billing_payload.get("siteName"),
+                "totalFinalTTC": billing_payload.get("totalFinalTTC"),
+            }
+
+        return json_response(
+            {
+                "status": "ok",
+                "database": {
+                    "dialect": app.config["SQLALCHEMY_DATABASE_URI"].split(":", 1)[0],
+                },
+                "counts": counts,
+                "samples": samples,
+            }
+        )
+
     @app.get("/api/pac-measurements")
     def list_pac_measurements():
         site = get_site_key(request.args.get("site"))
