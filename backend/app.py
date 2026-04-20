@@ -516,6 +516,23 @@ def create_app() -> Flask:
         db.session.commit()
         return json_response({"message": "Mesure PAC enregistrée", "saved": measurement.to_measurement_dict()}, 201)
 
+    @app.post("/api/pac-measurements/bulk")
+    def save_pac_measurements_bulk():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, list):
+            return json_response({"error": "Le payload doit etre un tableau JSON"}, 400)
+
+        site_override = request.args.get("site")
+        imported = 0
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            upsert_pac_measurement(item, site_override)
+            imported += 1
+
+        db.session.commit()
+        return json_response({"message": "Mesures PAC enregistrees", "imported": imported}, 201)
+
     @app.get("/api/energy")
     def get_live_energy():
         site = get_site_key(request.args.get("site", "MEGRINE"))
