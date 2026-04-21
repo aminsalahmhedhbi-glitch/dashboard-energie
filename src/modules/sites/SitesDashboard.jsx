@@ -235,6 +235,25 @@ const PrintStyles = () => (
     `}</style>
 );
 
+const mergeHistoryArrays = (base = [], override = []) =>
+  Array.from({ length: 12 }, (_, index) => {
+    const overrideValue = override?.[index];
+    if (overrideValue === undefined || overrideValue === null || String(overrideValue).trim() === '') {
+      return base?.[index] ?? '';
+    }
+    return overrideValue;
+  });
+
+const mergeHistoryEntry = (base = {}, override = {}) => ({
+  ...base,
+  ...override,
+  months: mergeHistoryArrays(base?.months, override?.months),
+  temperature: mergeHistoryArrays(base?.temperature, override?.temperature),
+  grid: mergeHistoryArrays(base?.grid, override?.grid),
+  pvProd: mergeHistoryArrays(base?.pvProd, override?.pvProd),
+  pvExport: mergeHistoryArrays(base?.pvExport, override?.pvExport),
+});
+
 const SitesDashboard = ({ onBack, userRole, user }) => {
   const [activeSiteTab, setActiveSiteTab] = useState('MEGRINE');
   const [historyData, setHistoryData] = useState({});
@@ -437,10 +456,10 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         Object.keys(parsedDraft || {}).forEach(siteKey => {
           if (!constructed[siteKey]) constructed[siteKey] = {};
           Object.keys(parsedDraft[siteKey] || {}).forEach(yearKey => {
-            constructed[siteKey][yearKey] = {
-              ...(constructed[siteKey][yearKey] || {}),
-              ...(parsedDraft[siteKey][yearKey] || {})
-            };
+            constructed[siteKey][yearKey] = mergeHistoryEntry(
+              constructed[siteKey][yearKey] || {},
+              parsedDraft[siteKey][yearKey] || {}
+            );
           });
         });
       }
@@ -574,7 +593,10 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       return getSiteData(activeSiteTab, year, type);
     }
 
-    return factureHistoryByYear[String(year)]?.[type] || getSiteData(activeSiteTab, year, type);
+    return mergeHistoryArrays(
+      getSiteData(activeSiteTab, year, type),
+      factureHistoryByYear[String(year)]?.[type] || []
+    );
   };
 
   const isFactureBackedYear = (year) => year !== 'REF' && Boolean(factureHistoryByYear[String(year)]);
