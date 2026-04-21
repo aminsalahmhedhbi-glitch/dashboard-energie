@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Zap, Activity, Save, History, TrendingUp, AlertTriangle, Factory, CheckCircle2,
-  BarChart3, Settings, Lock, Unlock, Calendar, HelpCircle,
+  Settings, Lock, Unlock, Calendar, HelpCircle,
   FileText, Eye, BookOpen, Sun, MousePointerClick,
   Info, Wind, Thermometer, Timer, Wrench, LayoutGrid, ArrowLeft, Edit2,
   PieChart, MapPin, Maximize2, Building2, Leaf, CloudSun, Flag,
@@ -250,7 +250,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   // Pour simplifier l'historique sur le serveur simple, on charge tout 'site_history'
   const { data: allHistory } = useData('site_history');
-  const { factures: siteFactures, loading: facturesLoading } = useFactures({
+  const { factures: siteFactures } = useFactures({
     site: activeSiteTab,
     intervalMs: 15000,
     limit: 500,
@@ -417,7 +417,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     });
   };
 
-  const yearsRange = ['REF', 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]; 
+  const defaultHistoryYears = ['REF', 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025];
   
   // Reconstitution de l'historique depuis les données "plates" du serveur + brouillon local
   useEffect(() => {
@@ -454,7 +454,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const initHistory = (site) => {
       if (!historyData[site]) {
           const newData = {};
-          yearsRange.forEach(y => { 
+          defaultHistoryYears.forEach(y => { 
               if(site === 'LAC') newData[y] = { grid: Array(12).fill(''), pvProd: Array(12).fill(''), pvExport: Array(12).fill(''), temperature: Array(12).fill('') };
               else newData[y] = { months: Array(12).fill(''), temperature: Array(12).fill('') }; 
           });
@@ -530,19 +530,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     () => buildFactureInsights(siteFactures, { currentDate: new Date() }),
     [siteFactures]
   );
-  const factureMonthlyChartData = useMemo(
-    () =>
-      factureInsights.monthlyRows.slice(-12).map((row) => ({
-        month: row.monthLabel,
-        consommation: row.consommationKwh,
-        cout: row.prixDt,
-      })),
-    [factureInsights]
-  );
-  const recentSiteFactures = useMemo(
-    () => factureInsights.recentFactures.slice(0, 8),
-    [factureInsights]
-  );
   const factureHistoryByYear = useMemo(() => {
     const createMonthSet = () => ({
       months: Array(12).fill(''),
@@ -591,6 +578,27 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   };
 
   const isFactureBackedYear = (year) => year !== 'REF' && Boolean(factureHistoryByYear[String(year)]);
+
+  const yearsRange = useMemo(() => {
+    const availableYears = new Set(defaultHistoryYears.filter((year) => year !== 'REF').map(String));
+
+    Object.keys(historyData[activeSiteTab] || {}).forEach((year) => {
+      if (year !== 'REF') availableYears.add(String(year));
+    });
+
+    Object.keys(factureHistoryByYear).forEach((year) => {
+      if (year !== 'REF') availableYears.add(String(year));
+    });
+
+    availableYears.add(String(currentYear));
+
+    const orderedYears = Array.from(availableYears)
+      .map((year) => Number(year))
+      .filter(Number.isFinite)
+      .sort((a, b) => b - a);
+
+    return ['REF', ...orderedYears];
+  }, [activeSiteTab, currentYear, factureHistoryByYear, historyData]);
 
   const PerformanceWidget = () => {
       const refMonths = getSiteData(activeSiteTab, 'REF', activeSiteTab === 'LAC' ? 'grid' : 'months');
@@ -963,6 +971,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             <SiteTabs />
             <PerformanceWidget />
 
+            {false && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
                 <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                     <div>
@@ -1030,6 +1039,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     </div>
                 )}
             </div>
+            )}
 
             {['MEGRINE', 'ELKHADHRA', 'NAASSEN'].includes(activeSiteTab) && (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
