@@ -58,8 +58,8 @@ const LoginScreen = ({ onLogin }) => {
 
       <div className="bg-white rounded-xl shadow-2xl p-10 w-full max-w-md z-10 border-t-4 border-blue-900">
         <div className="text-center mb-10">
-          <div className="flex justify-center mb-7">
-            <BrandLogo size="h-auto w-full max-w-[320px]" />
+          <div className="mb-4 flex justify-center">
+            <BrandLogo size="h-auto w-full max-w-[380px]" />
             <FallbackLogo />
           </div>
           <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
