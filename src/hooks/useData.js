@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../lib/api';
 
 export const useData = (
@@ -8,6 +8,7 @@ export const useData = (
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState(null);
+  const lastLoggedErrorRef = useRef('');
 
   const refresh = useCallback(async () => {
     if (!enabled || !collectionName) {
@@ -21,9 +22,14 @@ export const useData = (
       const normalized = Array.isArray(result) ? result : [];
       setData(normalized);
       setError(null);
+      lastLoggedErrorRef.current = '';
       return normalized;
     } catch (err) {
-      console.error(`Erreur chargement ${collectionName}:`, err);
+      const signature = `${collectionName}:${err?.status || 'unknown'}:${err?.message || 'error'}`;
+      if (lastLoggedErrorRef.current !== signature) {
+        console.warn(`Chargement dégradé pour ${collectionName}:`, err.message || err);
+        lastLoggedErrorRef.current = signature;
+      }
       setData(initialData);
       setError(err);
       return initialData;

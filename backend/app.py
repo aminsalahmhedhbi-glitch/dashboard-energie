@@ -1080,18 +1080,21 @@ def create_app() -> Flask:
         if collection not in ALLOWED_COLLECTIONS:
             return json_response({"error": f"Collection non autorisée: {collection}"}, 404)
 
-        if collection == "users":
-            rows = [user.to_dict() for user in User.query.order_by(User.created_at.desc()).all()]
-            if rows:
-                return json_response(rows)
-        elif collection == "air_logs":
-            rows = [entry.to_dict() for entry in AirLogEntry.query.order_by(AirLogEntry.created_at.desc()).all()]
-            if rows:
-                return json_response(rows)
-        elif collection == "site_history":
-            rows = [item.to_dict() for item in SiteHistory.query.order_by(SiteHistory.created_at.desc()).all()]
-            if rows:
-                return json_response(rows)
+        try:
+            if collection == "users":
+                rows = [user.to_dict() for user in User.query.order_by(User.created_at.desc()).all()]
+                if rows:
+                    return json_response(rows)
+            elif collection == "air_logs":
+                rows = [entry.to_dict() for entry in AirLogEntry.query.order_by(AirLogEntry.created_at.desc()).all()]
+                if rows:
+                    return json_response(rows)
+            elif collection == "site_history":
+                rows = [item.to_dict() for item in SiteHistory.query.order_by(SiteHistory.created_at.desc()).all()]
+                if rows:
+                    return json_response(rows)
+        except Exception as exc:
+            logger.exception("Collection %s unavailable from database: %s", collection, exc)
 
         if legacy_enabled():
             rows = legacy_collection_response(collection)

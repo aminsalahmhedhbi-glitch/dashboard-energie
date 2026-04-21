@@ -39,12 +39,24 @@ export const apiFetch = async (endpoint, options = {}) => {
     ? await response.json()
     : await response.text();
 
+  if (!response.ok && response.status === 404) {
+    if (endpoint.startsWith('/api/energy')) {
+      return null;
+    }
+    if (endpoint.startsWith('/api/history')) {
+      return [];
+    }
+  }
+
   if (!response.ok) {
     const message =
       typeof data === 'object' && data?.error
         ? data.error
         : `Erreur API (${response.status})`;
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    error.payload = data;
+    throw error;
   }
 
   return data;
