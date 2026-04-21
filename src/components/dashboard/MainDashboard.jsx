@@ -23,8 +23,8 @@ const MainDashboard = ({ user, onNavigate, onLogout }) => {
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <div className="z-10 w-full max-w-7xl overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white px-5 py-5 shadow-sm sm:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:h-20 sm:w-20 sm:p-2.5">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-1.5 sm:h-20 sm:w-20 sm:p-2">
               <BrandLogo size="h-full w-full" />
             </div>
 
