@@ -21,11 +21,11 @@ const MainDashboard = ({ user, onNavigate, onLogout }) => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      <div className="z-10 w-full max-w-6xl overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5">
+      <div className="z-10 w-full max-w-7xl overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white px-5 py-5 shadow-sm sm:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-            <div className="flex h-14 min-w-[170px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 sm:h-16 sm:min-w-[240px]">
-              <BrandLogo size="h-10 sm:h-12" />
+            <div className="flex h-16 min-w-[220px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-5 sm:h-20 sm:min-w-[320px]">
+              <BrandLogo size="h-12 sm:h-14 md:h-16" />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -56,7 +56,7 @@ const MainDashboard = ({ user, onNavigate, onLogout }) => {
         </div>
       </div>
 
-      <div className="z-10 mt-4 mb-10 flex w-full max-w-6xl flex-col items-end gap-3 sm:flex-row sm:justify-end">
+      <div className="z-10 mt-4 mb-10 flex w-full max-w-7xl flex-col items-end gap-3 sm:flex-row sm:justify-end">
         <div className="bg-emerald-50 text-emerald-800 text-[10px] px-3 py-1 rounded-full font-bold border border-emerald-100 flex items-center">
           <TrendingUp size={12} className="mr-2" />
           Performance Globale en hausse

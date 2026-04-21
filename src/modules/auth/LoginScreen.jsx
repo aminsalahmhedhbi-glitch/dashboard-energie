@@ -56,10 +56,10 @@ const LoginScreen = ({ onLogin }) => {
         <div className="absolute top-0 right-0 w-1/2 h-full bg-slate-200 skew-x-12 opacity-50" />
       </div>
 
-      <div className="bg-white rounded-xl shadow-2xl p-10 w-full max-w-lg z-10 border-t-4 border-blue-900">
+      <div className="bg-white rounded-xl shadow-2xl p-10 w-full max-w-xl z-10 border-t-4 border-blue-900">
         <div className="text-center mb-10">
-          <div className="flex justify-center mb-6">
-            <BrandLogo size="h-24 sm:h-28 md:h-32" />
+          <div className="flex justify-center mb-7">
+            <BrandLogo size="h-28 sm:h-32 md:h-36 lg:h-40" />
             <FallbackLogo />
           </div>
           <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
