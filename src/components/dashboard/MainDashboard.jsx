@@ -15,8 +15,10 @@ const MainDashboard = ({ user, onNavigate, onLogout }) => (
   <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col items-center justify-center p-6 relative overflow-hidden">
     <div className="z-10 w-full max-w-6xl flex justify-between items-center mb-12 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-6">
       <div className="flex items-center gap-6">
-        <BrandLogo size="h-12" />
-        <div className="h-10 w-px bg-slate-200" />
+        <div className="flex flex-col items-start min-w-[150px]">
+          <BrandLogo size="h-14 sm:h-16" />
+          <div className="mt-3 h-px w-full bg-slate-200" />
+        </div>
         <div>
           <h1 className="text-2xl font-black mb-0 tracking-tight text-blue-900">
             Système de Management de l&apos;Énergie

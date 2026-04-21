@@ -1,9 +1,9 @@
 import React from 'react';
-import { LOGO_URL } from '../../lib/constants';
+import italcarLogo from '../../assets/italcar-logo.png';
 
 export const BrandLogo = ({ size = 'h-10' }) => (
   <img
-    src={LOGO_URL}
+    src={italcarLogo}
     alt="ITALCAR Logo"
     className={`${size} object-contain`}
     onError={(e) => {
