@@ -132,19 +132,35 @@ const getShortWeekLabel = (weekValue) => {
   return rawWeek ? `S${Number(rawWeek)}` : 'S--';
 };
 
-const buildKpiHistory = (reports, currentWeek, currentGlobalKpi) => {
+const buildKpiHistory = (
+  reports,
+  currentWeek,
+  currentKpiComp1,
+  currentKpiComp2,
+  currentKpiGlobal
+) => {
   const groupedByWeek = new Map();
 
   reports.forEach((report) => {
     const reportWeek = report.week || 'Semaine inconnue';
     const current = groupedByWeek.get(reportWeek) || {
       week: reportWeek,
-      runHours: 0,
-      loadHours: 0,
+      comp1RunHours: 0,
+      comp1LoadHours: 0,
+      comp2RunHours: 0,
+      comp2LoadHours: 0,
     };
 
-    current.runHours += toNumber(report.runDelta);
-    current.loadHours += toNumber(report.loadDelta);
+    if (report.compName === COMPRESSORS[0].name) {
+      current.comp1RunHours += toNumber(report.runDelta);
+      current.comp1LoadHours += toNumber(report.loadDelta);
+    }
+
+    if (report.compName === COMPRESSORS[1].name) {
+      current.comp2RunHours += toNumber(report.runDelta);
+      current.comp2LoadHours += toNumber(report.loadDelta);
+    }
+
     groupedByWeek.set(reportWeek, current);
   });
 
@@ -152,7 +168,15 @@ const buildKpiHistory = (reports, currentWeek, currentGlobalKpi) => {
     .map((row) => ({
       week: getShortWeekLabel(row.week),
       weekSort: getWeekSortValue(row.week),
-      kpi: row.runHours > 0 ? row.loadHours / row.runHours : 0,
+      kpiComp1:
+        row.comp1RunHours > 0 ? row.comp1LoadHours / row.comp1RunHours : 0,
+      kpiComp2:
+        row.comp2RunHours > 0 ? row.comp2LoadHours / row.comp2RunHours : 0,
+      kpiGlobal:
+        row.comp1RunHours + row.comp2RunHours > 0
+          ? (row.comp1LoadHours + row.comp2LoadHours) /
+            (row.comp1RunHours + row.comp2RunHours)
+          : 0,
     }))
     .sort((left, right) => left.weekSort - right.weekSort)
     .slice(-8);
@@ -161,7 +185,9 @@ const buildKpiHistory = (reports, currentWeek, currentGlobalKpi) => {
   const currentPoint = {
     week: currentWeekLabel,
     weekSort: getWeekSortValue(currentWeek),
-    kpi: currentGlobalKpi,
+    kpiComp1: currentKpiComp1,
+    kpiComp2: currentKpiComp2,
+    kpiGlobal: currentKpiGlobal,
   };
 
   const historyWithoutCurrent = history.filter(
@@ -176,11 +202,16 @@ const buildKpiHistory = (reports, currentWeek, currentGlobalKpi) => {
   }
 
   return [
-    { week: 'S13', kpi: 0.14 },
-    { week: 'S14', kpi: 0.16 },
-    { week: 'S15', kpi: 0.18 },
-    { week: 'S16', kpi: 0.13 },
-    { week: currentWeekLabel, kpi: currentGlobalKpi },
+    { week: 'S13', kpiComp1: 0.14, kpiComp2: 0.16, kpiGlobal: 0.15 },
+    { week: 'S14', kpiComp1: 0.15, kpiComp2: 0.18, kpiGlobal: 0.165 },
+    { week: 'S15', kpiComp1: 0.13, kpiComp2: 0.19, kpiGlobal: 0.16 },
+    { week: 'S16', kpiComp1: 0.17, kpiComp2: 0.2, kpiGlobal: 0.185 },
+    {
+      week: currentWeekLabel,
+      kpiComp1: currentKpiComp1,
+      kpiComp2: currentKpiComp2,
+      kpiGlobal: currentKpiGlobal,
+    },
   ];
 };
 
@@ -586,6 +617,204 @@ const KpiTrendChart = ({ data }) => (
             strokeWidth={4}
             dot={{ r: 5, fill: '#1e3a8a', stroke: '#ffffff', strokeWidth: 2 }}
             activeDot={{ r: 7, fill: '#1d4ed8', stroke: '#ffffff', strokeWidth: 3 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  </section>
+);
+
+const CompressorPerformanceSummaryCard = ({ title, metrics, accentClass }) => (
+  <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mb-5 flex items-center justify-between">
+      <div>
+        <h3 className="text-2xl font-black text-slate-800">{title}</h3>
+        <p className="mt-1 text-sm text-slate-500">
+          Lecture instantanée calculée à partir des nouvelles saisies.
+        </p>
+      </div>
+      <div className={`rounded-2xl px-3 py-2 text-xs font-bold uppercase tracking-wide ${accentClass}`}>
+        KPI live
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 gap-4">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-400">
+          <Timer className="h-4 w-4 text-blue-900" />
+          Heures de fonctionnement
+        </div>
+        <div className="mt-2 text-2xl font-black text-slate-800">
+          {formatHours(metrics.runHours)}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-400">
+          <Activity className="h-4 w-4 text-emerald-600" />
+          Heures de charge
+        </div>
+        <div className="mt-2 text-2xl font-black text-slate-800">
+          {formatHours(metrics.loadHours)}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-400">
+          <TrendingUp className="h-4 w-4 text-amber-500" />
+          Taux de charge
+        </div>
+        <div className="mt-2 text-2xl font-black text-slate-800">
+          {formatPercent(metrics.usageRate)}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-400">
+          <Gauge className="h-4 w-4 text-violet-600" />
+          KPI
+        </div>
+        <div className="mt-2 text-2xl font-black text-slate-800">
+          {formatKpi(metrics.kpi)}
+        </div>
+      </div>
+    </div>
+  </article>
+);
+
+const GlobalPerformanceCard = ({ globalKpi, globalLoadRate }) => (
+  <article className="rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-blue-900 to-blue-800 p-6 text-white shadow-sm">
+    <div className="mb-5">
+      <h3 className="text-2xl font-black">Totale</h3>
+      <p className="mt-1 text-sm text-blue-100">
+        Consolidation globale des 2 compresseurs.
+      </p>
+    </div>
+
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-emerald-300/30 bg-emerald-400/15 p-4">
+        <div className="text-xs font-bold uppercase tracking-wide text-emerald-100">
+          KPI totale
+        </div>
+        <div className="mt-2 text-4xl font-black">{formatKpi(globalKpi)}</div>
+      </div>
+
+      <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+        <div className="text-xs font-bold uppercase tracking-wide text-blue-100">
+          Taux de charge totale
+        </div>
+        <div className="mt-2 text-2xl font-black">
+          {formatPercent(globalLoadRate)}
+        </div>
+      </div>
+    </div>
+  </article>
+);
+
+const MultiKpiTrendChart = ({ data }) => (
+  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h2 className="text-3xl font-black tracking-tight text-blue-900">
+          Courbe de KPi
+        </h2>
+        <p className="mt-2 text-sm font-medium text-slate-500">
+          Évolution hebdomadaire du KPI Compresseur 1, Compresseur 2 et KPI global.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 text-xs font-bold">
+        <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">
+          KPI Compresseur 1
+        </span>
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
+          KPI Compresseur 2
+        </span>
+        <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-violet-700">
+          KPI globale
+        </span>
+      </div>
+    </div>
+
+    <div className="h-[360px] rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 18, right: 26, left: 4, bottom: 8 }}>
+          <CartesianGrid stroke="#dbe4f0" strokeDasharray="4 4" />
+          <ReferenceArea y1={0} y2={0.15} fill="#dcfce7" fillOpacity={0.85} />
+          <ReferenceArea y1={0.15} y2={0.2} fill="#fef3c7" fillOpacity={0.9} />
+          <ReferenceArea y1={0.2} y2={0.3} fill="#fee2e2" fillOpacity={0.9} />
+          <XAxis
+            dataKey="week"
+            tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
+            axisLine={{ stroke: '#cbd5e1' }}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[0, 0.3]}
+            tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
+            axisLine={{ stroke: '#cbd5e1' }}
+            tickLine={false}
+            tickFormatter={(value) => Number(value).toFixed(2)}
+            label={{
+              value: 'KPI',
+              angle: -90,
+              position: 'insideLeft',
+              fill: '#1e3a8a',
+              fontSize: 12,
+              fontWeight: 800,
+            }}
+          />
+          <Tooltip
+            cursor={{ stroke: '#1e3a8a', strokeDasharray: '4 4' }}
+            formatter={(value, name) => [formatKpi(value), name]}
+            labelFormatter={(label) => `Semaine ${label.replace('S', '')}`}
+            contentStyle={{
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+              fontWeight: 700,
+            }}
+          />
+          <ReferenceLine
+            y={0.15}
+            stroke="#d97706"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            label={{ value: 'Seuil 0.15', fill: '#92400e', fontSize: 12, fontWeight: 800 }}
+          />
+          <ReferenceLine
+            y={0.2}
+            stroke="#dc2626"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            label={{ value: 'Seuil 0.20', fill: '#991b1b', fontSize: 12, fontWeight: 800 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="kpiComp1"
+            name="KPI Compresseur 1"
+            stroke="#1d4ed8"
+            strokeWidth={3}
+            dot={{ r: 4, fill: '#1d4ed8', stroke: '#ffffff', strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: '#1d4ed8', stroke: '#ffffff', strokeWidth: 3 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="kpiComp2"
+            name="KPI Compresseur 2"
+            stroke="#059669"
+            strokeWidth={3}
+            dot={{ r: 4, fill: '#059669', stroke: '#ffffff', strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: '#059669', stroke: '#ffffff', strokeWidth: 3 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="kpiGlobal"
+            name="KPI globale"
+            stroke="#7c3aed"
+            strokeWidth={4}
+            dot={{ r: 5, fill: '#7c3aed', stroke: '#ffffff', strokeWidth: 2 }}
+            activeDot={{ r: 7, fill: '#7c3aed', stroke: '#ffffff', strokeWidth: 3 }}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -1187,6 +1416,7 @@ const AirModule = ({ onBack, user }) => {
     return {
       totalRunHours,
       totalLoadHours,
+      globalLoadRate: totalRunHours > 0 ? (totalLoadHours / totalRunHours) * 100 : 0,
       globalKpi: totalRunHours > 0 ? totalLoadHours / totalRunHours : 0,
     };
   }, [metricsByCompressor]);
@@ -1267,8 +1497,15 @@ const AirModule = ({ onBack, user }) => {
   );
 
   const kpiHistory = useMemo(
-    () => buildKpiHistory(weeklyReports, week, totalMetrics.globalKpi),
-    [weeklyReports, week, totalMetrics.globalKpi]
+    () =>
+      buildKpiHistory(
+        weeklyReports,
+        week,
+        metricsByCompressor[1].kpi,
+        metricsByCompressor[2].kpi,
+        totalMetrics.globalKpi
+      ),
+    [weeklyReports, week, metricsByCompressor, totalMetrics.globalKpi]
   );
 
   const updateDraft = (compressorId, field, value) => {
@@ -1630,26 +1867,25 @@ const AirModule = ({ onBack, user }) => {
           </div>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <CompressorPerformanceCard
+            <CompressorPerformanceSummaryCard
               title="Compresseur 1"
               metrics={metricsByCompressor[1]}
               accentClass="bg-blue-50 text-blue-700"
             />
-            <CompressorPerformanceCard
+            <CompressorPerformanceSummaryCard
               title="Compresseur 2"
               metrics={metricsByCompressor[2]}
               accentClass="bg-emerald-50 text-emerald-700"
             />
-            <GlobalKpiCard
-              totalRunHours={totalMetrics.totalRunHours}
-              totalLoadHours={totalMetrics.totalLoadHours}
+            <GlobalPerformanceCard
               globalKpi={totalMetrics.globalKpi}
+              globalLoadRate={totalMetrics.globalLoadRate}
             />
           </div>
         </section>
 
         <section className="space-y-6">
-          <KpiTrendChart data={kpiHistory} />
+          <MultiKpiTrendChart data={kpiHistory} />
 
           <MaintenanceSection
             compressors={COMPRESSORS}
