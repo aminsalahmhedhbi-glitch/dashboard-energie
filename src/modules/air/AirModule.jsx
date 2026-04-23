@@ -3,11 +3,25 @@ import {
   Activity,
   Calendar,
   Gauge,
+  History,
+  Info,
   Save,
   Timer,
   TrendingUp,
   Wind,
+  Wrench,
 } from 'lucide-react';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceArea,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import ModuleHeader from '../../components/layout/ModuleHeader';
 import { saveCollectionItem as saveData } from '../../lib/api';
 import { useData } from '../../hooks/useData';
@@ -87,6 +101,98 @@ const formatKpi = (value) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+
+const getWeekSortValue = (weekValue) => {
+  const [year, rawWeek] = String(weekValue || '').split('-W');
+  return Number(year || 0) * 100 + Number(rawWeek || 0);
+};
+
+const getShortWeekLabel = (weekValue) => {
+  const rawWeek = String(weekValue || '').split('-W')[1];
+  return rawWeek ? `S${Number(rawWeek)}` : 'S--';
+};
+
+const getReportKpi = (report) => {
+  const explicitKpi = Number.parseFloat(report?.kpi);
+  if (Number.isFinite(explicitKpi)) {
+    return explicitKpi;
+  }
+
+  const runDelta = toNumber(report?.runDelta);
+  const loadDelta = toNumber(report?.loadDelta);
+  return runDelta > 0 ? loadDelta / runDelta : 0;
+};
+
+const buildKpiHistory = (reports, currentWeek, currentGlobalKpi) => {
+  const groupedByWeek = new Map();
+
+  reports.forEach((report) => {
+    const reportWeek = report.week || 'Semaine inconnue';
+    const current = groupedByWeek.get(reportWeek) || {
+      week: reportWeek,
+      runHours: 0,
+      loadHours: 0,
+    };
+
+    current.runHours += toNumber(report.runDelta);
+    current.loadHours += toNumber(report.loadDelta);
+    groupedByWeek.set(reportWeek, current);
+  });
+
+  const history = Array.from(groupedByWeek.values())
+    .map((row) => ({
+      week: getShortWeekLabel(row.week),
+      weekSort: getWeekSortValue(row.week),
+      kpi: row.runHours > 0 ? row.loadHours / row.runHours : 0,
+    }))
+    .sort((left, right) => left.weekSort - right.weekSort)
+    .slice(-8);
+
+  const currentWeekLabel = getShortWeekLabel(currentWeek);
+  const currentPoint = {
+    week: currentWeekLabel,
+    weekSort: getWeekSortValue(currentWeek),
+    kpi: currentGlobalKpi,
+  };
+
+  const historyWithoutCurrent = history.filter(
+    (item) => item.week !== currentWeekLabel
+  );
+  const mergedHistory = [...historyWithoutCurrent, currentPoint]
+    .sort((left, right) => left.weekSort - right.weekSort)
+    .slice(-8);
+
+  if (mergedHistory.length >= 3) {
+    return mergedHistory;
+  }
+
+  return [
+    { week: 'S13', kpi: 0.14 },
+    { week: 'S14', kpi: 0.16 },
+    { week: 'S15', kpi: 0.18 },
+    { week: 'S16', kpi: 0.13 },
+    { week: currentWeekLabel, kpi: currentGlobalKpi },
+  ];
+};
+
+const getKpiStatus = (kpi) => {
+  if (kpi > 0.2) {
+    return {
+      label: 'Critique',
+      className: 'border-red-200 bg-red-50 text-red-700',
+    };
+  }
+  if (kpi >= 0.15) {
+    return {
+      label: 'À surveiller',
+      className: 'border-amber-200 bg-amber-50 text-amber-700',
+    };
+  }
+  return {
+    label: 'Normal',
+    className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  };
+};
 
 const buildMetrics = (previousValues, currentValues) => {
   const newRunHours = toNumber(currentValues.newRunHours);
@@ -332,6 +438,209 @@ const GlobalKpiCard = ({ totalRunHours, totalLoadHours, globalKpi }) => (
   </article>
 );
 
+const KpiTrendChart = ({ data }) => (
+  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h2 className="text-3xl font-black tracking-tight text-blue-900">
+          Courbe de KPi
+        </h2>
+        <p className="mt-2 text-sm font-medium text-slate-500">
+          Évolution du KPI global par semaine avec seuils de performance.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 text-xs font-bold">
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
+          Vert : 0 à 0.15
+        </span>
+        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">
+          Jaune : 0.15 à 0.20
+        </span>
+        <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700">
+          Rouge : &gt; 0.20
+        </span>
+      </div>
+    </div>
+
+    <div className="h-[360px] rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 18, right: 26, left: 4, bottom: 8 }}>
+          <CartesianGrid stroke="#dbe4f0" strokeDasharray="4 4" />
+          <ReferenceArea y1={0} y2={0.15} fill="#dcfce7" fillOpacity={0.85} />
+          <ReferenceArea y1={0.15} y2={0.2} fill="#fef3c7" fillOpacity={0.9} />
+          <ReferenceArea y1={0.2} y2={0.3} fill="#fee2e2" fillOpacity={0.9} />
+          <XAxis
+            dataKey="week"
+            tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
+            axisLine={{ stroke: '#cbd5e1' }}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[0, 0.3]}
+            tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
+            axisLine={{ stroke: '#cbd5e1' }}
+            tickLine={false}
+            tickFormatter={(value) => Number(value).toFixed(2)}
+            label={{
+              value: 'KPI',
+              angle: -90,
+              position: 'insideLeft',
+              fill: '#1e3a8a',
+              fontSize: 12,
+              fontWeight: 800,
+            }}
+          />
+          <Tooltip
+            cursor={{ stroke: '#1e3a8a', strokeDasharray: '4 4' }}
+            formatter={(value) => [formatKpi(value), 'KPI global']}
+            labelFormatter={(label) => `Semaine ${label.replace('S', '')}`}
+            contentStyle={{
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+              fontWeight: 700,
+            }}
+          />
+          <ReferenceLine
+            y={0.15}
+            stroke="#d97706"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            label={{ value: 'Seuil 0.15', fill: '#92400e', fontSize: 12, fontWeight: 800 }}
+          />
+          <ReferenceLine
+            y={0.2}
+            stroke="#dc2626"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            label={{ value: 'Seuil 0.20', fill: '#991b1b', fontSize: 12, fontWeight: 800 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="kpi"
+            stroke="#1e3a8a"
+            strokeWidth={4}
+            dot={{ r: 5, fill: '#1e3a8a', stroke: '#ffffff', strokeWidth: 2 }}
+            activeDot={{ r: 7, fill: '#1d4ed8', stroke: '#ffffff', strokeWidth: 3 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  </section>
+);
+
+const MaintenanceCard = ({ compressor, previousValues, latestMaintenance, currentKpi }) => {
+  const status = getKpiStatus(currentKpi);
+  const lastMaintenanceLabel = latestMaintenance
+    ? `${latestMaintenance.maintType || 'Entretien'} à ${formatHours(latestMaintenance.indexDone)}`
+    : 'Inspection préventive à planifier';
+  const nextMaintenance = toNumber(previousValues.previousRunHours) + 500;
+
+  return (
+    <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-black text-blue-900">
+            Maintenance {compressor.title}
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Suivi maintenance préparé pour raccordement backend.
+          </p>
+        </div>
+        <Wrench className="h-6 w-6 text-blue-900" />
+      </div>
+
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+            Prochaine maintenance
+          </div>
+          <div className="mt-1 text-lg font-black text-slate-800">
+            {formatHours(nextMaintenance)}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+            Dernier entretien
+          </div>
+          <div className="mt-1 text-sm font-bold text-slate-700">
+            {lastMaintenanceLabel}
+          </div>
+        </div>
+        <div className={`rounded-2xl border px-4 py-3 text-sm font-black ${status.className}`}>
+          Statut : {status.label}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="mt-5 inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition hover:border-blue-200 hover:text-blue-900"
+      >
+        <Info className="mr-2 h-4 w-4" />
+        Voir détail
+      </button>
+    </article>
+  );
+};
+
+const HistoryCard = ({ compressor, latestReport }) => {
+  const lastKpi = getReportKpi(latestReport);
+  const lastNote = latestReport?.description || 'Aucune observation renseignée.';
+  const lastWeek = latestReport?.week
+    ? formatWeekLabel(latestReport.week).replace('Semaine : ', '')
+    : 'Aucune semaine saisie';
+
+  return (
+    <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-black text-blue-900">
+            Historique {compressor.title}
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Dernier relevé sauvegardé dans les données air comprimé.
+          </p>
+        </div>
+        <History className="h-6 w-6 text-blue-900" />
+      </div>
+
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+            Dernière semaine saisie
+          </div>
+          <div className="mt-1 text-lg font-black text-slate-800">{lastWeek}</div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+            Dernier KPI
+          </div>
+          <div className="mt-1 text-2xl font-black text-slate-800">
+            {formatKpi(lastKpi)}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+            Dernière note
+          </div>
+          <div className="mt-1 max-h-16 overflow-hidden text-sm font-semibold text-slate-700">
+            {lastNote}
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="mt-5 inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition hover:border-blue-200 hover:text-blue-900"
+      >
+        <History className="mr-2 h-4 w-4" />
+        Voir historique
+      </button>
+    </article>
+  );
+};
+
 const AirModule = ({ onBack, user }) => {
   const [week, setWeek] = useState(getWeekValue());
   const [savingId, setSavingId] = useState(null);
@@ -411,6 +720,37 @@ const AirModule = ({ onBack, user }) => {
       globalKpi: totalRunHours > 0 ? totalLoadHours / totalRunHours : 0,
     };
   }, [metricsByCompressor]);
+
+  const latestReportsByCompressor = useMemo(
+    () =>
+      COMPRESSORS.reduce((accumulator, compressor) => {
+        accumulator[compressor.id] =
+          weeklyReports.find((log) => log.compName === compressor.name) || null;
+        return accumulator;
+      }, {}),
+    [weeklyReports]
+  );
+
+  const latestMaintenanceByCompressor = useMemo(
+    () =>
+      COMPRESSORS.reduce((accumulator, compressor) => {
+        accumulator[compressor.id] =
+          (Array.isArray(airLogs) ? airLogs : [])
+            .filter(
+              (log) =>
+                log?.type === 'MAINTENANCE' && log.compName === compressor.name
+            )
+            .sort((left, right) => getLogTimestamp(right) - getLogTimestamp(left))[0] ||
+          null;
+        return accumulator;
+      }, {}),
+    [airLogs]
+  );
+
+  const kpiHistory = useMemo(
+    () => buildKpiHistory(weeklyReports, week, totalMetrics.globalKpi),
+    [weeklyReports, week, totalMetrics.globalKpi]
+  );
 
   const updateDraft = (compressorId, field, value) => {
     setDrafts((current) => ({
@@ -570,6 +910,30 @@ const AirModule = ({ onBack, user }) => {
               totalLoadHours={totalMetrics.totalLoadHours}
               globalKpi={totalMetrics.globalKpi}
             />
+          </div>
+        </section>
+
+        <section className="space-y-6">
+          <KpiTrendChart data={kpiHistory} />
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {COMPRESSORS.map((compressor) => (
+              <MaintenanceCard
+                key={`maintenance-${compressor.id}`}
+                compressor={compressor}
+                previousValues={previousReadings[compressor.id]}
+                latestMaintenance={latestMaintenanceByCompressor[compressor.id]}
+                currentKpi={metricsByCompressor[compressor.id].kpi}
+              />
+            ))}
+
+            {COMPRESSORS.map((compressor) => (
+              <HistoryCard
+                key={`history-${compressor.id}`}
+                compressor={compressor}
+                latestReport={latestReportsByCompressor[compressor.id]}
+              />
+            ))}
           </div>
         </section>
       </main>
