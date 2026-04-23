@@ -957,7 +957,7 @@ const AirModule = ({ onBack, user }) => {
   const {
     data: airLogs,
     setData: setAirLogs,
-  } = useData('air_logs', { initialData: [] });
+  } = useData('air_logs', { initialData: [], intervalMs: 0 });
 
   const [drafts, setDrafts] = useState(() =>
     COMPRESSORS.reduce((accumulator, compressor) => {

@@ -10,12 +10,13 @@ export const useData = (
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState(null);
+  const initialDataRef = useRef(initialData);
   const lastLoggedErrorRef = useRef('');
 
   const refresh = useCallback(async () => {
     if (!enabled || !collectionName) {
       setLoading(false);
-      return initialData;
+      return initialDataRef.current;
     }
 
     setLoading(true);
@@ -32,13 +33,13 @@ export const useData = (
         console.warn(`Chargement dégradé pour ${collectionName}:`, err.message || err);
         lastLoggedErrorRef.current = signature;
       }
-      setData(initialData);
+      setData(initialDataRef.current);
       setError(err);
-      return initialData;
+      return initialDataRef.current;
     } finally {
       setLoading(false);
     }
-  }, [collectionName, enabled, initialData]);
+  }, [collectionName, enabled]);
 
   useEffect(() => {
     if (!enabled) {
