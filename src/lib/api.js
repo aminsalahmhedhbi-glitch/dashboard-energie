@@ -26,12 +26,19 @@ export const resolveApiBase = () => {
 export const API_BASE = resolveApiBase();
 
 export const apiFetch = async (endpoint, options = {}) => {
+  const hasBody = options.body !== undefined && options.body !== null;
+  const headers = { ...(options.headers || {}) };
+  const hasContentType = Object.keys(headers).some(
+    (key) => key.toLowerCase() === 'content-type'
+  );
+
+  if (hasBody && !hasContentType) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
     ...options,
+    headers,
   });
 
   const contentType = response.headers.get('content-type') || '';

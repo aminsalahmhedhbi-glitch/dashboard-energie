@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../lib/api';
 
+const DEFAULT_INITIAL_DATA = [];
+
 export const useData = (
   collectionName,
-  { intervalMs = 4000, enabled = true, initialData = [] } = {}
+  { intervalMs = 4000, enabled = true, initialData = DEFAULT_INITIAL_DATA } = {}
 ) => {
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(enabled);
@@ -55,6 +57,13 @@ export const useData = (
     };
 
     fetchAndGuard();
+
+    if (!intervalMs || intervalMs <= 0) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
     const interval = window.setInterval(fetchAndGuard, intervalMs);
 
     return () => {

@@ -268,7 +268,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const TARGETS_DRAFT_KEY = 'italcar_sites_targets_draft_v1';
 
   // Pour simplifier l'historique sur le serveur simple, on charge tout 'site_history'
-  const { data: allHistory } = useData('site_history');
+  const { data: allHistory } = useData('site_history', { intervalMs: 0 });
   const { factures: siteFactures } = useFactures({
     site: activeSiteTab,
     intervalMs: 15000,

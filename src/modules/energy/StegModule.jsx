@@ -205,7 +205,7 @@ const StegModule = ({ onBack, userRole, user }) => {
   // CHARGEMENT DONNÉES DEPUIS PC
   const [logs, setLogs] = useState([]);
   const [billingHistory, setBillingHistory] = useState([]);
-  const { data: siteHistoryRecords } = useData('site_history');
+  const { data: siteHistoryRecords } = useData('site_history', { intervalMs: 0 });
   const SITE_KEYS_BY_ID = {
     1: 'MEGRINE',
     2: 'ELKHADHRA',
