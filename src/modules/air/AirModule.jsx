@@ -593,7 +593,7 @@ const KpiTrendChart = ({ data }) => (
   </section>
 );
 
-const MaintenanceOperationCard = ({ item, onValidate }) => (
+const MaintenanceOperationCard = ({ item, compressor, onValidate }) => (
   <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
     <div className="mb-4 flex items-start justify-between gap-3">
       <div>
@@ -627,7 +627,7 @@ const MaintenanceOperationCard = ({ item, onValidate }) => (
 
     <button
       type="button"
-      onClick={() => onValidate(item)}
+      onClick={() => onValidate(item, compressor)}
       className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-900"
     >
       <Wrench className="mr-2 h-4 w-4" />
@@ -638,23 +638,17 @@ const MaintenanceOperationCard = ({ item, onValidate }) => (
 
 const MaintenanceSection = ({
   compressors,
-  selectedCompressorId,
-  onSelectCompressor,
-  maintenanceItems,
+  maintenanceItemsByCompressor,
   sharedMaintenanceLogs,
   plannedMaintenances,
-  currentRunHours,
+  currentRunHoursByCompressor,
   onValidateMaintenance,
   onDeleteMaintenance,
   onOpenSchedule,
 }) => {
-  const selectedCompressor = compressors.find(
-    (compressor) => compressor.id === selectedCompressorId
-  );
-
   return (
     <section className="space-y-6 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
         <div>
           <h2 className="flex items-center text-3xl font-black tracking-tight text-blue-900">
             <Wrench className="mr-3 h-7 w-7 text-red-600" />
@@ -664,37 +658,42 @@ const MaintenanceSection = ({
             Décrément automatique basé sur les heures de fonctionnement du compresseur.
           </p>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          {compressors.map((compressor) => (
-            <button
-              key={compressor.id}
-              type="button"
-              onClick={() => onSelectCompressor(compressor.id)}
-              className={`rounded-2xl border px-4 py-2 text-sm font-black transition ${
-                selectedCompressorId === compressor.id
-                  ? 'border-blue-900 bg-blue-900 text-white shadow-sm'
-                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-200 hover:text-blue-900'
-              }`}
-            >
-              {compressor.title}
-            </button>
-          ))}
-        </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
-        Base actuelle {selectedCompressor?.title} :{' '}
-        <span className="text-blue-900">{formatHours(currentRunHours)}</span>
-      </div>
+      <div className="space-y-5">
+        {compressors.map((compressor) => (
+          <div
+            key={compressor.id}
+            className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h3 className="text-xl font-black text-slate-800">
+                  Maintenance {compressor.title}
+                </h3>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {compressor.model} • {compressor.serial}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+                Base actuelle {compressor.title} :{' '}
+                <span className="text-blue-900">
+                  {formatHours(currentRunHoursByCompressor[compressor.id])}
+                </span>
+              </div>
+            </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {maintenanceItems.map((item) => (
-          <MaintenanceOperationCard
-            key={item.key}
-            item={item}
-            onValidate={onValidateMaintenance}
-          />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              {(maintenanceItemsByCompressor[compressor.id] || []).map((item) => (
+                <MaintenanceOperationCard
+                  key={`${compressor.id}-${item.key}`}
+                  item={item}
+                  compressor={compressor}
+                  onValidate={onValidateMaintenance}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
@@ -703,7 +702,7 @@ const MaintenanceSection = ({
           <div>
             <h3 className="flex items-center text-lg font-black text-slate-800">
               <History className="mr-2 h-5 w-5 text-blue-900" />
-              Historique partagé des maintenances
+              Historique
             </h3>
             <p className="mt-1 text-xs font-medium text-slate-500">
               Liste unique des interventions Compresseur 1 et Compresseur 2.
@@ -1240,25 +1239,31 @@ const AirModule = ({ onBack, user }) => {
       (compressor) => compressor.id === selectedMaintenanceCompressorId
     ) || COMPRESSORS[0];
 
-  const selectedMaintenanceLogs =
-    maintenanceLogsByCompressor[selectedMaintenanceCompressor.id] || [];
-
   const selectedMaintenanceCurrentRunHours =
     currentRunHoursByCompressor[selectedMaintenanceCompressor.id] ||
     selectedMaintenanceCompressor.previousRunHours;
 
-  const selectedMaintenanceItems = useMemo(
+  const activeMaintenanceCompressor =
+    COMPRESSORS.find(
+      (compressor) => compressor.id === maintenanceDraft?.compressorId
+    ) || selectedMaintenanceCompressor;
+
+  const activeMaintenanceCurrentRunHours =
+    currentRunHoursByCompressor[activeMaintenanceCompressor.id] ||
+    activeMaintenanceCompressor.previousRunHours;
+
+  const maintenanceItemsByCompressor = useMemo(
     () =>
-      buildMaintenanceItems(
-        selectedMaintenanceCurrentRunHours,
-        selectedMaintenanceLogs,
-        selectedMaintenanceCompressor
-      ),
-    [
-      selectedMaintenanceCurrentRunHours,
-      selectedMaintenanceLogs,
-      selectedMaintenanceCompressor,
-    ]
+      COMPRESSORS.reduce((accumulator, compressor) => {
+        accumulator[compressor.id] = buildMaintenanceItems(
+          currentRunHoursByCompressor[compressor.id] ||
+            compressor.previousRunHours,
+          maintenanceLogsByCompressor[compressor.id] || [],
+          compressor
+        );
+        return accumulator;
+      }, {}),
+    [currentRunHoursByCompressor, maintenanceLogsByCompressor]
   );
 
   const kpiHistory = useMemo(
@@ -1276,9 +1281,13 @@ const AirModule = ({ onBack, user }) => {
     }));
   };
 
-  const openMaintenanceValidation = (item) => {
+  const openMaintenanceValidation = (item, compressor) => {
+    if (compressor?.id) {
+      setSelectedMaintenanceCompressorId(compressor.id);
+    }
     setMaintenanceDraft({
       item,
+      compressorId: compressor?.id || selectedMaintenanceCompressorId,
       technician: '',
       cost: '',
       ref: '',
@@ -1341,16 +1350,16 @@ const AirModule = ({ onBack, user }) => {
     setMaintenanceSaving(true);
 
     const payload = {
-      id: Date.now() + selectedMaintenanceCompressor.id,
+      id: Date.now() + activeMaintenanceCompressor.id,
       type: 'MAINTENANCE',
       week,
       date: new Date().toLocaleDateString('fr-FR'),
-      compName: selectedMaintenanceCompressor.name,
+      compName: activeMaintenanceCompressor.name,
       maintKey: maintenanceDraft.item.key,
       maintType: maintenanceDraft.item.label,
       intervalHours: maintenanceDraft.item.intervalHours,
       previousIndex: maintenanceDraft.item.lastMaintenanceRunHours,
-      indexDone: selectedMaintenanceCurrentRunHours,
+      indexDone: activeMaintenanceCurrentRunHours,
       usedHours: maintenanceDraft.item.usedHours,
       remainingBeforeValidation: maintenanceDraft.item.remainingHours,
       cost: toNumber(maintenanceDraft.cost),
@@ -1367,7 +1376,7 @@ const AirModule = ({ onBack, user }) => {
       setMaintenanceDraft(null);
       setNotification({
         type: 'success',
-        message: `${maintenanceDraft.item.label} validée pour ${selectedMaintenanceCompressor.title}.`,
+        message: `${maintenanceDraft.item.label} validée pour ${activeMaintenanceCompressor.title}.`,
       });
     } catch (error) {
       setNotification({
@@ -1644,12 +1653,10 @@ const AirModule = ({ onBack, user }) => {
 
           <MaintenanceSection
             compressors={COMPRESSORS}
-            selectedCompressorId={selectedMaintenanceCompressorId}
-            onSelectCompressor={setSelectedMaintenanceCompressorId}
-            maintenanceItems={selectedMaintenanceItems}
+            maintenanceItemsByCompressor={maintenanceItemsByCompressor}
             sharedMaintenanceLogs={sharedMaintenanceLogs}
             plannedMaintenances={plannedMaintenances}
-            currentRunHours={selectedMaintenanceCurrentRunHours}
+            currentRunHoursByCompressor={currentRunHoursByCompressor}
             onValidateMaintenance={openMaintenanceValidation}
             onDeleteMaintenance={handleDeleteMaintenance}
             onOpenSchedule={openScheduleModal}
@@ -1659,8 +1666,8 @@ const AirModule = ({ onBack, user }) => {
 
       <MaintenanceValidationModal
         draft={maintenanceDraft}
-        compressor={selectedMaintenanceCompressor}
-        currentRunHours={selectedMaintenanceCurrentRunHours}
+        compressor={activeMaintenanceCompressor}
+        currentRunHours={activeMaintenanceCurrentRunHours}
         saving={maintenanceSaving}
         onChange={updateMaintenanceDraft}
         onClose={closeMaintenanceValidation}
