@@ -1069,11 +1069,11 @@ const MaintenanceOperationCard = ({ item, compressor, onValidate }) => (
 const MaintenanceSection = ({
   compressors,
   maintenanceItemsByCompressor,
-  sharedMaintenanceLogs,
+  historyRows,
   plannedMaintenances,
   currentRunHoursByCompressor,
   onValidateMaintenance,
-  onDeleteMaintenance,
+  onDeleteHistory,
   onOpenSchedule,
 }) => {
   return (
@@ -1135,11 +1135,11 @@ const MaintenanceSection = ({
               Historique
             </h3>
             <p className="mt-1 text-xs font-medium text-slate-500">
-              Liste unique des interventions Compresseur 1 et Compresseur 2.
+              Liste unique des relevés et interventions Compresseur 1 et Compresseur 2.
             </p>
           </div>
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-500">
-            {sharedMaintenanceLogs.length} intervention(s)
+            {historyRows.length} élément(s)
           </span>
         </div>
 
@@ -1156,36 +1156,55 @@ const MaintenanceSection = ({
               </tr>
             </thead>
             <tbody>
-              {sharedMaintenanceLogs.length === 0 ? (
+              {historyRows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm font-semibold text-slate-400">
-                    Aucun historique maintenance enregistré.
+                    Aucun relevé ou historique maintenance enregistré.
                   </td>
                 </tr>
               ) : (
-                sharedMaintenanceLogs.map((log) => (
-                  <tr key={log.id || log._id || `${log.maintType}-${log.indexDone}`}>
+                historyRows.map((log) => (
+                  <tr key={log.id || log._id || `${log.type}-${log.compName}-${log.createdAt}`}>
                     <td className="rounded-l-2xl border-y border-l border-slate-200 bg-white px-3 py-3 font-bold text-slate-700">
                       {log.compName || '-'}
                     </td>
                     <td className="border-y border-slate-200 bg-white px-3 py-3">
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
-                        {log.maintType || 'Maintenance'}
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-black ${
+                          log.type === 'WEEKLY_REPORT'
+                            ? 'bg-violet-50 text-violet-700'
+                            : 'bg-blue-50 text-blue-700'
+                        }`}
+                      >
+                        {log.type === 'WEEKLY_REPORT'
+                          ? 'Relevé'
+                          : log.maintType || 'Maintenance'}
                       </span>
                     </td>
                     <td className="border-y border-slate-200 bg-white px-3 py-3 text-slate-600">
-                      {log.date || log.week || '-'}
+                      {formatLogDateTime(log.createdAt || log.date || log.week)}
                     </td>
                     <td className="border-y border-slate-200 bg-white px-3 py-3 font-semibold text-slate-600">
-                      {formatHours(log.indexDone)}
+                      {log.type === 'WEEKLY_REPORT' ? (
+                        <div className="space-y-1 text-xs">
+                          <div>
+                            Marche : <span className="font-bold text-slate-800">{formatHours(log.newRunHours)}</span>
+                          </div>
+                          <div>
+                            Charge : <span className="font-bold text-slate-800">{formatHours(log.newLoadHours)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        formatHours(log.indexDone)
+                      )}
                     </td>
                     <td className="border-y border-slate-200 bg-white px-3 py-3 text-slate-600">
-                      {log.details?.notes || log.details?.ref || log.ref || 'Sans note'}
+                      {log.note || log.details?.notes || log.details?.ref || log.ref || 'Sans note'}
                     </td>
                     <td className="rounded-r-2xl border-y border-r border-slate-200 bg-white px-3 py-3 text-right">
                       <button
                         type="button"
-                        onClick={() => onDeleteMaintenance(log)}
+                        onClick={() => onDeleteHistory(log)}
                         className="inline-flex items-center rounded-xl border border-red-100 bg-red-50 px-3 py-1 text-xs font-bold text-red-600 transition hover:border-red-200 hover:bg-red-100"
                       >
                         <Trash2 className="mr-1.5 h-3.5 w-3.5" />
@@ -1261,82 +1280,6 @@ const MaintenanceSection = ({
     </section>
   );
 };
-
-const WeeklyReportsSection = ({ reports }) => (
-  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
-    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 className="flex items-center text-2xl font-black tracking-tight text-blue-900">
-          <History className="mr-3 h-6 w-6 text-blue-900" />
-          Historique des relevés
-        </h2>
-        <p className="mt-1 text-sm font-medium text-slate-500">
-          Relevés rechargés depuis le backend après sauvegarde ou actualisation.
-        </p>
-      </div>
-      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
-        {reports.length} relevé(s)
-      </span>
-    </div>
-
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] border-separate border-spacing-y-2 text-left text-sm">
-        <thead>
-          <tr className="text-xs font-black uppercase tracking-wide text-slate-400">
-            <th className="px-3 py-2">Compresseur</th>
-            <th className="px-3 py-2">Semaine</th>
-            <th className="px-3 py-2">Précédent marche</th>
-            <th className="px-3 py-2">Nouveau marche</th>
-            <th className="px-3 py-2">Précédent charge</th>
-            <th className="px-3 py-2">Nouveau charge</th>
-            <th className="px-3 py-2">KPI</th>
-            <th className="px-3 py-2">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reports.length === 0 ? (
-            <tr>
-              <td colSpan={8} className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-semibold text-slate-400">
-                Aucun relevé air comprimé enregistré.
-              </td>
-            </tr>
-          ) : (
-            reports.map((report) => (
-              <tr key={report.id}>
-                <td className="rounded-l-2xl border-y border-l border-slate-200 bg-white px-3 py-3 font-bold text-slate-700">
-                  {report.compName}
-                </td>
-                <td className="border-y border-slate-200 bg-white px-3 py-3 font-semibold text-slate-600">
-                  {report.week || '-'}
-                </td>
-                <td className="border-y border-slate-200 bg-white px-3 py-3 text-slate-600">
-                  {formatHours(report.previousRunHours)}
-                </td>
-                <td className="border-y border-slate-200 bg-white px-3 py-3 font-bold text-slate-800">
-                  {formatHours(report.newRunHours)}
-                </td>
-                <td className="border-y border-slate-200 bg-white px-3 py-3 text-slate-600">
-                  {formatHours(report.previousLoadHours)}
-                </td>
-                <td className="border-y border-slate-200 bg-white px-3 py-3 font-bold text-slate-800">
-                  {formatHours(report.newLoadHours)}
-                </td>
-                <td className="border-y border-slate-200 bg-white px-3 py-3">
-                  <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
-                    {formatKpi(report.kpi)}
-                  </span>
-                </td>
-                <td className="rounded-r-2xl border-y border-r border-slate-200 bg-white px-3 py-3 text-slate-600">
-                  {formatLogDateTime(report.createdAt)}
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  </section>
-);
 
 const MaintenanceValidationModal = ({
   draft,
@@ -1624,6 +1567,7 @@ const AirModule = ({ onBack, user }) => {
   const {
     data: airLogs,
     setData: setAirLogs,
+    refresh: refreshAirLogs,
   } = useData('air_logs', { initialData: [], intervalMs: 0 });
 
   const normalizedAirLogs = useMemo(
@@ -1805,6 +1749,14 @@ const AirModule = ({ onBack, user }) => {
     [normalizedAirLogs]
   );
 
+  const historyRows = useMemo(
+    () =>
+      [...weeklyReports, ...sharedMaintenanceLogs].sort(
+        (left, right) => getLogTimestamp(right) - getLogTimestamp(left)
+      ),
+    [weeklyReports, sharedMaintenanceLogs]
+  );
+
   const selectedMaintenanceCompressor =
     COMPRESSORS.find(
       (compressor) => compressor.id === selectedMaintenanceCompressorId
@@ -1876,7 +1828,7 @@ const AirModule = ({ onBack, user }) => {
     setMaintenanceDraft({
       item,
       compressorId: compressor?.id || selectedMaintenanceCompressorId,
-      technician: '',
+      technician: user?.name || user?.username || '',
       cost: '',
       ref: '',
       notes: '',
@@ -1962,8 +1914,8 @@ const AirModule = ({ onBack, user }) => {
     };
 
     try {
-      const savedEntry = await saveData('air_logs', payload);
-      setAirLogs((current) => [savedEntry, ...(Array.isArray(current) ? current : [])]);
+      await saveData('air_logs', payload);
+      await refreshAirLogs();
       setMaintenanceDraft(null);
       setNotification({
         type: 'success',
@@ -1981,26 +1933,22 @@ const AirModule = ({ onBack, user }) => {
     }
   };
 
-  const handleDeleteMaintenance = async (log) => {
+  const handleDeleteHistory = async (log) => {
     const itemId = log?.id || log?._id;
     if (!itemId) {
       return;
     }
 
-    if (!window.confirm('Supprimer cette ligne d’historique maintenance ?')) {
+    if (!window.confirm('Supprimer cette ligne de l’historique air comprimé ?')) {
       return;
     }
 
     try {
       await apiFetch(`/api/data/air_logs/${itemId}`, { method: 'DELETE' });
-      setAirLogs((current) =>
-        (Array.isArray(current) ? current : []).filter(
-          (item) => (item.id || item._id) !== itemId
-        )
-      );
+      await refreshAirLogs();
       setNotification({
         type: 'success',
-        message: 'Ligne de maintenance supprimée.',
+        message: 'Ligne d’historique supprimée.',
       });
     } catch (error) {
       setNotification({
@@ -2067,11 +2015,11 @@ const AirModule = ({ onBack, user }) => {
     }
 
     try {
-      const savedPlan = await saveData('air_logs', {
+      await saveData('air_logs', {
         ...plannedMaintenance,
         linkedActionId,
       });
-      setAirLogs((current) => [savedPlan, ...(Array.isArray(current) ? current : [])]);
+      await refreshAirLogs();
       setScheduleForm(EMPTY_SCHEDULE_FORM);
       setShowScheduleModal(false);
       setNotification({
@@ -2147,8 +2095,8 @@ const AirModule = ({ onBack, user }) => {
     };
 
     try {
-      const savedEntry = await saveData('air_logs', payload);
-      setAirLogs((current) => [savedEntry, ...(Array.isArray(current) ? current : [])]);
+      await saveData('air_logs', payload);
+      await refreshAirLogs();
       setDrafts((current) => ({
         ...current,
         [compressor.id]: {
@@ -2259,16 +2207,15 @@ const AirModule = ({ onBack, user }) => {
 
         <section className="space-y-6">
           <MultiKpiTrendChart data={kpiHistory} />
-          <WeeklyReportsSection reports={weeklyReports} />
 
           <MaintenanceSection
             compressors={COMPRESSORS}
             maintenanceItemsByCompressor={maintenanceItemsByCompressor}
-            sharedMaintenanceLogs={sharedMaintenanceLogs}
+            historyRows={historyRows}
             plannedMaintenances={plannedMaintenances}
             currentRunHoursByCompressor={currentRunHoursByCompressor}
             onValidateMaintenance={openMaintenanceValidation}
-            onDeleteMaintenance={handleDeleteMaintenance}
+            onDeleteHistory={handleDeleteHistory}
             onOpenSchedule={openScheduleModal}
           />
         </section>
