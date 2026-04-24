@@ -37,8 +37,9 @@ const COMPRESSORS = [
     name: 'Compresseur 1',
     model: 'Ceccato CSB 30',
     serial: 'CAI 827281',
-    previousRunHours: 19960,
-    previousLoadHours: 10500,
+    startWeek: '2026-W10',
+    previousRunHours: 22838,
+    previousLoadHours: 7932,
   },
   {
     id: 2,
@@ -46,8 +47,9 @@ const COMPRESSORS = [
     name: 'Compresseur 2',
     model: 'Ceccato CSB 30',
     serial: 'CAI 808264',
-    previousRunHours: 19960,
-    previousLoadHours: 10500,
+    startWeek: '2026-W10',
+    previousRunHours: 15506,
+    previousLoadHours: 5988,
   },
 ];
 
@@ -332,6 +334,32 @@ const normalizeAirLog = (row = {}) => {
 const getShortWeekLabel = (weekValue) => {
   const rawWeek = String(weekValue || '').split('-W')[1];
   return rawWeek ? `S${Number(rawWeek)}` : 'S--';
+};
+
+const isWeeklyReportWithinBaseline = (report, compressor) => {
+  if (!compressor) {
+    return false;
+  }
+
+  const reportWeekSort = getWeekSortValue(report?.week || '');
+  const baselineWeekSort = getWeekSortValue(compressor.startWeek || '');
+
+  if (baselineWeekSort > 0 && reportWeekSort > 0 && reportWeekSort < baselineWeekSort) {
+    return false;
+  }
+
+  const reportRunHours = toNumber(report?.newRunHours ?? report?.newRun);
+  const reportLoadHours = toNumber(report?.newLoadHours ?? report?.newLoad);
+
+  if (reportRunHours > 0 && reportRunHours < compressor.previousRunHours) {
+    return false;
+  }
+
+  if (reportLoadHours > 0 && reportLoadHours < compressor.previousLoadHours) {
+    return false;
+  }
+
+  return true;
 };
 
 const buildKpiHistory = (
@@ -1776,6 +1804,10 @@ const AirModule = ({ onBack, user }) => {
     () =>
       normalizedAirLogs
         .filter((log) => log?.type === 'WEEKLY_REPORT')
+        .filter((log) => {
+          const compressor = resolveCompressorMeta(log);
+          return isWeeklyReportWithinBaseline(log, compressor);
+        })
         .sort((left, right) => getLogTimestamp(right) - getLogTimestamp(left)),
     [normalizedAirLogs]
   );
