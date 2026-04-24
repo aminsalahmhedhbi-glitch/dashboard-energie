@@ -307,6 +307,10 @@ const buildMetrics = (previousValues, currentValues) => {
   };
 };
 
+const hasDraftValues = (draft = {}) =>
+  String(draft?.newRunHours ?? '').trim() !== '' ||
+  String(draft?.newLoadHours ?? '').trim() !== '';
+
 const CompressorField = ({
   label,
   previousValue,
@@ -464,7 +468,7 @@ const CompressorPerformanceCard = ({ title, metrics, accentClass }) => (
       <div>
         <h3 className="text-2xl font-black text-slate-800">{title}</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Lecture instantanée calculée à partir des nouvelles saisies.
+          Lecture calculée à partir du dernier relevé enregistré ou des nouvelles saisies.
         </p>
       </div>
       <div className={`rounded-2xl px-3 py-2 text-xs font-bold uppercase tracking-wide ${accentClass}`}>
@@ -648,7 +652,7 @@ const CompressorPerformanceSummaryCard = ({ title, metrics, accentClass }) => (
       <div>
         <h3 className="text-2xl font-black text-slate-800">{title}</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Lecture instantanée calculée à partir des nouvelles saisies.
+          Lecture calculée à partir du dernier relevé enregistré ou des nouvelles saisies.
         </p>
       </div>
       <div className={`rounded-2xl px-3 py-2 text-xs font-bold uppercase tracking-wide ${accentClass}`}>
@@ -1419,6 +1423,25 @@ const AirModule = ({ onBack, user }) => {
     [weeklyReports]
   );
 
+  const latestSavedMetricsByCompressor = useMemo(
+    () =>
+      COMPRESSORS.reduce((accumulator, compressor) => {
+        const latestLog = weeklyReports.find(
+          (log) => log.compName === compressor.name
+        );
+
+        accumulator[compressor.id] = {
+          runHours: toNumber(latestLog?.runDelta),
+          loadHours: toNumber(latestLog?.loadDelta),
+          usageRate: toNumber(latestLog?.loadRate),
+          kpi: toNumber(latestLog?.kpi),
+        };
+
+        return accumulator;
+      }, {}),
+    [weeklyReports]
+  );
+
   const effectivePreviousReadings = useMemo(
     () =>
       COMPRESSORS.reduce((accumulator, compressor) => {
@@ -1450,13 +1473,24 @@ const AirModule = ({ onBack, user }) => {
     [drafts, effectivePreviousReadings]
   );
 
+  const displayMetricsByCompressor = useMemo(
+    () =>
+      COMPRESSORS.reduce((accumulator, compressor) => {
+        accumulator[compressor.id] = hasDraftValues(drafts[compressor.id])
+          ? metricsByCompressor[compressor.id]
+          : latestSavedMetricsByCompressor[compressor.id];
+        return accumulator;
+      }, {}),
+    [drafts, latestSavedMetricsByCompressor, metricsByCompressor]
+  );
+
   const totalMetrics = useMemo(() => {
     const totalRunHours = COMPRESSORS.reduce(
-      (sum, compressor) => sum + metricsByCompressor[compressor.id].runHours,
+      (sum, compressor) => sum + displayMetricsByCompressor[compressor.id].runHours,
       0
     );
     const totalLoadHours = COMPRESSORS.reduce(
-      (sum, compressor) => sum + metricsByCompressor[compressor.id].loadHours,
+      (sum, compressor) => sum + displayMetricsByCompressor[compressor.id].loadHours,
       0
     );
 
@@ -1466,7 +1500,7 @@ const AirModule = ({ onBack, user }) => {
       globalLoadRate: totalRunHours > 0 ? (totalLoadHours / totalRunHours) * 100 : 0,
       globalKpi: totalRunHours > 0 ? totalLoadHours / totalRunHours : 0,
     };
-  }, [metricsByCompressor]);
+  }, [displayMetricsByCompressor]);
 
   const currentRunHoursByCompressor = useMemo(
     () =>
@@ -1548,11 +1582,11 @@ const AirModule = ({ onBack, user }) => {
       buildKpiHistory(
         weeklyReports,
         week,
-        metricsByCompressor[1].kpi,
-        metricsByCompressor[2].kpi,
+        displayMetricsByCompressor[1].kpi,
+        displayMetricsByCompressor[2].kpi,
         totalMetrics.globalKpi
       ),
-    [weeklyReports, week, metricsByCompressor, totalMetrics.globalKpi]
+    [weeklyReports, week, displayMetricsByCompressor, totalMetrics.globalKpi]
   );
 
   const updateDraft = (compressorId, field, value) => {
@@ -1897,7 +1931,7 @@ const AirModule = ({ onBack, user }) => {
               week={week}
               values={drafts[compressor.id]}
               previousValues={effectivePreviousReadings[compressor.id]}
-              metrics={metricsByCompressor[compressor.id]}
+              metrics={displayMetricsByCompressor[compressor.id]}
               onWeekChange={setWeek}
               onChange={(field, value) => updateDraft(compressor.id, field, value)}
               onPreviousChange={(field, value) =>
@@ -1916,7 +1950,7 @@ const AirModule = ({ onBack, user }) => {
                 performance et usage
               </h2>
               <p className="mt-2 text-sm font-medium text-slate-500">
-                Les KPI sont recalculés en temps réel dès que vous modifiez les nouvelles valeurs.
+                Les KPI affichent le dernier relevé enregistré et se recalculent en temps réel dès que vous modifiez les nouvelles valeurs.
               </p>
             </div>
 
@@ -1936,12 +1970,12 @@ const AirModule = ({ onBack, user }) => {
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             <CompressorPerformanceSummaryCard
               title="Compresseur 1"
-              metrics={metricsByCompressor[1]}
+              metrics={displayMetricsByCompressor[1]}
               accentClass="bg-blue-50 text-blue-700"
             />
             <CompressorPerformanceSummaryCard
               title="Compresseur 2"
-              metrics={metricsByCompressor[2]}
+              metrics={displayMetricsByCompressor[2]}
               accentClass="bg-emerald-50 text-emerald-700"
             />
             <GlobalPerformanceCard

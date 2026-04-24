@@ -269,7 +269,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   // Pour simplifier l'historique sur le serveur simple, on charge tout 'site_history'
   const { data: allHistory } = useData('site_history', { intervalMs: 0 });
-  const { factures: siteFactures } = useFactures({
+  const { factures: siteFactures, loading: facturesLoading } = useFactures({
     site: activeSiteTab,
     intervalMs: 15000,
     limit: 500,
@@ -548,6 +548,19 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const factureInsights = useMemo(
     () => buildFactureInsights(siteFactures, { currentDate: new Date() }),
     [siteFactures]
+  );
+  const factureMonthlyChartData = useMemo(
+    () =>
+      (factureInsights.monthlyRows || []).map((row) => ({
+        month: row.monthLabel,
+        consommation: row.consommationKwh,
+        cout: row.prixDt,
+      })),
+    [factureInsights]
+  );
+  const recentSiteFactures = useMemo(
+    () => (factureInsights.recentFactures || []).slice(0, 6),
+    [factureInsights]
   );
   const factureHistoryByYear = useMemo(() => {
     const createMonthSet = () => ({
@@ -993,7 +1006,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             <SiteTabs />
             <PerformanceWidget />
 
-            {false && (
+            {true && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
                 <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                     <div>

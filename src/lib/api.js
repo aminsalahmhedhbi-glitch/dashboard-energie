@@ -69,8 +69,15 @@ export const apiFetch = async (endpoint, options = {}) => {
   return data;
 };
 
-export const saveCollectionItem = async (collection, payload) =>
-  apiFetch(`/api/data/${collection}`, {
+export const saveCollectionItem = async (collection, payload) => {
+  const result = await apiFetch(`/api/data/${collection}`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+
+  if (result && typeof result === 'object' && 'saved' in result) {
+    return result.saved;
+  }
+
+  return result;
+};
