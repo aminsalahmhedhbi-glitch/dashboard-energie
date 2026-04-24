@@ -50,6 +50,9 @@ const COMPRESSORS = [
   },
 ];
 
+const KPI_Y_MIN = 0.05;
+const KPI_Y_MAX = 0.3;
+
 const MAINTENANCE_CONFIG = [
   { key: 'nettoyage', label: 'Nettoyage', intervalHours: 500 },
   { key: 'vidange', label: 'Vidange', intervalHours: 2000 },
@@ -102,6 +105,62 @@ const getLogTimestamp = (log) => {
   return Number(log?.id || 0);
 };
 
+const normalizeCompressorToken = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+
+const resolveCompressorMeta = (row = {}) => {
+  const candidates = [
+    row.compressorId,
+    row.compressor,
+    row.compresseur,
+    row.comp,
+    row.asset_name,
+    row.assetName,
+    row.compName,
+    row.name,
+    row.title,
+  ];
+
+  for (const candidate of candidates) {
+    const token = normalizeCompressorToken(candidate);
+    if (!token) continue;
+
+    if (
+      token === '1' ||
+      token === 'comp1' ||
+      token === 'compressor1' ||
+      token === 'compresseur1'
+    ) {
+      return COMPRESSORS[0];
+    }
+
+    if (
+      token === '2' ||
+      token === 'comp2' ||
+      token === 'compressor2' ||
+      token === 'compresseur2'
+    ) {
+      return COMPRESSORS[1];
+    }
+
+    const matched = COMPRESSORS.find((compressor) => {
+      const normalizedName = normalizeCompressorToken(compressor.name);
+      const normalizedTitle = normalizeCompressorToken(compressor.title);
+      return token === normalizedName || token === normalizedTitle;
+    });
+
+    if (matched) {
+      return matched;
+    }
+  }
+
+  return null;
+};
+
 const toNumber = (value) => {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -122,9 +181,129 @@ const formatKpi = (value) =>
     maximumFractionDigits: 2,
   });
 
+const formatLogDateTime = (value) => {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+  return parsed.toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 const getWeekSortValue = (weekValue) => {
   const [year, rawWeek] = String(weekValue || '').split('-W');
   return Number(year || 0) * 100 + Number(rawWeek || 0);
+};
+
+const normalizeAirLog = (row = {}) => {
+  const compressor = resolveCompressorMeta(row);
+  const previousRunHours = toNumber(
+    row.previousRunHours ??
+      row.prevRunHours ??
+      row.previous_marche ??
+      row.prev_marche ??
+      row.lastRun
+  );
+  const previousLoadHours = toNumber(
+    row.previousLoadHours ??
+      row.prevLoadHours ??
+      row.previous_charge ??
+      row.prev_charge ??
+      row.lastLoad
+  );
+  const newRunHours = toNumber(
+    row.newRunHours ??
+      row.runHours ??
+      row.operatingHours ??
+      row.hoursRun ??
+      row.heuresMarche ??
+      row.marche ??
+      row.newRun
+  );
+  const newLoadHours = toNumber(
+    row.newLoadHours ??
+      row.loadHours ??
+      row.chargeHours ??
+      row.loadedHours ??
+      row.heuresCharge ??
+      row.charge ??
+      row.newLoad
+  );
+  const runDelta = toNumber(
+    row.runDelta ?? Math.max(0, newRunHours - previousRunHours)
+  );
+  const loadDelta = toNumber(
+    row.loadDelta ?? Math.max(0, newLoadHours - previousLoadHours)
+  );
+  const usageRate = toNumber(
+    row.loadRate ?? (runDelta > 0 ? (loadDelta / runDelta) * 100 : 0)
+  );
+  const kpi = toNumber(row.kpi ?? (runDelta > 0 ? loadDelta / runDelta : 0));
+  const note =
+    row.note ||
+    row.observation ||
+    row.description ||
+    row.notes ||
+    row.comment ||
+    '';
+  const createdAt =
+    row.createdAt ||
+    row.created_at ||
+    row._createdAt ||
+    row.timestamp ||
+    row.date ||
+    new Date().toISOString();
+
+  return {
+    ...row,
+    id:
+      row.id ||
+      row._id ||
+      row.uuid ||
+      `${row.week || row.semaine || 'no-week'}-${compressor?.id || 'comp'}`,
+    type: row.type || row.entry_type || row.entryType || '',
+    compressorId: compressor?.id || row.compressorId || row.compressor || row.comp || 'comp1',
+    compName:
+      compressor?.name ||
+      row.compName ||
+      row.asset_name ||
+      row.assetName ||
+      row.compresseur ||
+      row.compressor ||
+      'Compresseur 1',
+    week: row.week || row.semaine || row.period || '',
+    previousRunHours,
+    previousLoadHours,
+    newRunHours,
+    newLoadHours,
+    lastRun: previousRunHours,
+    lastLoad: previousLoadHours,
+    newRun: newRunHours,
+    newLoad: newLoadHours,
+    runDelta,
+    loadDelta,
+    loadRate: usageRate,
+    kpi,
+    note,
+    description: note,
+    createdAt,
+    date: row.date || createdAt,
+    maintType:
+      row.maintType || row.maintenanceType || row.operationType || row.typeLabel,
+    indexDone: toNumber(
+      row.indexDone ?? row.counter ?? row.currentBaseHours ?? row.currentRunHours
+    ),
+    details: {
+      ...(row.details || {}),
+      notes: row.details?.notes || note,
+    },
+  };
 };
 
 const getShortWeekLabel = (weekValue) => {
@@ -583,9 +762,9 @@ const KpiTrendChart = ({ data }) => (
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 18, right: 26, left: 4, bottom: 8 }}>
           <CartesianGrid stroke="#dbe4f0" strokeDasharray="4 4" />
-          <ReferenceArea y1={0} y2={0.15} fill="#dcfce7" fillOpacity={0.85} />
+          <ReferenceArea y1={KPI_Y_MIN} y2={0.15} fill="#dcfce7" fillOpacity={0.85} />
           <ReferenceArea y1={0.15} y2={0.2} fill="#fef3c7" fillOpacity={0.9} />
-          <ReferenceArea y1={0.2} y2={0.3} fill="#fee2e2" fillOpacity={0.9} />
+          <ReferenceArea y1={0.2} y2={KPI_Y_MAX} fill="#fee2e2" fillOpacity={0.9} />
           <XAxis
             dataKey="week"
             tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
@@ -593,7 +772,7 @@ const KpiTrendChart = ({ data }) => (
             tickLine={false}
           />
           <YAxis
-            domain={[0, 0.3]}
+            domain={[KPI_Y_MIN, KPI_Y_MAX]}
             tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
             axisLine={{ stroke: '#cbd5e1' }}
             tickLine={false}
@@ -762,9 +941,9 @@ const MultiKpiTrendChart = ({ data }) => (
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 18, right: 26, left: 4, bottom: 8 }}>
           <CartesianGrid stroke="#dbe4f0" strokeDasharray="4 4" />
-          <ReferenceArea y1={0} y2={0.15} fill="#dcfce7" fillOpacity={0.85} />
+          <ReferenceArea y1={KPI_Y_MIN} y2={0.15} fill="#dcfce7" fillOpacity={0.85} />
           <ReferenceArea y1={0.15} y2={0.2} fill="#fef3c7" fillOpacity={0.9} />
-          <ReferenceArea y1={0.2} y2={0.3} fill="#fee2e2" fillOpacity={0.9} />
+          <ReferenceArea y1={0.2} y2={KPI_Y_MAX} fill="#fee2e2" fillOpacity={0.9} />
           <XAxis
             dataKey="week"
             tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
@@ -772,7 +951,7 @@ const MultiKpiTrendChart = ({ data }) => (
             tickLine={false}
           />
           <YAxis
-            domain={[0, 0.3]}
+            domain={[KPI_Y_MIN, KPI_Y_MAX]}
             tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
             axisLine={{ stroke: '#cbd5e1' }}
             tickLine={false}
@@ -1083,6 +1262,82 @@ const MaintenanceSection = ({
   );
 };
 
+const WeeklyReportsSection = ({ reports }) => (
+  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 className="flex items-center text-2xl font-black tracking-tight text-blue-900">
+          <History className="mr-3 h-6 w-6 text-blue-900" />
+          Historique des relevés
+        </h2>
+        <p className="mt-1 text-sm font-medium text-slate-500">
+          Relevés rechargés depuis le backend après sauvegarde ou actualisation.
+        </p>
+      </div>
+      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
+        {reports.length} relevé(s)
+      </span>
+    </div>
+
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[820px] border-separate border-spacing-y-2 text-left text-sm">
+        <thead>
+          <tr className="text-xs font-black uppercase tracking-wide text-slate-400">
+            <th className="px-3 py-2">Compresseur</th>
+            <th className="px-3 py-2">Semaine</th>
+            <th className="px-3 py-2">Précédent marche</th>
+            <th className="px-3 py-2">Nouveau marche</th>
+            <th className="px-3 py-2">Précédent charge</th>
+            <th className="px-3 py-2">Nouveau charge</th>
+            <th className="px-3 py-2">KPI</th>
+            <th className="px-3 py-2">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reports.length === 0 ? (
+            <tr>
+              <td colSpan={8} className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-semibold text-slate-400">
+                Aucun relevé air comprimé enregistré.
+              </td>
+            </tr>
+          ) : (
+            reports.map((report) => (
+              <tr key={report.id}>
+                <td className="rounded-l-2xl border-y border-l border-slate-200 bg-white px-3 py-3 font-bold text-slate-700">
+                  {report.compName}
+                </td>
+                <td className="border-y border-slate-200 bg-white px-3 py-3 font-semibold text-slate-600">
+                  {report.week || '-'}
+                </td>
+                <td className="border-y border-slate-200 bg-white px-3 py-3 text-slate-600">
+                  {formatHours(report.previousRunHours)}
+                </td>
+                <td className="border-y border-slate-200 bg-white px-3 py-3 font-bold text-slate-800">
+                  {formatHours(report.newRunHours)}
+                </td>
+                <td className="border-y border-slate-200 bg-white px-3 py-3 text-slate-600">
+                  {formatHours(report.previousLoadHours)}
+                </td>
+                <td className="border-y border-slate-200 bg-white px-3 py-3 font-bold text-slate-800">
+                  {formatHours(report.newLoadHours)}
+                </td>
+                <td className="border-y border-slate-200 bg-white px-3 py-3">
+                  <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
+                    {formatKpi(report.kpi)}
+                  </span>
+                </td>
+                <td className="rounded-r-2xl border-y border-r border-slate-200 bg-white px-3 py-3 text-slate-600">
+                  {formatLogDateTime(report.createdAt)}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  </section>
+);
+
 const MaintenanceValidationModal = ({
   draft,
   compressor,
@@ -1371,6 +1626,11 @@ const AirModule = ({ onBack, user }) => {
     setData: setAirLogs,
   } = useData('air_logs', { initialData: [], intervalMs: 0 });
 
+  const normalizedAirLogs = useMemo(
+    () => (Array.isArray(airLogs) ? airLogs : []).map(normalizeAirLog),
+    [airLogs]
+  );
+
   const [drafts, setDrafts] = useState(() =>
     COMPRESSORS.reduce((accumulator, compressor) => {
       accumulator[compressor.id] = {
@@ -1394,10 +1654,10 @@ const AirModule = ({ onBack, user }) => {
 
   const weeklyReports = useMemo(
     () =>
-      (Array.isArray(airLogs) ? airLogs : [])
+      normalizedAirLogs
         .filter((log) => log?.type === 'WEEKLY_REPORT')
         .sort((left, right) => getLogTimestamp(right) - getLogTimestamp(left)),
-    [airLogs]
+    [normalizedAirLogs]
   );
 
   const previousReadings = useMemo(
@@ -1518,7 +1778,7 @@ const AirModule = ({ onBack, user }) => {
   const maintenanceLogsByCompressor = useMemo(
     () =>
       COMPRESSORS.reduce((accumulator, compressor) => {
-        accumulator[compressor.id] = (Array.isArray(airLogs) ? airLogs : [])
+        accumulator[compressor.id] = normalizedAirLogs
           .filter(
             (log) =>
               log?.type === 'MAINTENANCE' && log.compName === compressor.name
@@ -1526,23 +1786,23 @@ const AirModule = ({ onBack, user }) => {
           .sort((left, right) => getLogTimestamp(right) - getLogTimestamp(left));
         return accumulator;
       }, {}),
-    [airLogs]
+    [normalizedAirLogs]
   );
 
   const sharedMaintenanceLogs = useMemo(
     () =>
-      (Array.isArray(airLogs) ? airLogs : [])
+      normalizedAirLogs
         .filter((log) => log?.type === 'MAINTENANCE')
         .sort((left, right) => getLogTimestamp(right) - getLogTimestamp(left)),
-    [airLogs]
+    [normalizedAirLogs]
   );
 
   const plannedMaintenances = useMemo(
     () =>
-      (Array.isArray(airLogs) ? airLogs : [])
+      normalizedAirLogs
         .filter((log) => log?.type === 'MAINTENANCE_PLAN')
         .sort((left, right) => getLogTimestamp(right) - getLogTimestamp(left)),
-    [airLogs]
+    [normalizedAirLogs]
   );
 
   const selectedMaintenanceCompressor =
@@ -1682,6 +1942,8 @@ const AirModule = ({ onBack, user }) => {
       type: 'MAINTENANCE',
       week,
       date: new Date().toLocaleDateString('fr-FR'),
+      createdAt: new Date().toISOString(),
+      compressorId: activeMaintenanceCompressor.id,
       compName: activeMaintenanceCompressor.name,
       maintKey: maintenanceDraft.item.key,
       maintType: maintenanceDraft.item.label,
@@ -1691,6 +1953,7 @@ const AirModule = ({ onBack, user }) => {
       usedHours: maintenanceDraft.item.usedHours,
       remainingBeforeValidation: maintenanceDraft.item.remainingHours,
       cost: toNumber(maintenanceDraft.cost),
+      note: maintenanceDraft.notes.trim(),
       details: {
         tech: maintenanceDraft.technician.trim(),
         ref: maintenanceDraft.ref.trim(),
@@ -1774,6 +2037,8 @@ const AirModule = ({ onBack, user }) => {
       type: 'MAINTENANCE_PLAN',
       week,
       date: new Date().toLocaleDateString('fr-FR'),
+      createdAt: new Date().toISOString(),
+      compressorId: compressor.id,
       compName: compressor.name,
       maintKey: operation.key,
       maintType: operation.label,
@@ -1862,11 +2127,18 @@ const AirModule = ({ onBack, user }) => {
       id: Date.now() + compressor.id,
       type: 'WEEKLY_REPORT',
       week,
+      createdAt: new Date().toISOString(),
+      compressorId: compressor.id,
       compName: compressor.name,
+      previousRunHours: previousValues.previousRunHours,
+      previousLoadHours: previousValues.previousLoadHours,
       lastRun: previousValues.previousRunHours,
       lastLoad: previousValues.previousLoadHours,
+      newRunHours: newRunHours,
+      newLoadHours: newLoadHours,
       newRun: newRunHours,
       newLoad: newLoadHours,
+      note: currentDraft.notes,
       description: currentDraft.notes,
       runDelta: metrics.runHours,
       loadDelta: metrics.loadHours,
@@ -1987,6 +2259,7 @@ const AirModule = ({ onBack, user }) => {
 
         <section className="space-y-6">
           <MultiKpiTrendChart data={kpiHistory} />
+          <WeeklyReportsSection reports={weeklyReports} />
 
           <MaintenanceSection
             compressors={COMPRESSORS}
