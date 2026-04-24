@@ -37,6 +37,9 @@ const COMPRESSORS = [
     name: 'Compresseur 1',
     model: 'Ceccato CSB 30',
     serial: 'CAI 827281',
+    powerLoadKw: 22,
+    powerIdleKw: 6.6,
+    debitNominal: 170,
     startWeek: '2026-W10',
     previousRunHours: 22838,
     previousLoadHours: 7932,
@@ -47,6 +50,9 @@ const COMPRESSORS = [
     name: 'Compresseur 2',
     model: 'Ceccato CSB 30',
     serial: 'CAI 808264',
+    powerLoadKw: 22,
+    powerIdleKw: 6.6,
+    debitNominal: 170,
     startWeek: '2026-W10',
     previousRunHours: 15506,
     previousLoadHours: 5988,
@@ -193,6 +199,153 @@ const formatKpi = (value) =>
     maximumFractionDigits: 2,
   });
 
+const safeDivide = (numerator, denominator) => {
+  const normalizedDenominator = toNumber(denominator);
+  if (normalizedDenominator <= 0) {
+    return 0;
+  }
+
+  return toNumber(numerator) / normalizedDenominator;
+};
+
+const getCompressorKpiConfig = (compressorLike = {}) => {
+  const compressorMeta =
+    COMPRESSORS.find((item) => item.id === Number(compressorLike?.id)) ||
+    resolveCompressorMeta(compressorLike) ||
+    {};
+
+  return {
+    powerLoadKw: toNumber(
+      compressorLike?.powerLoadKw ??
+        compressorLike?.puissance_charge ??
+        compressorLike?.puissanceCharge ??
+        compressorLike?.powerLoad ??
+        compressorMeta.powerLoadKw ??
+        22
+    ),
+    powerIdleKw: toNumber(
+      compressorLike?.powerIdleKw ??
+        compressorLike?.puissance_vide ??
+        compressorLike?.puissanceVide ??
+        compressorLike?.powerIdle ??
+        compressorMeta.powerIdleKw ??
+        6.6
+    ),
+    debitNominal: toNumber(
+      compressorLike?.debitNominal ??
+        compressorLike?.debit_nominal ??
+        compressorLike?.nominalFlow ??
+        compressorLike?.nominalFlowM3h ??
+        compressorMeta.debitNominal ??
+        170
+    ),
+  };
+};
+
+const calculateCompressorKPI = (comp = {}) => {
+  const runHours = Math.max(
+    0,
+    toNumber(
+      comp.heures_marche ??
+        comp.runHours ??
+        comp.hoursRun ??
+        comp.operatingHours ??
+        comp.runDelta
+    )
+  );
+  const loadHours = Math.max(
+    0,
+    toNumber(
+      comp.heures_charge ??
+        comp.loadHours ??
+        comp.chargeHours ??
+        comp.loadedHours ??
+        comp.loadDelta
+    )
+  );
+  const idleHours = Math.max(0, runHours - loadHours);
+  const { powerLoadKw, powerIdleKw, debitNominal } = getCompressorKpiConfig(comp);
+  const chargeRate = safeDivide(loadHours, runHours);
+  const energyConsumedKwh =
+    loadHours * powerLoadKw + idleHours * powerIdleKw;
+  const volumeProducedM3 = loadHours * debitNominal;
+  const kpi = safeDivide(energyConsumedKwh, volumeProducedM3);
+
+  return {
+    id: comp.id ?? null,
+    runHours,
+    loadHours,
+    idleHours,
+    powerLoadKw,
+    powerIdleKw,
+    debitNominal,
+    energyConsumedKwh,
+    volumeProducedM3,
+    tauxCharge: chargeRate,
+    taux: chargeRate,
+    usageRate: chargeRate * 100,
+    kpi,
+  };
+};
+
+const calculateGlobalKPI = (compressors = []) => {
+  const calculatedCompressors = compressors.map((compressor) =>
+    typeof compressor?.energyConsumedKwh === 'number' &&
+    typeof compressor?.volumeProducedM3 === 'number' &&
+    typeof compressor?.runHours === 'number' &&
+    typeof compressor?.loadHours === 'number'
+      ? {
+          ...compressor,
+          tauxCharge:
+            compressor.tauxCharge ?? safeDivide(compressor.loadHours, compressor.runHours),
+          taux:
+            compressor.taux ?? compressor.tauxCharge ?? safeDivide(compressor.loadHours, compressor.runHours),
+          usageRate:
+            compressor.usageRate ??
+            (compressor.tauxCharge ?? safeDivide(compressor.loadHours, compressor.runHours)) * 100,
+          kpi:
+            compressor.kpi ??
+            safeDivide(compressor.energyConsumedKwh, compressor.volumeProducedM3),
+        }
+      : calculateCompressorKPI(compressor)
+  );
+
+  const totalRunHours = calculatedCompressors.reduce(
+    (sum, compressor) => sum + toNumber(compressor.runHours),
+    0
+  );
+  const totalLoadHours = calculatedCompressors.reduce(
+    (sum, compressor) => sum + toNumber(compressor.loadHours),
+    0
+  );
+  const totalEnergyConsumedKwh = calculatedCompressors.reduce(
+    (sum, compressor) => sum + toNumber(compressor.energyConsumedKwh),
+    0
+  );
+  const totalVolumeProducedM3 = calculatedCompressors.reduce(
+    (sum, compressor) => sum + toNumber(compressor.volumeProducedM3),
+    0
+  );
+  const globalRate = safeDivide(totalLoadHours, totalRunHours);
+
+  return {
+    compresseurs: calculatedCompressors.map((compressor) => ({
+      id: compressor.id,
+      kpi: compressor.kpi,
+      taux: compressor.tauxCharge,
+    })),
+    global: {
+      kpi: safeDivide(totalEnergyConsumedKwh, totalVolumeProducedM3),
+      taux: globalRate,
+      usageRate: globalRate * 100,
+      totalRunHours,
+      totalLoadHours,
+      totalEnergyConsumedKwh,
+      totalVolumeProducedM3,
+    },
+  };
+};
+
 const formatLogDateTime = (value) => {
   if (!value) return '-';
   const parsed = new Date(value);
@@ -275,10 +428,26 @@ const normalizeAirLog = (row = {}) => {
   const loadDelta = toNumber(
     row.loadDelta ?? Math.max(0, newLoadHours - previousLoadHours)
   );
+  const calculatedMetrics = calculateCompressorKPI({
+    id: compressor?.id,
+    runHours: runDelta,
+    loadHours: loadDelta,
+    powerLoadKw:
+      row.powerLoadKw ?? row.puissance_charge ?? row.puissanceCharge,
+    powerIdleKw:
+      row.powerIdleKw ?? row.puissance_vide ?? row.puissanceVide,
+    debitNominal:
+      row.debitNominal ?? row.debit_nominal ?? row.nominalFlowM3h,
+  });
+  const rawLoadRate = row.usageRate ?? row.loadRatePercent ?? row.loadRate;
   const usageRate = toNumber(
-    row.loadRate ?? (runDelta > 0 ? (loadDelta / runDelta) * 100 : 0)
+    rawLoadRate !== undefined && rawLoadRate !== null
+      ? toNumber(rawLoadRate) <= 1
+        ? toNumber(rawLoadRate) * 100
+        : rawLoadRate
+      : calculatedMetrics.usageRate
   );
-  const kpi = toNumber(row.kpi ?? (runDelta > 0 ? loadDelta / runDelta : 0));
+  const kpi = toNumber(row.kpi ?? row.kpiEnergetique ?? calculatedMetrics.kpi);
   const note =
     row.note ||
     row.observation ||
@@ -323,7 +492,31 @@ const normalizeAirLog = (row = {}) => {
     runDelta,
     loadDelta,
     loadRate: usageRate,
+    tauxCharge:
+      rawLoadRate !== undefined && rawLoadRate !== null
+        ? toNumber(rawLoadRate) <= 1
+          ? toNumber(rawLoadRate)
+          : toNumber(rawLoadRate) / 100
+        : calculatedMetrics.tauxCharge,
     kpi,
+    idleHours: toNumber(
+      row.idleHours ?? row.heures_vide ?? calculatedMetrics.idleHours
+    ),
+    powerLoadKw: calculatedMetrics.powerLoadKw,
+    powerIdleKw: calculatedMetrics.powerIdleKw,
+    debitNominal: calculatedMetrics.debitNominal,
+    energyConsumedKwh: toNumber(
+      row.energyConsumedKwh ??
+        row.energie ??
+        row.energieConsommee ??
+        calculatedMetrics.energyConsumedKwh
+    ),
+    volumeProducedM3: toNumber(
+      row.volumeProducedM3 ??
+        row.volume ??
+        row.volumeProduit ??
+        calculatedMetrics.volumeProducedM3
+    ),
     note,
     description: note,
     createdAt,
@@ -398,19 +591,27 @@ const buildKpiHistory = (reports) => {
   });
 
   const history = Array.from(groupedByWeek.values())
-    .map((row) => ({
-      week: getShortWeekLabel(row.week),
-      weekSort: getWeekSortValue(row.week),
-      kpiComp1:
-        row.comp1RunHours > 0 ? row.comp1LoadHours / row.comp1RunHours : 0,
-      kpiComp2:
-        row.comp2RunHours > 0 ? row.comp2LoadHours / row.comp2RunHours : 0,
-      kpiGlobal:
-        row.comp1RunHours + row.comp2RunHours > 0
-          ? (row.comp1LoadHours + row.comp2LoadHours) /
-            (row.comp1RunHours + row.comp2RunHours)
-          : 0,
-    }))
+    .map((row) => {
+      const comp1Metrics = calculateCompressorKPI({
+        id: 1,
+        runHours: row.comp1RunHours,
+        loadHours: row.comp1LoadHours,
+      });
+      const comp2Metrics = calculateCompressorKPI({
+        id: 2,
+        runHours: row.comp2RunHours,
+        loadHours: row.comp2LoadHours,
+      });
+      const globalMetrics = calculateGlobalKPI([comp1Metrics, comp2Metrics]);
+
+      return {
+        week: getShortWeekLabel(row.week),
+        weekSort: getWeekSortValue(row.week),
+        kpiComp1: comp1Metrics.kpi,
+        kpiComp2: comp2Metrics.kpi,
+        kpiGlobal: globalMetrics.global.kpi,
+      };
+    })
     .sort((left, right) => left.weekSort - right.weekSort)
     .slice(-8);
 
@@ -490,7 +691,7 @@ const createMaintenanceAction = (plannedMaintenance) => ({
   status: 'Planifié',
 });
 
-const buildMetrics = (previousValues, currentValues) => {
+const buildMetrics = (previousValues, currentValues, compressor) => {
   const newRunHours = toNumber(currentValues.newRunHours);
   const newLoadHours = toNumber(currentValues.newLoadHours);
   const previousRunHours = toNumber(previousValues.previousRunHours);
@@ -498,15 +699,15 @@ const buildMetrics = (previousValues, currentValues) => {
 
   const runHours = Math.max(0, newRunHours - previousRunHours);
   const loadHours = Math.max(0, newLoadHours - previousLoadHours);
-  const usageRate = runHours > 0 ? (loadHours / runHours) * 100 : 0;
-  const kpi = runHours > 0 ? loadHours / runHours : 0;
 
-  return {
+  return calculateCompressorKPI({
+    id: compressor?.id,
     runHours,
     loadHours,
-    usageRate,
-    kpi,
-  };
+    powerLoadKw: compressor?.powerLoadKw,
+    powerIdleKw: compressor?.powerIdleKw,
+    debitNominal: compressor?.debitNominal,
+  });
 };
 
 const hasDraftValues = (draft = {}) =>
@@ -1841,12 +2042,23 @@ const AirModule = ({ onBack, user }) => {
           (log) => log.compName === compressor.name
         );
 
-        accumulator[compressor.id] = {
-          runHours: toNumber(latestLog?.runDelta),
-          loadHours: toNumber(latestLog?.loadDelta),
-          usageRate: toNumber(latestLog?.loadRate),
-          kpi: toNumber(latestLog?.kpi),
-        };
+        accumulator[compressor.id] = latestLog
+          ? calculateCompressorKPI({
+              id: compressor.id,
+              runHours: latestLog.runDelta,
+              loadHours: latestLog.loadDelta,
+              powerLoadKw: latestLog.powerLoadKw ?? compressor.powerLoadKw,
+              powerIdleKw: latestLog.powerIdleKw ?? compressor.powerIdleKw,
+              debitNominal: latestLog.debitNominal ?? compressor.debitNominal,
+            })
+          : calculateCompressorKPI({
+              id: compressor.id,
+              runHours: 0,
+              loadHours: 0,
+              powerLoadKw: compressor.powerLoadKw,
+              powerIdleKw: compressor.powerIdleKw,
+              debitNominal: compressor.debitNominal,
+            });
 
         return accumulator;
       }, {}),
@@ -1877,7 +2089,8 @@ const AirModule = ({ onBack, user }) => {
       COMPRESSORS.reduce((accumulator, compressor) => {
         accumulator[compressor.id] = buildMetrics(
           effectivePreviousReadings[compressor.id],
-          drafts[compressor.id]
+          drafts[compressor.id],
+          compressor
         );
         return accumulator;
       }, {}),
@@ -1896,20 +2109,17 @@ const AirModule = ({ onBack, user }) => {
   );
 
   const totalMetrics = useMemo(() => {
-    const totalRunHours = COMPRESSORS.reduce(
-      (sum, compressor) => sum + displayMetricsByCompressor[compressor.id].runHours,
-      0
-    );
-    const totalLoadHours = COMPRESSORS.reduce(
-      (sum, compressor) => sum + displayMetricsByCompressor[compressor.id].loadHours,
-      0
+    const globalMetrics = calculateGlobalKPI(
+      COMPRESSORS.map((compressor) => displayMetricsByCompressor[compressor.id])
     );
 
     return {
-      totalRunHours,
-      totalLoadHours,
-      globalLoadRate: totalRunHours > 0 ? (totalLoadHours / totalRunHours) * 100 : 0,
-      globalKpi: totalRunHours > 0 ? totalLoadHours / totalRunHours : 0,
+      totalRunHours: globalMetrics.global.totalRunHours,
+      totalLoadHours: globalMetrics.global.totalLoadHours,
+      totalEnergyConsumedKwh: globalMetrics.global.totalEnergyConsumedKwh,
+      totalVolumeProducedM3: globalMetrics.global.totalVolumeProducedM3,
+      globalLoadRate: globalMetrics.global.usageRate,
+      globalKpi: globalMetrics.global.kpi,
     };
   }, [displayMetricsByCompressor]);
 
@@ -2389,7 +2599,15 @@ const AirModule = ({ onBack, user }) => {
       description: currentDraft.notes,
       runDelta: metrics.runHours,
       loadDelta: metrics.loadHours,
-      loadRate: metrics.usageRate,
+      loadRate: metrics.tauxCharge,
+      usageRate: metrics.usageRate,
+      tauxCharge: metrics.tauxCharge,
+      idleHours: metrics.idleHours,
+      powerLoadKw: compressor.powerLoadKw,
+      powerIdleKw: compressor.powerIdleKw,
+      debitNominal: compressor.debitNominal,
+      energyConsumedKwh: metrics.energyConsumedKwh,
+      volumeProducedM3: metrics.volumeProducedM3,
       kpi: metrics.kpi,
     };
 
