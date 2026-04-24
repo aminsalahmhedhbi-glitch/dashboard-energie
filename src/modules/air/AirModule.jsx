@@ -310,18 +310,31 @@ const buildMetrics = (previousValues, currentValues) => {
 const CompressorField = ({
   label,
   previousValue,
+  previousPlaceholder,
+  onPreviousChange,
   placeholder,
   value,
   onChange,
 }) => (
   <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
-    <div className="mb-3 flex items-center justify-between gap-3">
-      <label className="text-sm font-bold uppercase tracking-wide text-slate-600">
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <label className="pt-1 text-sm font-bold uppercase tracking-wide text-slate-600">
         {label}
       </label>
-      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-        Précédent : {previousValue.toLocaleString('fr-FR')}
-      </span>
+      <div className="min-w-[126px] rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+        <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+          Précédent :
+        </div>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={previousValue}
+          onChange={(event) => onPreviousChange(event.target.value)}
+          placeholder={previousPlaceholder}
+          className="mt-1 w-full border-0 bg-transparent p-0 text-sm font-semibold text-slate-700 outline-none"
+        />
+      </div>
     </div>
 
     <input
@@ -344,6 +357,7 @@ const CompressorInputCard = ({
   metrics,
   onWeekChange,
   onChange,
+  onPreviousChange,
   onSave,
   saving,
 }) => (
@@ -390,6 +404,8 @@ const CompressorInputCard = ({
         <CompressorField
           label="Heures Marche"
           previousValue={previousValues.previousRunHours}
+          previousPlaceholder={compressor.previousRunHours}
+          onPreviousChange={(value) => onPreviousChange('previousRunHours', value)}
           placeholder="Nouveau..."
           value={values.newRunHours}
           onChange={(value) => onChange('newRunHours', value)}
@@ -397,6 +413,8 @@ const CompressorInputCard = ({
         <CompressorField
           label="Heures Charge"
           previousValue={previousValues.previousLoadHours}
+          previousPlaceholder={compressor.previousLoadHours}
+          onPreviousChange={(value) => onPreviousChange('previousLoadHours', value)}
           placeholder="Nouveau..."
           value={values.newLoadHours}
           onChange={(value) => onChange('newLoadHours', value)}
@@ -1360,6 +1378,16 @@ const AirModule = ({ onBack, user }) => {
     }, {})
   );
 
+  const [previousOverrides, setPreviousOverrides] = useState(() =>
+    COMPRESSORS.reduce((accumulator, compressor) => {
+      accumulator[compressor.id] = {
+        previousRunHours: '',
+        previousLoadHours: '',
+      };
+      return accumulator;
+    }, {})
+  );
+
   const weeklyReports = useMemo(
     () =>
       (Array.isArray(airLogs) ? airLogs : [])
@@ -1391,16 +1419,35 @@ const AirModule = ({ onBack, user }) => {
     [weeklyReports]
   );
 
+  const effectivePreviousReadings = useMemo(
+    () =>
+      COMPRESSORS.reduce((accumulator, compressor) => {
+        const override = previousOverrides[compressor.id] || {};
+        accumulator[compressor.id] = {
+          previousRunHours:
+            override.previousRunHours !== ''
+              ? toNumber(override.previousRunHours)
+              : previousReadings[compressor.id].previousRunHours,
+          previousLoadHours:
+            override.previousLoadHours !== ''
+              ? toNumber(override.previousLoadHours)
+              : previousReadings[compressor.id].previousLoadHours,
+        };
+        return accumulator;
+      }, {}),
+    [previousOverrides, previousReadings]
+  );
+
   const metricsByCompressor = useMemo(
     () =>
       COMPRESSORS.reduce((accumulator, compressor) => {
         accumulator[compressor.id] = buildMetrics(
-          previousReadings[compressor.id],
+          effectivePreviousReadings[compressor.id],
           drafts[compressor.id]
         );
         return accumulator;
       }, {}),
-    [drafts, previousReadings]
+    [drafts, effectivePreviousReadings]
   );
 
   const totalMetrics = useMemo(() => {
@@ -1428,10 +1475,10 @@ const AirModule = ({ onBack, user }) => {
         accumulator[compressor.id] =
           draftRunHours > 0
             ? draftRunHours
-            : previousReadings[compressor.id].previousRunHours;
+            : effectivePreviousReadings[compressor.id].previousRunHours;
         return accumulator;
       }, {}),
-    [drafts, previousReadings]
+    [drafts, effectivePreviousReadings]
   );
 
   const maintenanceLogsByCompressor = useMemo(
@@ -1510,6 +1557,16 @@ const AirModule = ({ onBack, user }) => {
 
   const updateDraft = (compressorId, field, value) => {
     setDrafts((current) => ({
+      ...current,
+      [compressorId]: {
+        ...current[compressorId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const updatePreviousOverride = (compressorId, field, value) => {
+    setPreviousOverrides((current) => ({
       ...current,
       [compressorId]: {
         ...current[compressorId],
@@ -1735,7 +1792,7 @@ const AirModule = ({ onBack, user }) => {
   };
 
   const handleSave = async (compressor) => {
-    const previousValues = previousReadings[compressor.id];
+    const previousValues = effectivePreviousReadings[compressor.id];
     const currentDraft = drafts[compressor.id];
     const metrics = metricsByCompressor[compressor.id];
     const newRunHours = toNumber(currentDraft.newRunHours);
@@ -1794,6 +1851,13 @@ const AirModule = ({ onBack, user }) => {
           notes: '',
         },
       }));
+      setPreviousOverrides((current) => ({
+        ...current,
+        [compressor.id]: {
+          previousRunHours: '',
+          previousLoadHours: '',
+        },
+      }));
       setNotification({
         type: 'success',
         message: `${compressor.title} enregistré avec succès.`,
@@ -1832,10 +1896,13 @@ const AirModule = ({ onBack, user }) => {
               compressor={compressor}
               week={week}
               values={drafts[compressor.id]}
-              previousValues={previousReadings[compressor.id]}
+              previousValues={effectivePreviousReadings[compressor.id]}
               metrics={metricsByCompressor[compressor.id]}
               onWeekChange={setWeek}
               onChange={(field, value) => updateDraft(compressor.id, field, value)}
+              onPreviousChange={(field, value) =>
+                updatePreviousOverride(compressor.id, field, value)
+              }
               onSave={() => handleSave(compressor)}
               saving={savingId === compressor.id}
             />
