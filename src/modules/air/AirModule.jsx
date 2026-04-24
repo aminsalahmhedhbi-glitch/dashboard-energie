@@ -3,6 +3,7 @@ import {
   Activity,
   Calendar,
   ClipboardList,
+  Edit2,
   Gauge,
   History,
   Plus,
@@ -194,6 +195,28 @@ const formatLogDateTime = (value) => {
     hour: '2-digit',
     minute: '2-digit',
   });
+};
+
+const toDateInputValue = (value) => {
+  if (!value) return '';
+
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const frMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (frMatch) {
+      return `${frMatch[3]}-${frMatch[2]}-${frMatch[1]}`;
+    }
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+
+  return parsed.toISOString().slice(0, 10);
 };
 
 const getWeekSortValue = (weekValue) => {
@@ -1073,6 +1096,7 @@ const MaintenanceSection = ({
   plannedMaintenances,
   currentRunHoursByCompressor,
   onValidateMaintenance,
+  onEditMaintenance,
   onDeleteHistory,
   onOpenSchedule,
 }) => {
@@ -1202,14 +1226,26 @@ const MaintenanceSection = ({
                       {log.note || log.details?.notes || log.details?.ref || log.ref || 'Sans note'}
                     </td>
                     <td className="rounded-r-2xl border-y border-r border-slate-200 bg-white px-3 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => onDeleteHistory(log)}
-                        className="inline-flex items-center rounded-xl border border-red-100 bg-red-50 px-3 py-1 text-xs font-bold text-red-600 transition hover:border-red-200 hover:bg-red-100"
-                      >
-                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                        Supprimer
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        {log.type === 'MAINTENANCE' ? (
+                          <button
+                            type="button"
+                            onClick={() => onEditMaintenance(log)}
+                            className="inline-flex items-center rounded-xl border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 transition hover:border-blue-200 hover:bg-blue-100"
+                          >
+                            <Edit2 className="mr-1.5 h-3.5 w-3.5" />
+                            Modifier
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => onDeleteHistory(log)}
+                          className="inline-flex items-center rounded-xl border border-red-100 bg-red-50 px-3 py-1 text-xs font-bold text-red-600 transition hover:border-red-200 hover:bg-red-100"
+                        >
+                          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                          Supprimer
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -1553,14 +1589,154 @@ const MaintenanceScheduleModal = ({
   );
 };
 
+const MaintenanceEditModal = ({
+  draft,
+  saving,
+  onChange,
+  onClose,
+  onConfirm,
+}) => {
+  if (!draft) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+      <form
+        onSubmit={onConfirm}
+        className="w-full max-w-3xl rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-2xl"
+      >
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-700">
+              Modification maintenance
+            </p>
+            <h3 className="mt-2 text-2xl font-black text-blue-900">
+              {draft.maintType} - {draft.compName}
+            </h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Corriger le compteur ou les détails de l'intervention.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black uppercase text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+          >
+            Annuler
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+              Date intervention
+            </span>
+            <input
+              type="date"
+              value={draft.date}
+              onChange={(event) => onChange('date', event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+              Compteur maintenance (h)
+            </span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={draft.indexDone}
+              onChange={(event) => onChange('indexDone', event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+              Technicien
+            </span>
+            <input
+              type="text"
+              value={draft.technician}
+              onChange={(event) => onChange('technician', event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+              Cout DT
+            </span>
+            <input
+              type="number"
+              min="0"
+              step="0.001"
+              value={draft.cost}
+              onChange={(event) => onChange('cost', event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+
+          <label className="block sm:col-span-2">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+              Référence
+            </span>
+            <input
+              type="text"
+              value={draft.ref}
+              onChange={(event) => onChange('ref', event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+
+          <label className="block sm:col-span-2">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+              Note
+            </span>
+            <textarea
+              rows={3}
+              value={draft.notes}
+              onChange={(event) => onChange('notes', event.target.value)}
+              className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black uppercase tracking-wide text-slate-500 transition hover:bg-slate-50"
+          >
+            Fermer
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex items-center justify-center rounded-2xl bg-blue-900 px-5 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
 const AirModule = ({ onBack, user }) => {
   const [week, setWeek] = useState(getWeekValue());
   const [savingId, setSavingId] = useState(null);
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
   const [selectedMaintenanceCompressorId, setSelectedMaintenanceCompressorId] =
     useState(1);
   const [maintenanceDraft, setMaintenanceDraft] = useState(null);
+  const [editMaintenanceDraft, setEditMaintenanceDraft] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleForm, setScheduleForm] = useState(EMPTY_SCHEDULE_FORM);
   const [notification, setNotification] = useState(null);
@@ -1846,6 +2022,46 @@ const AirModule = ({ onBack, user }) => {
     );
   };
 
+  const openEditMaintenance = (log) => {
+    setEditMaintenanceDraft({
+      id: log.id,
+      type: log.type,
+      week: log.week || week,
+      compName: log.compName,
+      compressorId: Number(log.compressorId) || resolveCompressorMeta(log)?.id || 1,
+      maintKey: log.maintKey || '',
+      maintType: log.maintType || 'Maintenance',
+      intervalHours: toNumber(log.intervalHours),
+      previousIndex: toNumber(log.previousIndex),
+      usedHours: toNumber(log.usedHours),
+      remainingBeforeValidation: toNumber(log.remainingBeforeValidation),
+      date: toDateInputValue(log.date || log.createdAt),
+      indexDone: String(toNumber(log.indexDone)),
+      technician: log.details?.tech || '',
+      cost: String(toNumber(log.cost)),
+      ref: log.details?.ref || log.ref || '',
+      notes: log.note || log.details?.notes || '',
+      createdAt: log.createdAt || new Date().toISOString(),
+    });
+  };
+
+  const updateEditMaintenanceDraft = (field, value) => {
+    setEditMaintenanceDraft((current) =>
+      current
+        ? {
+            ...current,
+            [field]: value,
+          }
+        : current
+    );
+  };
+
+  const closeEditMaintenance = () => {
+    if (!editSaving) {
+      setEditMaintenanceDraft(null);
+    }
+  };
+
   const closeMaintenanceValidation = () => {
     if (!maintenanceSaving) {
       setMaintenanceDraft(null);
@@ -1956,6 +2172,68 @@ const AirModule = ({ onBack, user }) => {
         message: error?.message || 'Erreur lors de la suppression.',
       });
     } finally {
+      window.setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  const handleSaveEditedMaintenance = async (event) => {
+    event.preventDefault();
+
+    if (!editMaintenanceDraft?.id) {
+      return;
+    }
+
+    if (!editMaintenanceDraft.date || toNumber(editMaintenanceDraft.indexDone) <= 0) {
+      setNotification({
+        type: 'error',
+        message: 'Veuillez renseigner la date et le compteur de maintenance.',
+      });
+      return;
+    }
+
+    setEditSaving(true);
+
+    const payload = {
+      id: editMaintenanceDraft.id,
+      type: 'MAINTENANCE',
+      week: editMaintenanceDraft.week || week,
+      date: editMaintenanceDraft.date,
+      createdAt: editMaintenanceDraft.createdAt || new Date().toISOString(),
+      compressorId: editMaintenanceDraft.compressorId,
+      compName: editMaintenanceDraft.compName,
+      maintKey: editMaintenanceDraft.maintKey,
+      maintType: editMaintenanceDraft.maintType,
+      intervalHours: toNumber(editMaintenanceDraft.intervalHours),
+      previousIndex: toNumber(editMaintenanceDraft.previousIndex),
+      indexDone: toNumber(editMaintenanceDraft.indexDone),
+      usedHours: toNumber(editMaintenanceDraft.usedHours),
+      remainingBeforeValidation: toNumber(
+        editMaintenanceDraft.remainingBeforeValidation
+      ),
+      cost: toNumber(editMaintenanceDraft.cost),
+      note: editMaintenanceDraft.notes.trim(),
+      details: {
+        tech: editMaintenanceDraft.technician.trim(),
+        ref: editMaintenanceDraft.ref.trim(),
+        notes: editMaintenanceDraft.notes.trim(),
+      },
+    };
+
+    try {
+      await saveData('air_logs', payload);
+      await refreshAirLogs();
+      setEditMaintenanceDraft(null);
+      setNotification({
+        type: 'success',
+        message: 'Maintenance mise à jour avec succès.',
+      });
+    } catch (error) {
+      setNotification({
+        type: 'error',
+        message: error?.message || 'Erreur lors de la mise à jour maintenance.',
+      });
+    } finally {
+      setEditSaving(false);
       window.setTimeout(() => setNotification(null), 3000);
     }
   };
@@ -2215,6 +2493,7 @@ const AirModule = ({ onBack, user }) => {
             plannedMaintenances={plannedMaintenances}
             currentRunHoursByCompressor={currentRunHoursByCompressor}
             onValidateMaintenance={openMaintenanceValidation}
+            onEditMaintenance={openEditMaintenance}
             onDeleteHistory={handleDeleteHistory}
             onOpenSchedule={openScheduleModal}
           />
@@ -2238,6 +2517,13 @@ const AirModule = ({ onBack, user }) => {
         onChange={updateScheduleForm}
         onClose={closeScheduleModal}
         onConfirm={handleScheduleMaintenance}
+      />
+      <MaintenanceEditModal
+        draft={editMaintenanceDraft}
+        saving={editSaving}
+        onChange={updateEditMaintenanceDraft}
+        onClose={closeEditMaintenance}
+        onConfirm={handleSaveEditedMaintenance}
       />
     </div>
   );
