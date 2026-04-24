@@ -90,6 +90,15 @@ const formatWeekLabel = (weekValue) => {
   return `Semaine : Semaine ${Number(rawWeek)}, ${year}`;
 };
 
+const formatWeekPeriod = (weekValue) => {
+  const [year, rawWeek] = String(weekValue || '').split('-W');
+  if (!year || !rawWeek) {
+    return '-';
+  }
+
+  return `Semaine ${Number(rawWeek)}, ${year}`;
+};
+
 const getLogTimestamp = (log) => {
   const raw =
     log?._createdAt ||
@@ -362,13 +371,7 @@ const isWeeklyReportWithinBaseline = (report, compressor) => {
   return true;
 };
 
-const buildKpiHistory = (
-  reports,
-  currentWeek,
-  currentKpiComp1,
-  currentKpiComp2,
-  currentKpiGlobal
-) => {
+const buildKpiHistory = (reports) => {
   const groupedByWeek = new Map();
 
   reports.forEach((report) => {
@@ -411,38 +414,7 @@ const buildKpiHistory = (
     .sort((left, right) => left.weekSort - right.weekSort)
     .slice(-8);
 
-  const currentWeekLabel = getShortWeekLabel(currentWeek);
-  const currentPoint = {
-    week: currentWeekLabel,
-    weekSort: getWeekSortValue(currentWeek),
-    kpiComp1: currentKpiComp1,
-    kpiComp2: currentKpiComp2,
-    kpiGlobal: currentKpiGlobal,
-  };
-
-  const historyWithoutCurrent = history.filter(
-    (item) => item.week !== currentWeekLabel
-  );
-  const mergedHistory = [...historyWithoutCurrent, currentPoint]
-    .sort((left, right) => left.weekSort - right.weekSort)
-    .slice(-8);
-
-  if (mergedHistory.length >= 3) {
-    return mergedHistory;
-  }
-
-  return [
-    { week: 'S13', kpiComp1: 0.14, kpiComp2: 0.16, kpiGlobal: 0.15 },
-    { week: 'S14', kpiComp1: 0.15, kpiComp2: 0.18, kpiGlobal: 0.165 },
-    { week: 'S15', kpiComp1: 0.13, kpiComp2: 0.19, kpiGlobal: 0.16 },
-    { week: 'S16', kpiComp1: 0.17, kpiComp2: 0.2, kpiGlobal: 0.185 },
-    {
-      week: currentWeekLabel,
-      kpiComp1: currentKpiComp1,
-      kpiComp2: currentKpiComp2,
-      kpiGlobal: currentKpiGlobal,
-    },
-  ];
+  return history;
 };
 
 const getMaintenanceStatus = (remainingHours, intervalHours) => {
@@ -810,68 +782,93 @@ const KpiTrendChart = ({ data }) => (
     </div>
 
     <div className="h-[360px] rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 18, right: 26, left: 4, bottom: 8 }}>
-          <CartesianGrid stroke="#dbe4f0" strokeDasharray="4 4" />
-          <ReferenceArea y1={KPI_Y_MIN} y2={0.15} fill="#dcfce7" fillOpacity={0.85} />
-          <ReferenceArea y1={0.15} y2={0.2} fill="#fef3c7" fillOpacity={0.9} />
-          <ReferenceArea y1={0.2} y2={KPI_Y_MAX} fill="#fee2e2" fillOpacity={0.9} />
-          <XAxis
-            dataKey="week"
-            tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
-            axisLine={{ stroke: '#cbd5e1' }}
-            tickLine={false}
-          />
-          <YAxis
-            domain={[KPI_Y_MIN, KPI_Y_MAX]}
-            tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
-            axisLine={{ stroke: '#cbd5e1' }}
-            tickLine={false}
-            tickFormatter={(value) => Number(value).toFixed(2)}
-            label={{
-              value: 'KPI',
-              angle: -90,
-              position: 'insideLeft',
-              fill: '#1e3a8a',
-              fontSize: 12,
-              fontWeight: 800,
-            }}
-          />
-          <Tooltip
-            cursor={{ stroke: '#1e3a8a', strokeDasharray: '4 4' }}
-            formatter={(value) => [formatKpi(value), 'KPI global']}
-            labelFormatter={(label) => `Semaine ${label.replace('S', '')}`}
-            contentStyle={{
-              borderRadius: '16px',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-              fontWeight: 700,
-            }}
-          />
-          <ReferenceLine
-            y={0.15}
-            stroke="#d97706"
-            strokeWidth={2}
-            strokeDasharray="6 4"
-            label={{ value: 'Seuil 0.15', fill: '#92400e', fontSize: 12, fontWeight: 800 }}
-          />
-          <ReferenceLine
-            y={0.2}
-            stroke="#dc2626"
-            strokeWidth={2}
-            strokeDasharray="6 4"
-            label={{ value: 'Seuil 0.20', fill: '#991b1b', fontSize: 12, fontWeight: 800 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="kpi"
-            stroke="#1e3a8a"
-            strokeWidth={4}
-            dot={{ r: 5, fill: '#1e3a8a', stroke: '#ffffff', strokeWidth: 2 }}
-            activeDot={{ r: 7, fill: '#1d4ed8', stroke: '#ffffff', strokeWidth: 3 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      {data.length === 0 ? (
+        <div className="flex h-full items-center justify-center rounded-[1.25rem] border border-dashed border-slate-200 bg-white/80 px-6 text-center text-sm font-semibold text-slate-400">
+          Aucun KPI enregistré pour le moment.
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 18, right: 26, left: 4, bottom: 8 }}>
+            <CartesianGrid stroke="#dbe4f0" strokeDasharray="4 4" />
+            <ReferenceArea y1={KPI_Y_MIN} y2={0.15} fill="#dcfce7" fillOpacity={0.85} />
+            <ReferenceArea y1={0.15} y2={0.2} fill="#fef3c7" fillOpacity={0.9} />
+            <ReferenceArea y1={0.2} y2={KPI_Y_MAX} fill="#fee2e2" fillOpacity={0.9} />
+            <XAxis
+              dataKey="week"
+              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
+              axisLine={{ stroke: '#cbd5e1' }}
+              tickLine={false}
+            />
+            <YAxis
+              domain={[KPI_Y_MIN, KPI_Y_MAX]}
+              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
+              axisLine={{ stroke: '#cbd5e1' }}
+              tickLine={false}
+              tickFormatter={(value) => Number(value).toFixed(2)}
+              label={{
+                value: 'KPI',
+                angle: -90,
+                position: 'insideLeft',
+                fill: '#1e3a8a',
+                fontSize: 12,
+                fontWeight: 800,
+              }}
+            />
+            <Tooltip
+              cursor={{ stroke: '#1e3a8a', strokeDasharray: '4 4' }}
+              formatter={(value, name) => [formatKpi(value), name]}
+              labelFormatter={(label) => `Semaine ${label.replace('S', '')}`}
+              contentStyle={{
+                borderRadius: '16px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                fontWeight: 700,
+              }}
+            />
+            <ReferenceLine
+              y={0.15}
+              stroke="#d97706"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              label={{ value: 'Seuil 0.15', fill: '#92400e', fontSize: 12, fontWeight: 800 }}
+            />
+            <ReferenceLine
+              y={0.2}
+              stroke="#dc2626"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              label={{ value: 'Seuil 0.20', fill: '#991b1b', fontSize: 12, fontWeight: 800 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="kpiComp1"
+              name="KPI Compresseur 1"
+              stroke="#1d4ed8"
+              strokeWidth={3}
+              dot={{ r: 4, fill: '#1d4ed8', stroke: '#ffffff', strokeWidth: 2 }}
+              activeDot={{ r: 6, fill: '#1d4ed8', stroke: '#ffffff', strokeWidth: 3 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="kpiComp2"
+              name="KPI Compresseur 2"
+              stroke="#059669"
+              strokeWidth={3}
+              dot={{ r: 4, fill: '#059669', stroke: '#ffffff', strokeWidth: 2 }}
+              activeDot={{ r: 6, fill: '#059669', stroke: '#ffffff', strokeWidth: 3 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="kpiGlobal"
+              name="KPI globale"
+              stroke="#7c3aed"
+              strokeWidth={4}
+              dot={{ r: 5, fill: '#7c3aed', stroke: '#ffffff', strokeWidth: 2 }}
+              activeDot={{ r: 7, fill: '#7c3aed', stroke: '#ffffff', strokeWidth: 3 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </div>
   </section>
 );
@@ -1234,7 +1231,9 @@ const MaintenanceSection = ({
                       </span>
                     </td>
                     <td className="border-y border-slate-200 bg-white px-3 py-3 text-slate-600">
-                      {formatLogDateTime(log.createdAt || log.date || log.week)}
+                      {log.type === 'WEEKLY_REPORT'
+                        ? formatWeekPeriod(log.week)
+                        : formatLogDateTime(log.date || log.createdAt)}
                     </td>
                     <td className="border-y border-slate-200 bg-white px-3 py-3 font-semibold text-slate-600">
                       {log.type === 'WEEKLY_REPORT' ? (
@@ -1997,17 +1996,7 @@ const AirModule = ({ onBack, user }) => {
     [currentRunHoursByCompressor, maintenanceLogsByCompressor]
   );
 
-  const kpiHistory = useMemo(
-    () =>
-      buildKpiHistory(
-        weeklyReports,
-        week,
-        displayMetricsByCompressor[1].kpi,
-        displayMetricsByCompressor[2].kpi,
-        totalMetrics.globalKpi
-      ),
-    [weeklyReports, week, displayMetricsByCompressor, totalMetrics.globalKpi]
-  );
+  const kpiHistory = useMemo(() => buildKpiHistory(weeklyReports), [weeklyReports]);
 
   const updateDraft = (compressorId, field, value) => {
     setDrafts((current) => ({
