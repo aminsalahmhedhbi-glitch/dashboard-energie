@@ -59,7 +59,7 @@ const KPI_Y_MAX = 0.3;
 const MAINTENANCE_CONFIG = [
   { key: 'nettoyage', label: 'Nettoyage', intervalHours: 500 },
   { key: 'vidange', label: 'Vidange', intervalHours: 2000 },
-  { key: 'filtreHuile', label: 'Filtre huile', intervalHours: 200 },
+  { key: 'filtreHuile', label: 'Filtre huile', intervalHours: 2000 },
   { key: 'filtreAir', label: 'Filtre air', intervalHours: 2000 },
   { key: 'filtreSeparateur', label: 'Filtre séparateur', intervalHours: 4000 },
 ];
