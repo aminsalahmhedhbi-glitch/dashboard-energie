@@ -71,7 +71,7 @@ FACTURE_SITE_REGISTRY = {
     },
     "LAC": {
         "siteId": "4",
-        "siteName": "BT 1 - Showroom Lac",
+        "siteName": "Showroom Lac",
         "siteType": "BT_PV",
         "aliases": ["LAC", "SHOWROOM LAC", "LAC-001", "BT 1 - Showroom Lac"],
     },
@@ -95,14 +95,19 @@ FACTURE_SITE_REGISTRY = {
     },
     "CHARGUEYAA": {
         "siteId": "7",
-        "siteName": "BT 4 - Showroom Charguia",
+        "siteName": "Showroom Chargueia",
         "siteType": "BT",
         "aliases": [
             "CHARGUEYAA",
+            "CHARGUEYA",
+            "CHAGUEYA",
             "CHARGUIA",
             "CHG-004",
+            "BT 4 - Chargueyaa",
+            "BT 4 - Chagueya",
             "BT 4 - Showroom Charguia",
             "SHOWROOM CHARGUIA",
+            "SHOWROOM CHARGUEIA",
         ],
     },
 }

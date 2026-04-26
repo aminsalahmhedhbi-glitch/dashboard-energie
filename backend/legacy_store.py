@@ -384,8 +384,11 @@ def get_site_history_key_from_billing(row: dict[str, Any]) -> str | None:
         "avenue de carthage": "CARTHAGE",
         "rue de carthage": "CARTHAGE",
         "showroom charguia": "CHARGUEYAA",
+        "showroom chargueia": "CHARGUEYAA",
         "charguia": "CHARGUEYAA",
+        "chargueya": "CHARGUEYAA",
         "chargueyaa": "CHARGUEYAA",
+        "chagueya": "CHARGUEYAA",
     }
     for key, value in fallback_map.items():
         if key in site_name:
@@ -404,4 +407,3 @@ def iter_legacy_pac_measurements() -> list[dict[str, Any]]:
             payload["site"] = site_code
             rows.append(payload)
     return rows
-

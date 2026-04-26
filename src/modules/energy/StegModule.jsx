@@ -25,6 +25,7 @@ import { BrandLogo, FallbackLogo } from '../../components/branding/BrandLogo';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
 import { apiFetch, saveCollectionItem as saveData } from '../../lib/api';
+import { getSiteDisplayName } from '../../lib/sites';
 import { useData } from '../../hooks/useData';
 import { emitFacturesChanged } from '../../hooks/useFactures';
 
@@ -220,10 +221,10 @@ const StegModule = ({ onBack, userRole, user }) => {
     { id: 1, name: "MT 1 - Mégrine", code: "MEG-001", type: "MT", icon: Factory },
     { id: 2, name: "MT 2 - El Khadhra", code: "ELK-002", type: "MT", icon: Factory },
     { id: 3, name: "MT 3 - Naassen", code: "NAS-003", type: "MT", icon: Factory },
-    { id: 4, name: "BT 1 - Showroom Lac", code: "LAC-001", type: "BT_PV", icon: Store }, 
+    { id: 4, name: getSiteDisplayName('LAC'), code: "LAC-001", type: "BT_PV", icon: Store }, 
     { id: 5, name: "BT 2 - Azur City", code: "AZU-002", type: "BT", icon: Store },
     { id: 6, name: "BT 3 - Avenue de Carthage", code: "CAR-003", type: "BT", icon: Store },
-    { id: 7, name: "BT 4 - Showroom Charguia", code: "CHG-004", type: "BT", icon: Store }
+    { id: 7, name: getSiteDisplayName('CHARGUEYAA'), code: "CHG-004", type: "BT", icon: Store }
   ];
 
   const [siteAdvancedConfigs, setSiteAdvancedConfigs] = useState({
@@ -1552,7 +1553,7 @@ const StegModule = ({ onBack, userRole, user }) => {
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between text-[13px] font-semibold text-slate-800">
-                                                    <span>{log.siteName || 'Site inconnu'}</span>
+                                                    <span>{getSiteDisplayName(log.siteName || 'Site inconnu')}</span>
                                                     <span className="text-slate-500">{dateFacture}</span>
                                                 </div>
 

@@ -26,6 +26,7 @@ import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
 import { apiFetch, saveCollectionItem as saveData } from '../../lib/api';
 import { buildFactureInsights, getFactureMetrics, getFactureMonthKey } from '../../lib/factures';
+import { getSiteDisplayName } from '../../lib/sites';
 import { useData } from '../../hooks/useData';
 import { useFactures } from '../../hooks/useFactures';
 
@@ -270,9 +271,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   // Pour simplifier l'historique sur le serveur simple, on charge tout 'site_history'
   const { data: allHistory } = useData('site_history', { intervalMs: 0 });
   const { factures: siteFactures, loading: facturesLoading } = useFactures({
-    site: activeSiteTab,
-    intervalMs: 15000,
-    limit: 500,
+      site: activeSiteTab,
+      intervalMs: 15000,
+      limit: 500,
   });
 
   const [sitesDataState, setSitesDataState] = useState({
@@ -309,7 +310,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         targets: { reduction2030: 15, renewable2030: 20 }
     },
     LAC: { 
-        name: "Lac", area: 2050, covered: 850, open: 1200, glazed: 116, 
+        name: getSiteDisplayName('LAC'), area: 2050, covered: 850, open: 1200, glazed: 116, 
         coveredBreakdown: [{label:"Showroom", value: 850}], 
         energyMix: [], 
         elecUsage: [
@@ -332,7 +333,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         targets: { reduction2030: 5, renewable2030: 0 }
     },
     CHARGUEYAA: { 
-        name: "Chargueyaa", area: 320, covered: 320, open: 0, glazed: 70, 
+        name: getSiteDisplayName('CHARGUEYAA'), area: 320, covered: 320, open: 0, glazed: 70, 
         coveredBreakdown: [{label:"Showroom", value: 320}], 
         energyMix: [{ name: "Élec", value: 100, color: "bg-blue-900" }], elecUsage: [],
         targets: { reduction2030: 5, renewable2030: 0 }
@@ -1006,7 +1007,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             <SiteTabs />
             <PerformanceWidget />
 
-            {true && (
+            {false && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
                 <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                     <div>
