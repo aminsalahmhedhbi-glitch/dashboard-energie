@@ -4,7 +4,7 @@ import {
   Settings, Lock, Unlock, Calendar, HelpCircle,
   FileText, Eye, BookOpen, Sun, MousePointerClick,
   Info, Wind, Thermometer, Timer, Wrench, LayoutGrid, ArrowLeft, Edit2,
-  PieChart, MapPin, Maximize2, Building2, Leaf, CloudSun, Flag,
+  PieChart, MapPin, Maximize2, Building2, Leaf, CloudSun, Flag, BarChart3,
   Database, User, Users, LogOut, Key, Shield, X, Trash2, PlusCircle,
   Store, Droplets, Filter, Check, Printer, TrendingDown, Download, Sliders,
   Target, Flame, Lightbulb, ThermometerSun, ClipboardList, ListChecks
