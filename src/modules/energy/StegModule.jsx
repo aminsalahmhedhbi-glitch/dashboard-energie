@@ -188,6 +188,19 @@ const PacMonitoringPanel = ({ title = null }) => {
   );
 };
 
+const normalizeHistorySeries = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : Array(12).fill('');
+    } catch (e) {
+      return Array(12).fill('');
+    }
+  }
+  return Array(12).fill('');
+};
+
 
 
 // ==================================================================================
@@ -776,6 +789,58 @@ const StegModule = ({ onBack, userRole, user }) => {
     7: 'CHARGUEYAA'
   };
 
+  const siteHistoryById = useMemo(() => {
+    const map = new Map();
+    (siteHistoryRecords || []).forEach((item) => {
+      if (item?.historyId) {
+        map.set(String(item.historyId), item);
+      }
+    });
+    return map;
+  }, [siteHistoryRecords]);
+
+  const billingHistoryByMonth = useMemo(() => {
+    const map = new Map();
+
+    filteredBillingHistory.forEach((log) => {
+      const rawDate = log.recordDate || log.date || log._createdAt || log.timestamp;
+      if (!rawDate) return;
+
+      let monthKey = '';
+      if (typeof rawDate === 'string' && /^\d{4}-\d{2}/.test(rawDate)) {
+        monthKey = rawDate.slice(0, 7);
+      } else {
+        const parsed = new Date(rawDate);
+        if (!Number.isNaN(parsed.getTime())) {
+          monthKey = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+        }
+      }
+
+      if (!monthKey) return;
+
+      const energy = Number(log.billedKwh ?? log.consumptionGrid ?? log.energyRecorded ?? 0);
+      if (!Number.isFinite(energy) || energy <= 0) return;
+
+      map.set(monthKey, (map.get(monthKey) || 0) + energy);
+    });
+
+    return map;
+  }, [filteredBillingHistory]);
+
+  const getSiteHistoryMonthValue = (siteKey, year, monthIdx) => {
+    const seriesType = siteKey === 'LAC' ? 'grid' : 'months';
+    const historyRow = siteHistoryById.get(`${siteKey}_${year}`);
+    const historySeries = normalizeHistorySeries(historyRow?.[seriesType]);
+    const historyValue = Number(historySeries[monthIdx] || 0);
+
+    if (historyValue > 0) {
+      return historyValue;
+    }
+
+    const monthKey = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
+    return Number(billingHistoryByMonth.get(monthKey) || 0);
+  };
+
   const performanceSiteData = useMemo(() => {
     const pmaxHistorique = filteredBillingHistory.length
       ? Math.max(...filteredBillingHistory.map((log) => Number(log.Pmax ?? log.maxPower ?? 0)))
@@ -802,45 +867,22 @@ const StegModule = ({ onBack, userRole, user }) => {
     const currentYearPerf = new Date().getFullYear();
     const currentMonthPerf = new Date().getMonth();
 
-    const normalizeSeries = (value) => {
-      if (Array.isArray(value)) return value;
-      if (typeof value === 'string') {
-        try {
-          const parsed = JSON.parse(value);
-          return Array.isArray(parsed) ? parsed : Array(12).fill('');
-        } catch (e) {
-          return Array(12).fill('');
-        }
-      }
-      return Array(12).fill('');
-    };
-
     let tauxOptimisationAnnuel = 0;
     let optimisationAvailable = false;
 
     if (siteKey) {
-      const byHistoryId = new Map();
-      (siteHistoryRecords || []).forEach((item) => {
-        if (item?.historyId) byHistoryId.set(String(item.historyId), item);
-      });
-
-      const refRow = byHistoryId.get(`${siteKey}_REF`);
+      const refRow = siteHistoryById.get(`${siteKey}_REF`);
       const refSeriesType = siteKey === 'LAC' ? 'grid' : 'months';
 
       if (refRow) {
-        const refSeries = normalizeSeries(refRow[refSeriesType]);
+        const refSeries = normalizeHistorySeries(refRow[refSeriesType]);
         const annualOptimisations = [];
 
         for (let offset = 1; offset <= 6; offset += 1) {
           const baseDate = new Date(currentYearPerf, currentMonthPerf - offset, 1);
           const histYear = baseDate.getFullYear();
           const histMonthIdx = baseDate.getMonth();
-
-          const currentRow = byHistoryId.get(`${siteKey}_${histYear}`);
-          if (!currentRow) continue;
-
-          const currentSeries = normalizeSeries(currentRow[refSeriesType]);
-          const currentValue = Number(currentSeries[histMonthIdx] || 0);
+          const currentValue = getSiteHistoryMonthValue(siteKey, histYear, histMonthIdx);
           const refSameMonth = Number(refSeries[histMonthIdx] || 0);
 
           if (refSameMonth > 0 && currentValue > 0) {
@@ -863,7 +905,7 @@ const StegModule = ({ onBack, userRole, user }) => {
       tauxOptimisationAnnuel,
       optimisationAvailable
     };
-  }, [filteredBillingHistory, siteHistoryRecords, currentSite]);
+  }, [filteredBillingHistory, currentSite, siteHistoryById, billingHistoryByMonth]);
 
   const indexEstimation = useMemo(() => {
     const siteKey = SITE_HISTORY_KEYS[currentSite];
@@ -876,31 +918,13 @@ const StegModule = ({ onBack, userRole, user }) => {
     const selectedYear = Number(selectedYearStr);
     const selectedMonthIdx = Math.max(0, Number(selectedMonthStr) - 1);
 
-    const normalizeSeries = (value) => {
-      if (Array.isArray(value)) return value;
-      if (typeof value === 'string') {
-        try {
-          const parsed = JSON.parse(value);
-          return Array.isArray(parsed) ? parsed : Array(12).fill('');
-        } catch (e) {
-          return Array(12).fill('');
-        }
-      }
-      return Array(12).fill('');
-    };
-
-    const byHistoryId = new Map();
-    (siteHistoryRecords || []).forEach((item) => {
-      if (item?.historyId) byHistoryId.set(String(item.historyId), item);
-    });
-
-    const refRow = byHistoryId.get(`${siteKey}_REF`);
+    const refRow = siteHistoryById.get(`${siteKey}_REF`);
     if (!refRow) {
       return { available: false, reason: "Historique REF introuvable pour ce site." };
     }
 
     const refSeriesType = siteKey === 'LAC' ? 'grid' : 'months';
-    const refSeries = normalizeSeries(refRow[refSeriesType]);
+    const refSeries = normalizeHistorySeries(refRow[refSeriesType]);
     const refMonthValue = Number(refSeries[selectedMonthIdx] || 0);
 
     if (!refMonthValue || refMonthValue <= 0) {
@@ -913,11 +937,7 @@ const StegModule = ({ onBack, userRole, user }) => {
       const histYear = baseDate.getFullYear();
       const histMonthIdx = baseDate.getMonth();
 
-      const currentRow = byHistoryId.get(`${siteKey}_${histYear}`);
-      if (!currentRow) continue;
-
-      const currentSeries = normalizeSeries(currentRow[refSeriesType]);
-      const currentValue = Number(currentSeries[histMonthIdx] || 0);
+      const currentValue = getSiteHistoryMonthValue(siteKey, histYear, histMonthIdx);
       const refSameMonth = Number(refSeries[histMonthIdx] || 0);
 
       if (refSameMonth > 0 && currentValue > 0) {
@@ -950,7 +970,7 @@ const StegModule = ({ onBack, userRole, user }) => {
       nouvelIndexEstime,
       monthsUsed: monthlyOptimisations.length
     };
-  }, [currentSite, formData.date, formData.lastIndex, siteHistoryRecords]);
+  }, [currentSite, formData.date, formData.lastIndex, siteHistoryById, billingHistoryByMonth]);
 
   const currentSiteObj = SITES.find(s => s.id === currentSite) || SITES[0];
   const isBT = currentSiteObj.type.startsWith('BT');
