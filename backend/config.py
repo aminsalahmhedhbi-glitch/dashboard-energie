@@ -10,6 +10,8 @@ DATA_DIR = Path(
     or (BASE_DIR / "data").as_posix()
 )
 DATA_DIR.mkdir(exist_ok=True)
+BACKUP_DIR = DATA_DIR / "backups"
+BACKUP_DIR.mkdir(exist_ok=True)
 
 FRONTEND_CANDIDATES = [
     BASE_DIR / "dist",
@@ -76,3 +78,8 @@ class Config:
         "pool_recycle": 280,
     }
     LEGACY_FALLBACK_ENABLED = env_flag("LEGACY_FALLBACK_ENABLED", True)
+    APP_ENV = os.getenv("APP_ENV", os.getenv("FLASK_ENV", "development")).strip().lower() or "development"
+    ENABLE_LOCAL_BACKUPS = env_flag("ENABLE_LOCAL_BACKUPS", True)
+    BACKUP_DIR = BACKUP_DIR
+    BACKUP_RETENTION_COUNT = max(3, int(os.getenv("BACKUP_RETENTION_COUNT", "20")))
+    AUTO_BACKUP_MIN_INTERVAL_SECONDS = max(60, int(os.getenv("AUTO_BACKUP_MIN_INTERVAL_SECONDS", "900")))

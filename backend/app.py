@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import date, datetime, time
+from pathlib import Path
 from typing import Any
 
+import click
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from sqlalchemy import inspect, text
@@ -762,11 +765,12 @@ def legacy_collection_response(collection: str) -> list[dict[str, Any]]:
     return read_json_collection(collection)
 
 
-def ensure_schema() -> None:
+def init_database() -> None:
     inspector = inspect(db.engine)
     existing_tables = set(inspector.get_table_names())
     for table in db.metadata.sorted_tables:
         if table.name not in existing_tables:
+            logger.warning("Création table manquante: %s", table.name)
             table.create(bind=db.engine, checkfirst=False)
             existing_tables.add(table.name)
     ensure_runtime_schema_compatibility()
@@ -778,7 +782,7 @@ def create_app() -> Flask:
 
     db.init_app(app)
     with app.app_context():
-        ensure_schema()
+        init_database()
 
     cors_origins = resolve_cors_origins()
     CORS(app, resources={r"/api/*": {"origins": cors_origins}})
@@ -788,9 +792,212 @@ def create_app() -> Flask:
     logger.info("Frontend build detected: %s", (FRONTEND_DIST / "index.html").exists())
     logger.info("Allowed CORS origins: %s", ", ".join(cors_origins))
     logger.info("Database dialect: %s", app.config["SQLALCHEMY_DATABASE_URI"].split(":", 1)[0])
+    logger.info("Application environment: %s", app.config["APP_ENV"])
+    logger.info("Local backups enabled: %s", app.config["ENABLE_LOCAL_BACKUPS"])
+    logger.info("Backup directory: %s", app.config["BACKUP_DIR"])
+
+    if app.config["APP_ENV"] == "production":
+        if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///"):
+            logger.error("Production démarre sur SQLite au lieu de MySQL. Vérifiez DATABASE_URL / MYSQL_*.")
+        if str(app.config["BACKUP_DIR"]).startswith(str(BASE_DIR)):
+            logger.warning(
+                "Les backups pointent vers un dossier du conteneur. Montez un disque Render ou définissez APP_DATA_DIR."
+            )
 
     def legacy_enabled() -> bool:
         return bool(app.config.get("LEGACY_FALLBACK_ENABLED", True))
+
+    def backup_enabled() -> bool:
+        return bool(app.config.get("ENABLE_LOCAL_BACKUPS", True))
+
+    def backup_directory() -> Path:
+        path = Path(app.config["BACKUP_DIR"])
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def sanitize_backup_reason(reason: str | None) -> str:
+        raw = str(reason or "manual").strip().lower()
+        cleaned = "".join(char if char.isalnum() else "-" for char in raw).strip("-")
+        return cleaned or "manual"
+
+    def serialize_backup_bundle() -> dict[str, Any]:
+        return {
+            "generatedAt": now_iso(),
+            "database": {"uri": app.config["SQLALCHEMY_DATABASE_URI"].split(":", 1)[0]},
+            "tables": {
+                "users": [user.to_dict(include_password=True) for user in User.query.order_by(User.created_at.asc()).all()],
+                "pac_measurements": [
+                    item.to_measurement_dict()
+                    for item in PacMeasurement.query.order_by(PacMeasurement.measured_at.asc()).all()
+                ],
+                "billing_records": [item.to_dict() for item in BillingRecord.query.order_by(BillingRecord.created_at.asc()).all()],
+                "site_histories": [item.to_dict() for item in SiteHistory.query.order_by(SiteHistory.created_at.asc()).all()],
+                "air_logs": [item.to_dict() for item in AirLogEntry.query.order_by(AirLogEntry.created_at.asc()).all()],
+                "module_states": [item.to_dict() for item in ModuleState.query.order_by(ModuleState.created_at.asc()).all()],
+                "meetings": [item.to_dict(include_minutes=True) for item in Meeting.query.order_by(Meeting.created_at.asc()).all()],
+                "audits": [item.to_dict() for item in Audit.query.order_by(Audit.created_at.asc()).all()],
+                "actions": [item.to_dict() for item in ActionItem.query.order_by(ActionItem.created_at.asc()).all()],
+            },
+        }
+
+    def prune_backup_snapshots() -> None:
+        retention = int(app.config.get("BACKUP_RETENTION_COUNT", 20))
+        snapshots = sorted(
+            backup_directory().glob("snapshot-*.json"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        for path in snapshots[retention:]:
+            try:
+                path.unlink()
+            except Exception as exc:
+                logger.warning("Impossible de supprimer le vieux backup %s: %s", path, exc)
+
+    def should_rotate_backup() -> bool:
+        interval_seconds = int(app.config.get("AUTO_BACKUP_MIN_INTERVAL_SECONDS", 900))
+        latest_snapshot = next(
+            iter(
+                sorted(
+                    backup_directory().glob("snapshot-*.json"),
+                    key=lambda path: path.stat().st_mtime,
+                    reverse=True,
+                )
+            ),
+            None,
+        )
+        if latest_snapshot is None:
+            return True
+        age_seconds = max(0.0, datetime.utcnow().timestamp() - latest_snapshot.stat().st_mtime)
+        return age_seconds >= interval_seconds
+
+    def write_backup_snapshot(reason: str, force_rotate: bool = False) -> str | None:
+        if not backup_enabled():
+            return None
+
+        backup_payload = serialize_backup_bundle()
+        backup_payload["reason"] = reason
+        payload_text = json.dumps(backup_payload, ensure_ascii=False, indent=2)
+        directory = backup_directory()
+
+        latest_path = directory / "latest.json"
+        latest_path.write_text(payload_text, encoding="utf-8")
+
+        if force_rotate or should_rotate_backup():
+            timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+            snapshot_name = f"snapshot-{timestamp}-{sanitize_backup_reason(reason)}.json"
+            snapshot_path = directory / snapshot_name
+            snapshot_path.write_text(payload_text, encoding="utf-8")
+            prune_backup_snapshots()
+            return str(snapshot_path)
+
+        return str(latest_path)
+
+    def commit_and_backup(reason: str, force_rotate: bool = False) -> str | None:
+        db.session.commit()
+        try:
+            return write_backup_snapshot(reason, force_rotate=force_rotate)
+        except Exception as exc:
+            logger.exception("Backup auto impossible après %s: %s", reason, exc)
+            return None
+
+    def restore_snapshot_file(snapshot_path: Path) -> dict[str, int]:
+        payload = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        tables = payload.get("tables") or {}
+        restored_counts = {
+            "users": 0,
+            "pac_measurements": 0,
+            "billing_records": 0,
+            "site_histories": 0,
+            "air_logs": 0,
+            "module_states": 0,
+            "meetings": 0,
+            "audits": 0,
+            "actions": 0,
+        }
+
+        for user_payload in tables.get("users", []):
+            user_id = str(user_payload.get("id") or make_string_id("USR-"))
+            user = db.session.get(User, user_id)
+            if user is None:
+                user = User(id=user_id)
+                db.session.add(user)
+            user.username = str(user_payload.get("username") or "").strip()
+            user.password = str(user_payload.get("password") or "").strip()
+            user.role = str(user_payload.get("role") or "EQUIPE_ENERGIE")
+            user.full_name = user_payload.get("fullName")
+            user.is_active = bool(user_payload.get("isActive", True))
+            restored_counts["users"] += 1
+
+        for measurement_payload in tables.get("pac_measurements", []):
+            upsert_pac_measurement(measurement_payload, measurement_payload.get("site"))
+            restored_counts["pac_measurements"] += 1
+
+        for billing_payload in tables.get("billing_records", []):
+            upsert_local_billing_row(billing_payload)
+            upsert_billing_record(billing_payload)
+            restored_counts["billing_records"] += 1
+
+        for history_payload in tables.get("site_histories", []):
+            upsert_site_history(history_payload)
+            restored_counts["site_histories"] += 1
+
+        for air_payload in tables.get("air_logs", []):
+            entry_id = str(air_payload.get("id") or make_string_id("AIR-"))
+            entry = db.session.get(AirLogEntry, entry_id)
+            if entry is None:
+                entry = AirLogEntry(id=entry_id)
+                db.session.add(entry)
+            entry.entry_type = air_payload.get("type")
+            entry.week_label = air_payload.get("week")
+            entry.asset_name = air_payload.get("compName")
+            entry.payload = sanitize_value(air_payload)
+            restored_counts["air_logs"] += 1
+
+        for module_payload in tables.get("module_states", []):
+            module_key = str(module_payload.get("moduleKey") or "")
+            if not module_key:
+                continue
+            record = ModuleState.query.filter_by(module_key=module_key).first()
+            if record is None:
+                record = ModuleState(module_key=module_key)
+                db.session.add(record)
+            record.data = sanitize_value(module_payload.get("data") or {})
+            restored_counts["module_states"] += 1
+
+        for meeting_payload in tables.get("meetings", []):
+            meeting = upsert_meeting(meeting_payload)
+            if meeting_payload.get("pv"):
+                upsert_meeting_minutes(meeting.id, meeting_payload["pv"])
+            restored_counts["meetings"] += 1
+
+        for audit_payload in tables.get("audits", []):
+            upsert_audit(audit_payload)
+            restored_counts["audits"] += 1
+
+        for action_payload in tables.get("actions", []):
+            upsert_action(action_payload)
+            restored_counts["actions"] += 1
+
+        commit_and_backup(f"restore:{snapshot_path.name}", force_rotate=True)
+        return restored_counts
+
+    @app.cli.command("backup-data")
+    @click.option("--reason", default="manual", show_default=True)
+    @click.option("--rotate/--no-rotate", default=True, show_default=True)
+    def backup_data_command(reason: str, rotate: bool) -> None:
+        path = write_backup_snapshot(reason, force_rotate=rotate)
+        click.echo(f"Backup écrit: {path}")
+
+    @app.cli.command("restore-data")
+    @click.option("--snapshot", "snapshot_name", default="latest.json", show_default=True)
+    def restore_data_command(snapshot_name: str) -> None:
+        snapshot_path = Path(snapshot_name)
+        if not snapshot_path.is_absolute():
+            snapshot_path = backup_directory() / snapshot_name
+        if not snapshot_path.exists():
+            raise click.ClickException(f"Snapshot introuvable: {snapshot_path}")
+        restored_counts = restore_snapshot_file(snapshot_path)
+        click.echo(json.dumps(restored_counts, ensure_ascii=False))
 
     @app.get("/api/health")
     def health():
@@ -800,6 +1007,17 @@ def create_app() -> Flask:
         except Exception as exc:
             logger.exception("Database health check failed: %s", exc)
             db_status = "error"
+
+        latest_snapshot = next(
+            iter(
+                sorted(
+                    backup_directory().glob("snapshot-*.json"),
+                    key=lambda path: path.stat().st_mtime,
+                    reverse=True,
+                )
+            ),
+            None,
+        )
 
         return json_response(
             {
@@ -811,6 +1029,11 @@ def create_app() -> Flask:
                     "dialect": app.config["SQLALCHEMY_DATABASE_URI"].split(":", 1)[0],
                 },
                 "legacyFallback": legacy_enabled(),
+                "backups": {
+                    "enabled": backup_enabled(),
+                    "directory": str(app.config["BACKUP_DIR"]),
+                    "latestSnapshot": latest_snapshot.name if latest_snapshot else None,
+                },
                 "energy_files": {site: str(get_energy_csv_path(site)) for site in PAC_SITES},
                 "frontend_dist": str(FRONTEND_DIST),
                 "index_exists": (FRONTEND_DIST / "index.html").exists(),
@@ -925,7 +1148,7 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return json_response({"error": "Payload JSON invalide"}, 400)
         measurement = upsert_pac_measurement(payload, request.args.get("site"))
-        db.session.commit()
+        commit_and_backup("pac_measurement:create")
         return json_response({"message": "Mesure PAC enregistrée", "saved": measurement.to_measurement_dict()}, 201)
 
     @app.post("/api/pac-measurements/bulk")
@@ -942,7 +1165,7 @@ def create_app() -> Flask:
             upsert_pac_measurement(item, site_override)
             imported += 1
 
-        db.session.commit()
+        commit_and_backup("pac_measurements:bulk")
         return json_response({"message": "Mesures PAC enregistrees", "imported": imported}, 201)
 
     @app.get("/api/energy")
@@ -1025,7 +1248,7 @@ def create_app() -> Flask:
         upsert_local_billing_row(record_payload)
         record = upsert_billing_record(record_payload)
         synced_history = sync_site_history_from_billing(record_payload)
-        db.session.commit()
+        commit_and_backup("factures:create", force_rotate=True)
         return json_response(
             {
                 "message": "Facture enregistrée",
@@ -1043,7 +1266,7 @@ def create_app() -> Flask:
             delete_local_billing_row(item_id)
             return json_response({"error": "Facture introuvable"}, 404)
         db.session.delete(record)
-        db.session.commit()
+        commit_and_backup("factures:delete")
         delete_local_billing_row(item_id)
         return json_response({"message": "Facture supprimée"})
 
@@ -1060,7 +1283,7 @@ def create_app() -> Flask:
         upsert_local_billing_row(payload)
         record = upsert_billing_record(payload)
         synced_history = sync_site_history_from_billing(payload)
-        db.session.commit()
+        commit_and_backup("billing:create", force_rotate=True)
         return json_response(
             {
                 "message": "Relevé de facturation enregistré",
@@ -1105,9 +1328,11 @@ def create_app() -> Flask:
     def delete_billing(item_id: str):
         record = db.session.get(BillingRecord, item_id)
         if record is None:
+            delete_local_billing_row(item_id)
             return json_response({"error": "Facture introuvable"}, 404)
         db.session.delete(record)
-        db.session.commit()
+        commit_and_backup("billing:delete")
+        delete_local_billing_row(item_id)
         return json_response({"message": "Facture supprimée"})
 
     @app.get("/api/data/<collection>")
@@ -1157,7 +1382,7 @@ def create_app() -> Flask:
             user.password = str(payload.get("password") or "").strip()
             user.role = str(payload.get("role") or "EQUIPE_ENERGIE")
             user.full_name = payload.get("fullName")
-            db.session.commit()
+            commit_and_backup("users:save")
             return json_response({"message": "Enregistré", "saved": user.to_dict(include_password=True)}, 201)
 
         if collection == "air_logs":
@@ -1170,7 +1395,7 @@ def create_app() -> Flask:
             entry.week_label = payload.get("week")
             entry.asset_name = payload.get("compName")
             entry.payload = sanitize_value(payload)
-            db.session.commit()
+            commit_and_backup("air_logs:save", force_rotate=True)
             return json_response({"message": "Enregistré", "saved": entry.to_dict()}, 201)
 
         if collection == "site_history":
@@ -1178,7 +1403,7 @@ def create_app() -> Flask:
                 item = upsert_site_history(payload)
             except ValueError as exc:
                 return json_response({"error": str(exc)}, 400)
-            db.session.commit()
+            commit_and_backup("site_history:save", force_rotate=True)
             return json_response({"message": "Enregistré", "saved": item.to_dict()}, 201)
 
         return json_response({"error": "Collection non gérée"}, 400)
@@ -1193,7 +1418,7 @@ def create_app() -> Flask:
         if item is None:
             return json_response({"error": "Élément introuvable"}, 404)
         db.session.delete(item)
-        db.session.commit()
+        commit_and_backup(f"{collection}:delete")
         return json_response({"message": "Supprimé"})
 
     @app.post("/api/auth/login")
@@ -1240,7 +1465,7 @@ def create_app() -> Flask:
             db.session.add(record)
 
         record.data = sanitize_value(state_payload)
-        db.session.commit()
+        commit_and_backup(f"module_state:{module_key}", force_rotate=True)
         return json_response(record.to_dict(), 201 if payload.get("create") else 200)
 
     @app.get("/api/meetings")
@@ -1254,7 +1479,7 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return json_response({"error": "Payload JSON invalide"}, 400)
         meeting = upsert_meeting(payload)
-        db.session.commit()
+        commit_and_backup("meetings:create")
         return json_response(meeting.to_dict(include_minutes=True), 201)
 
     @app.get("/api/meetings/<meeting_id>")
@@ -1274,7 +1499,7 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return json_response({"error": "Payload JSON invalide"}, 400)
         upsert_meeting(payload, meeting)
-        db.session.commit()
+        commit_and_backup("meetings:update")
         return json_response(meeting.to_dict(include_minutes=True))
 
     @app.delete("/api/meetings/<meeting_id>")
@@ -1283,7 +1508,7 @@ def create_app() -> Flask:
         if meeting is None:
             return json_response({"error": "Réunion introuvable"}, 404)
         db.session.delete(meeting)
-        db.session.commit()
+        commit_and_backup("meetings:delete")
         return json_response({"message": "Réunion supprimée"})
 
     @app.get("/api/meetings/<meeting_id>/minutes")
@@ -1303,7 +1528,7 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return json_response({"error": "Payload JSON invalide"}, 400)
         minutes = upsert_meeting_minutes(meeting_id, payload)
-        db.session.commit()
+        commit_and_backup("meeting_minutes:save")
         return json_response(minutes.to_dict(), 201)
 
     @app.get("/api/audits")
@@ -1317,7 +1542,7 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return json_response({"error": "Payload JSON invalide"}, 400)
         audit = upsert_audit(payload)
-        db.session.commit()
+        commit_and_backup("audits:create")
         return json_response(audit.to_dict(), 201)
 
     @app.get("/api/audits/<audit_id>")
@@ -1337,7 +1562,7 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return json_response({"error": "Payload JSON invalide"}, 400)
         upsert_audit(payload, audit)
-        db.session.commit()
+        commit_and_backup("audits:update")
         return json_response(audit.to_dict())
 
     @app.delete("/api/audits/<audit_id>")
@@ -1346,7 +1571,7 @@ def create_app() -> Flask:
         if audit is None:
             return json_response({"error": "Audit introuvable"}, 404)
         db.session.delete(audit)
-        db.session.commit()
+        commit_and_backup("audits:delete")
         return json_response({"message": "Audit supprimé"})
 
     @app.get("/api/actions")
@@ -1360,7 +1585,7 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return json_response({"error": "Payload JSON invalide"}, 400)
         action = upsert_action(payload)
-        db.session.commit()
+        commit_and_backup("actions:create")
         return json_response(action.to_dict(), 201)
 
     @app.get("/api/actions/<action_id>")
@@ -1380,7 +1605,7 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return json_response({"error": "Payload JSON invalide"}, 400)
         upsert_action(payload, action)
-        db.session.commit()
+        commit_and_backup("actions:update")
         return json_response(action.to_dict())
 
     @app.delete("/api/actions/<action_id>")
@@ -1389,7 +1614,7 @@ def create_app() -> Flask:
         if action is None:
             return json_response({"error": "Action introuvable"}, 404)
         db.session.delete(action)
-        db.session.commit()
+        commit_and_backup("actions:delete")
         return json_response({"message": "Action supprimée"})
 
     @app.get("/")
