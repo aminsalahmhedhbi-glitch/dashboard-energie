@@ -294,6 +294,44 @@ def read_billing_rows() -> list[dict[str, Any]]:
     return [sanitize_value(row) for row in df.to_dict(orient="records")]
 
 
+def write_billing_rows(rows: list[dict[str, Any]]) -> None:
+    BILLING_CSV.parent.mkdir(exist_ok=True)
+    normalized_rows = [normalize_billing_row(row) for row in rows]
+    normalized_rows.sort(
+        key=lambda row: (
+            str(row.get("recordDate") or row.get("date") or ""),
+            str(row.get("timestamp") or row.get("_createdAt") or ""),
+            str(row.get("id") or ""),
+        ),
+        reverse=True,
+    )
+
+    with file_lock:
+        with BILLING_CSV.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=BILLING_COLUMNS, extrasaction="ignore")
+            writer.writeheader()
+            for row in normalized_rows:
+                writer.writerow({column: sanitize_value(row.get(column)) for column in BILLING_COLUMNS})
+
+
+def upsert_local_billing_row(data: dict[str, Any]) -> dict[str, Any]:
+    normalized = normalize_billing_row(data)
+    rows = read_billing_rows()
+    by_id = {str(row.get("id") or ""): normalize_billing_row(row) for row in rows if row.get("id")}
+    by_id[str(normalized.get("id") or "")] = normalized
+    write_billing_rows(list(by_id.values()))
+    return normalized
+
+
+def delete_local_billing_row(item_id: str) -> bool:
+    rows = read_billing_rows()
+    kept_rows = [row for row in rows if str(row.get("id") or "") != str(item_id)]
+    if len(kept_rows) == len(rows):
+        return False
+    write_billing_rows(kept_rows)
+    return True
+
+
 def serialize_excel_cell(value: Any) -> Any:
     if isinstance(value, (list, dict)):
         return json.dumps(value, ensure_ascii=False)

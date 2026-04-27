@@ -16,6 +16,7 @@ from .legacy_store import (
     DEFAULT_BILLING_LIMIT,
     DEFAULT_HISTORY_LIMIT,
     PAC_SITES,
+    delete_local_billing_row,
     get_energy_csv_path,
     get_site_history_key_from_billing,
     get_site_key,
@@ -28,7 +29,9 @@ from .legacy_store import (
     read_site_history_excel,
     safe_float,
     sanitize_value,
+    upsert_local_billing_row,
     validate_billing_payload,
+    write_billing_rows,
 )
 from .models import (
     ActionItem,
@@ -221,6 +224,84 @@ def billing_record_sort_key(record: BillingRecord) -> tuple[str, str]:
 def facture_payload_from_record(record: BillingRecord) -> dict[str, Any]:
     site_meta = billing_record_site_meta(record)
     return record.to_facture_dict(site_key=site_meta["siteKey"] if site_meta else None)
+
+
+def sort_billing_like_facture(row: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(row.get("date") or row.get("recordDate") or ""),
+        str(row.get("timestamp") or row.get("_createdAt") or ""),
+        str(row.get("id") or ""),
+    )
+
+
+def merge_rows_by_id(primary_rows: list[dict[str, Any]], fallback_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    for row in fallback_rows:
+        row_id = str(row.get("id") or "").strip()
+        if row_id:
+            merged[row_id] = row
+    for row in primary_rows:
+        row_id = str(row.get("id") or "").strip()
+        if row_id:
+            merged[row_id] = row
+    return list(merged.values())
+
+
+def legacy_facture_rows(
+    site_filter: str | None = None,
+    site_type: str | None = None,
+    record_date: str | None = None,
+) -> list[dict[str, Any]]:
+    normalized_rows = []
+    for row in read_billing_rows():
+        site_meta = resolve_facture_site(row)
+        consommation = row.get("billedKwh", row.get("consumptionGrid", row.get("energyRecorded")))
+        pmax = row.get("Pmax", row.get("maxPower"))
+        prix = row.get("netToPay", row.get("totalFinalTTC"))
+        normalized_rows.append(
+            {
+                **row,
+                "site": site_meta["siteKey"] if site_meta else row.get("siteName"),
+                "siteKey": site_meta["siteKey"] if site_meta else None,
+                "date": row.get("recordDate"),
+                "consommationKwh": safe_float(consommation),
+                "consommation_kwh": safe_float(consommation),
+                "pmaxKva": safe_float(pmax),
+                "pmax_kva": safe_float(pmax),
+                "cosPhi": safe_float(row.get("cosPhi")),
+                "cos_phi": safe_float(row.get("cosPhi")),
+                "prixDt": safe_float(prix),
+                "prix_dt": safe_float(prix),
+            }
+        )
+
+    if site_filter:
+        normalized_rows = [
+            row for row in normalized_rows
+            if billing_record_matches_site(
+                BillingRecord(
+                    site_id=str(row.get("siteId") or ""),
+                    site_name=str(row.get("siteName") or ""),
+                    site_type=str(row.get("siteType") or ""),
+                    record_date=str(row.get("recordDate") or row.get("date") or ""),
+                    payload=row,
+                ),
+                site_filter,
+            )
+        ]
+    if record_date:
+        normalized_rows = [
+            row for row in normalized_rows
+            if str(row.get("date") or row.get("recordDate") or "") == str(record_date)
+        ]
+    if site_type:
+        normalized_rows = [
+            row for row in normalized_rows
+            if str(row.get("siteType") or "") == str(site_type)
+        ]
+
+    normalized_rows.sort(key=sort_billing_like_facture, reverse=True)
+    return normalized_rows
 
 
 def validate_facture_payload(payload: dict[str, Any]) -> tuple[bool, str | None]:
@@ -922,68 +1003,13 @@ def create_app() -> Flask:
             records = [record for record in records if billing_record_matches_site(record, site_filter)]
 
         records = sorted(records, key=billing_record_sort_key, reverse=True)
-        rows = [facture_payload_from_record(record) for record in records[:limit]]
-        if rows:
-            return json_response(rows)
-
-        if legacy_enabled():
-            legacy_rows = read_billing_rows()
-            normalized_rows = []
-            for row in legacy_rows:
-                site_meta = resolve_facture_site(row)
-                consommation = row.get("billedKwh", row.get("consumptionGrid", row.get("energyRecorded")))
-                pmax = row.get("Pmax", row.get("maxPower"))
-                prix = row.get("netToPay", row.get("totalFinalTTC"))
-                normalized_rows.append(
-                    {
-                        **row,
-                        "site": site_meta["siteKey"] if site_meta else row.get("siteName"),
-                        "siteKey": site_meta["siteKey"] if site_meta else None,
-                        "date": row.get("recordDate"),
-                        "consommationKwh": safe_float(consommation),
-                        "consommation_kwh": safe_float(consommation),
-                        "pmaxKva": safe_float(pmax),
-                        "pmax_kva": safe_float(pmax),
-                        "cosPhi": safe_float(row.get("cosPhi")),
-                        "cos_phi": safe_float(row.get("cosPhi")),
-                        "prixDt": safe_float(prix),
-                        "prix_dt": safe_float(prix),
-                    }
-                )
-            if site_filter:
-                normalized_rows = [
-                    row for row in normalized_rows
-                    if billing_record_matches_site(
-                        BillingRecord(
-                            site_id=str(row.get("siteId") or ""),
-                            site_name=str(row.get("siteName") or ""),
-                            site_type=str(row.get("siteType") or ""),
-                            record_date=str(row.get("recordDate") or row.get("date") or ""),
-                            payload=row,
-                        ),
-                        site_filter,
-                    )
-                ]
-            if record_date:
-                normalized_rows = [
-                    row for row in normalized_rows
-                    if str(row.get("date") or row.get("recordDate") or "") == str(record_date)
-                ]
-            if site_type:
-                normalized_rows = [
-                    row for row in normalized_rows
-                    if str(row.get("siteType") or "") == str(site_type)
-                ]
-            normalized_rows.sort(
-                key=lambda row: (
-                    str(row.get("date") or row.get("recordDate") or ""),
-                    str(row.get("timestamp") or row.get("_createdAt") or ""),
-                ),
-                reverse=True,
-            )
-            return json_response(normalized_rows[:limit])
-
-        return json_response([])
+        db_rows = [facture_payload_from_record(record) for record in records]
+        local_rows = legacy_facture_rows(site_filter=site_filter, site_type=site_type, record_date=record_date)
+        merged_rows = merge_rows_by_id(db_rows, local_rows)
+        merged_rows.sort(key=sort_billing_like_facture, reverse=True)
+        if db_rows and merged_rows and not site_filter and not site_type and not record_date:
+            write_billing_rows(merged_rows)
+        return json_response(merged_rows[:limit])
 
     @app.post("/api/factures")
     def create_facture():
@@ -996,6 +1022,7 @@ def create_app() -> Flask:
             return json_response({"error": error_message}, 400)
 
         record_payload = build_facture_record_payload(payload)
+        upsert_local_billing_row(record_payload)
         record = upsert_billing_record(record_payload)
         synced_history = sync_site_history_from_billing(record_payload)
         db.session.commit()
@@ -1004,6 +1031,7 @@ def create_app() -> Flask:
                 "message": "Facture enregistrée",
                 "saved": facture_payload_from_record(record),
                 "siteHistorySync": synced_history.to_dict() if synced_history else None,
+                "localBackupSaved": True,
             },
             201,
         )
@@ -1012,9 +1040,11 @@ def create_app() -> Flask:
     def delete_facture(item_id: str):
         record = db.session.get(BillingRecord, item_id)
         if record is None:
+            delete_local_billing_row(item_id)
             return json_response({"error": "Facture introuvable"}, 404)
         db.session.delete(record)
         db.session.commit()
+        delete_local_billing_row(item_id)
         return json_response({"message": "Facture supprimée"})
 
     @app.post("/api/save-billing")
@@ -1027,6 +1057,7 @@ def create_app() -> Flask:
         if not is_valid:
             return json_response({"error": error_message}, 400)
 
+        upsert_local_billing_row(payload)
         record = upsert_billing_record(payload)
         synced_history = sync_site_history_from_billing(payload)
         db.session.commit()
@@ -1035,6 +1066,7 @@ def create_app() -> Flask:
                 "message": "Relevé de facturation enregistré",
                 "saved": record.to_dict(),
                 "siteHistorySync": synced_history.to_dict() if synced_history else None,
+                "localBackupSaved": True,
             },
             201,
         )
@@ -1054,22 +1086,20 @@ def create_app() -> Flask:
         if record_date:
             query = query.filter(BillingRecord.record_date == record_date)
 
-        rows = [item.to_dict() for item in query.order_by(BillingRecord.created_at.desc()).limit(limit).all()]
-        if rows:
-            return json_response(rows)
+        db_rows = [item.to_dict() for item in query.order_by(BillingRecord.created_at.desc()).all()]
+        local_rows = read_billing_rows()
+        if site_id is not None:
+            local_rows = [row for row in local_rows if str(row.get("siteId")) == str(site_id)]
+        if site_type:
+            local_rows = [row for row in local_rows if str(row.get("siteType")) == site_type]
+        if record_date:
+            local_rows = [row for row in local_rows if str(row.get("recordDate")) == record_date]
 
-        if legacy_enabled():
-            legacy_rows = read_billing_rows()
-            if site_id is not None:
-                legacy_rows = [row for row in legacy_rows if str(row.get("siteId")) == str(site_id)]
-            if site_type:
-                legacy_rows = [row for row in legacy_rows if str(row.get("siteType")) == site_type]
-            if record_date:
-                legacy_rows = [row for row in legacy_rows if str(row.get("recordDate")) == record_date]
-            legacy_rows.sort(key=lambda row: (str(row.get("recordDate") or ""), str(row.get("id") or "")), reverse=True)
-            return json_response(legacy_rows[:limit])
-
-        return json_response([])
+        merged_rows = merge_rows_by_id(db_rows, local_rows)
+        merged_rows.sort(key=sort_billing_like_facture, reverse=True)
+        if db_rows and merged_rows and site_id is None and not site_type and not record_date:
+            write_billing_rows(merged_rows)
+        return json_response(merged_rows[:limit])
 
     @app.delete("/api/billing/<item_id>")
     def delete_billing(item_id: str):

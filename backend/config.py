@@ -4,7 +4,11 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = Path(
+    os.getenv("APP_DATA_DIR", "").strip()
+    or os.getenv("RENDER_DISK_PATH", "").strip()
+    or (BASE_DIR / "data").as_posix()
+)
 DATA_DIR.mkdir(exist_ok=True)
 
 FRONTEND_CANDIDATES = [
