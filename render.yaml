@@ -54,9 +54,13 @@ services:
         value: smen_italcar
       - key: ENABLE_LOCAL_BACKUPS
         value: "true"
+      - key: BACKUP_PAC_MEASUREMENTS
+        value: "false"
       - key: BACKUP_RETENTION_COUNT
         value: "20"
       - key: AUTO_BACKUP_MIN_INTERVAL_SECONDS
         value: "900"
+      - key: PAC_MEASUREMENTS_RETENTION_LIMIT
+        value: "1000"
       - key: LEGACY_FALLBACK_ENABLED
         value: "false"

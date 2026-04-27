@@ -820,16 +820,56 @@ def create_app() -> Flask:
         cleaned = "".join(char if char.isalnum() else "-" for char in raw).strip("-")
         return cleaned or "manual"
 
+    def pac_retention_limit() -> int:
+        return max(100, int(app.config.get("PAC_MEASUREMENTS_RETENTION_LIMIT", 1000)))
+
+    def prune_pac_measurements_fifo(site_code: str | None = None) -> int:
+        query = PacMeasurement.query
+        if site_code:
+            query = query.filter_by(site_code=get_site_key(site_code))
+
+        overflow = query.count() - pac_retention_limit()
+        if overflow <= 0:
+            return 0
+
+        stale_rows = (
+            query.order_by(PacMeasurement.measured_at.asc(), PacMeasurement.id.asc())
+            .limit(overflow)
+            .all()
+        )
+        for row in stale_rows:
+            db.session.delete(row)
+        db.session.commit()
+        return len(stale_rows)
+
+    def apply_runtime_retention_policies() -> None:
+        pruned_total = 0
+        for site_code in PAC_SITES:
+            pruned_total += prune_pac_measurements_fifo(site_code)
+        if pruned_total:
+            logger.warning(
+                "Rétention PAC appliquée au démarrage: %s mesure(s) FIFO supprimée(s).",
+                pruned_total,
+            )
+
+    with app.app_context():
+        apply_runtime_retention_policies()
+
     def serialize_backup_bundle() -> dict[str, Any]:
+        include_pac_measurements = bool(app.config.get("BACKUP_PAC_MEASUREMENTS", False))
         return {
             "generatedAt": now_iso(),
             "database": {"uri": app.config["SQLALCHEMY_DATABASE_URI"].split(":", 1)[0]},
             "tables": {
                 "users": [user.to_dict(include_password=True) for user in User.query.order_by(User.created_at.asc()).all()],
-                "pac_measurements": [
-                    item.to_measurement_dict()
-                    for item in PacMeasurement.query.order_by(PacMeasurement.measured_at.asc()).all()
-                ],
+                "pac_measurements": (
+                    [
+                        item.to_measurement_dict()
+                        for item in PacMeasurement.query.order_by(PacMeasurement.measured_at.asc()).all()
+                    ]
+                    if include_pac_measurements
+                    else []
+                ),
                 "billing_records": [item.to_dict() for item in BillingRecord.query.order_by(BillingRecord.created_at.asc()).all()],
                 "site_histories": [item.to_dict() for item in SiteHistory.query.order_by(SiteHistory.created_at.asc()).all()],
                 "air_logs": [item.to_dict() for item in AirLogEntry.query.order_by(AirLogEntry.created_at.asc()).all()],
@@ -1029,6 +1069,10 @@ def create_app() -> Flask:
                     "dialect": app.config["SQLALCHEMY_DATABASE_URI"].split(":", 1)[0],
                 },
                 "legacyFallback": legacy_enabled(),
+                "pacRetention": {
+                    "limitPerSite": pac_retention_limit(),
+                    "backupEnabled": bool(app.config.get("BACKUP_PAC_MEASUREMENTS", False)),
+                },
                 "backups": {
                     "enabled": backup_enabled(),
                     "directory": str(app.config["BACKUP_DIR"]),
@@ -1148,8 +1192,16 @@ def create_app() -> Flask:
         if not isinstance(payload, dict):
             return json_response({"error": "Payload JSON invalide"}, 400)
         measurement = upsert_pac_measurement(payload, request.args.get("site"))
-        commit_and_backup("pac_measurement:create")
-        return json_response({"message": "Mesure PAC enregistrée", "saved": measurement.to_measurement_dict()}, 201)
+        db.session.commit()
+        pruned = prune_pac_measurements_fifo(measurement.site_code)
+        return json_response(
+            {
+                "message": "Mesure PAC enregistrée",
+                "saved": measurement.to_measurement_dict(),
+                "retention": {"limitPerSite": pac_retention_limit(), "pruned": pruned},
+            },
+            201,
+        )
 
     @app.post("/api/pac-measurements/bulk")
     def save_pac_measurements_bulk():
@@ -1159,14 +1211,24 @@ def create_app() -> Flask:
 
         site_override = request.args.get("site")
         imported = 0
+        touched_sites: set[str] = set()
         for item in payload:
             if not isinstance(item, dict):
                 continue
-            upsert_pac_measurement(item, site_override)
+            measurement = upsert_pac_measurement(item, site_override)
+            touched_sites.add(measurement.site_code)
             imported += 1
 
-        commit_and_backup("pac_measurements:bulk")
-        return json_response({"message": "Mesures PAC enregistrees", "imported": imported}, 201)
+        db.session.commit()
+        pruned = sum(prune_pac_measurements_fifo(site_code) for site_code in touched_sites)
+        return json_response(
+            {
+                "message": "Mesures PAC enregistrees",
+                "imported": imported,
+                "retention": {"limitPerSite": pac_retention_limit(), "pruned": pruned},
+            },
+            201,
+        )
 
     @app.get("/api/energy")
     def get_live_energy():

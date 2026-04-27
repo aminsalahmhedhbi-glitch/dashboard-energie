@@ -7,7 +7,6 @@
 - Ajoute les colonnes manquantes via une migration de compatibilité ciblée.
 - Écrit un backup JSON automatique après chaque écriture critique :
   - `billing_records`
-  - `pac_measurements`
   - `air_logs`
   - `site_histories`
   - `module_states`
@@ -15,6 +14,10 @@
   - `meetings`
   - `audits`
   - `actions`
+- Garde `pac_measurements` comme un buffer temps réel FIFO :
+  - 1000 mesures maximum par site par défaut
+  - suppression automatique des plus anciennes
+  - pas de sauvegarde JSON persistante par défaut
 
 ## Emplacement des backups
 
@@ -50,3 +53,11 @@ Pour qu'un backup survive à un redeploy ou à un redémarrage complet :
 - définir `APP_DATA_DIR` vers ce disque
 
 Sans disque persistant, les backups restent utiles localement et dans l'instance courante, mais ne protègent pas contre la perte complète du filesystem du conteneur.
+
+## Politique PAC temps réel
+
+- Variable : `PAC_MEASUREMENTS_RETENTION_LIMIT`
+- Valeur par défaut : `1000`
+- Politique : FIFO par site (`MEGRINE`, `ELKHADHRA`, `NAASSEN`)
+- Backup snapshot : désactivé par défaut pour `pac_measurements`
+  - activer ponctuellement avec `BACKUP_PAC_MEASUREMENTS=true`
