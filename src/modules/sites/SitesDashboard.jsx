@@ -255,6 +255,44 @@ const mergeHistoryEntry = (base = {}, override = {}) => ({
   pvExport: mergeHistoryArrays(base?.pvExport, override?.pvExport),
 });
 
+const getHistorySeriesType = (siteKey) => (siteKey === 'LAC' ? 'grid' : 'months');
+
+const createEmptyHistoryEntry = (siteKey) =>
+  siteKey === 'LAC'
+    ? { grid: Array(12).fill(''), temperature: Array(12).fill('') }
+    : { months: Array(12).fill(''), temperature: Array(12).fill('') };
+
+const sanitizeHistoryEntryForSite = (siteKey, entry = {}) => {
+  const historyId = entry?.historyId;
+  const baseEntry = createEmptyHistoryEntry(siteKey);
+
+  if (siteKey === 'LAC') {
+    return {
+      ...(historyId ? { historyId } : {}),
+      grid: mergeHistoryArrays(baseEntry.grid, entry?.grid),
+      temperature: mergeHistoryArrays(baseEntry.temperature, entry?.temperature),
+    };
+  }
+
+  return {
+    ...(historyId ? { historyId } : {}),
+    months: mergeHistoryArrays(baseEntry.months, entry?.months),
+    temperature: mergeHistoryArrays(baseEntry.temperature, entry?.temperature),
+  };
+};
+
+const ensureSiteHistoryYears = (siteKey, siteHistory = {}, defaultYears = []) => {
+  const targetYears = new Set([
+    ...defaultYears.map((year) => String(year)),
+    ...Object.keys(siteHistory || {}).map((year) => String(year)),
+  ]);
+
+  return Array.from(targetYears).reduce((accumulator, year) => {
+    accumulator[year] = sanitizeHistoryEntryForSite(siteKey, siteHistory?.[year] || {});
+    return accumulator;
+  }, {});
+};
+
 const SitesDashboard = ({ onBack, userRole, user }) => {
   const [activeSiteTab, setActiveSiteTab] = useState('MEGRINE');
   const [historyData, setHistoryData] = useState({});
@@ -468,18 +506,23 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       console.error('Erreur chargement brouillon historique:', error);
     }
 
-    setHistoryData(constructed);
+    const normalizedHistory = Object.keys(constructed).reduce((accumulator, siteKey) => {
+      accumulator[siteKey] = ensureSiteHistoryYears(
+        siteKey,
+        constructed[siteKey],
+        defaultHistoryYears
+      );
+      return accumulator;
+    }, {});
+
+    setHistoryData(normalizedHistory);
   }, [allHistory]);
 
   const initHistory = (site) => {
-      if (!historyData[site]) {
-          const newData = {};
-          defaultHistoryYears.forEach(y => { 
-              if(site === 'LAC') newData[y] = { grid: Array(12).fill(''), pvProd: Array(12).fill(''), pvExport: Array(12).fill(''), temperature: Array(12).fill('') };
-              else newData[y] = { months: Array(12).fill(''), temperature: Array(12).fill('') }; 
-          });
-          setHistoryData(prev => ({...prev, [site]: newData}));
-      }
+      setHistoryData(prev => ({
+          ...prev,
+          [site]: ensureSiteHistoryYears(site, prev[site], defaultHistoryYears),
+      }));
   };
 
   const getSiteData = (site, year, type = 'months') => {
@@ -526,9 +569,13 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       if (!historyData[site]) return;
       try {
         for (const year of Object.keys(historyData[site])) {
+            const sanitizedEntry = sanitizeHistoryEntryForSite(
+              site,
+              historyData[site][year]
+            );
             const dataToSave = {
                 historyId: `${site}_${year}`, 
-                ...historyData[site][year]
+                ...sanitizedEntry
             };
             await saveData('site_history', dataToSave);
         }
@@ -567,8 +614,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     const createMonthSet = () => ({
       months: Array(12).fill(''),
       grid: Array(12).fill(''),
-      pvProd: Array(12).fill(''),
-      pvExport: Array(12).fill(''),
     });
 
     const addValue = (bucket, field, monthIndex, rawValue) => {
@@ -591,8 +636,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
       if (activeSiteTab === 'LAC') {
         addValue(bucket, 'grid', monthIndex, metrics.consommationKwh);
-        addValue(bucket, 'pvProd', monthIndex, facture?.productionPv ?? facture?.production_pv);
-        addValue(bucket, 'pvExport', monthIndex, facture?.pvExport ?? facture?.pv_export);
       } else {
         addValue(bucket, 'months', monthIndex, metrics.consommationKwh);
       }
@@ -637,20 +680,12 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   }, [activeSiteTab, currentYear, factureHistoryByYear, historyData]);
 
   const PerformanceWidget = () => {
-      const refMonths = getSiteData(activeSiteTab, 'REF', activeSiteTab === 'LAC' ? 'grid' : 'months');
-      const curMonths = getSiteData(activeSiteTab, currentYear, activeSiteTab === 'LAC' ? 'grid' : 'months');
+      const historySeriesType = getHistorySeriesType(activeSiteTab);
+      const refMonths = getSiteData(activeSiteTab, 'REF', historySeriesType);
+      const curMonths = getSiteData(activeSiteTab, currentYear, historySeriesType);
       
       let valRefMonth = parseFloat(refMonths[currentMonthIdx]) || 0;
       let valCurMonth = parseFloat(curMonths[currentMonthIdx]) || 0;
-
-      if (activeSiteTab === 'LAC') {
-          const refProd = getSiteData(activeSiteTab, 'REF', 'pvProd')[currentMonthIdx] || 0;
-          const refExp = getSiteData(activeSiteTab, 'REF', 'pvExport')[currentMonthIdx] || 0;
-          const curProd = getSiteData(activeSiteTab, currentYear, 'pvProd')[currentMonthIdx] || 0;
-          const curExp = getSiteData(activeSiteTab, currentYear, 'pvExport')[currentMonthIdx] || 0;
-          valRefMonth += Math.max(0, refProd - refExp);
-          valCurMonth += Math.max(0, curProd - curExp);
-      }
 
       let diffMonth = valRefMonth > 0 ? ((valCurMonth - valRefMonth) / valRefMonth) * 100 : 0;
       let sumRefYTD = 0, sumCurYTD = 0;
@@ -658,14 +693,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       for (let i = 0; i <= currentMonthIdx; i++) {
           let r = parseFloat(refMonths[i]) || 0;
           let c = parseFloat(curMonths[i]) || 0;
-          if (activeSiteTab === 'LAC') {
-              const rp = parseFloat(getSiteData(activeSiteTab, 'REF', 'pvProd')[i]) || 0;
-              const re = parseFloat(getSiteData(activeSiteTab, 'REF', 'pvExport')[i]) || 0;
-              const cp = parseFloat(getSiteData(activeSiteTab, currentYear, 'pvProd')[i]) || 0;
-              const ce = parseFloat(getSiteData(activeSiteTab, currentYear, 'pvExport')[i]) || 0;
-              r += Math.max(0, rp - re);
-              c += Math.max(0, cp - ce);
-          }
           sumRefYTD += r;
           sumCurYTD += c;
       }
@@ -1297,24 +1324,10 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                          {activeSiteTab === 'LAC' ? (
                                              <>
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <div className="w-32 text-xs font-bold text-blue-900 uppercase">Réseau STEG</div>
+                                                    <div className="w-32 text-xs font-bold text-blue-900 uppercase">Consommation</div>
                                                     {getFactureBackedHistoryValues(year, 'grid').map((val, i) => (
                                                         <input key={i} type="number" className={`w-20 p-2 text-center text-xs border rounded outline-none ${isFactureBackedYear(year) ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed' : 'focus:border-blue-900'}`} placeholder="-"
                                                             value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'grid')} readOnly={isFactureBackedYear(year)} title={isFactureBackedYear(year) ? 'Valeur alimentee automatiquement depuis les factures' : 'Valeur modifiable'} />
-                                                    ))}
-                                                </div>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <div className="w-32 text-xs font-bold text-orange-600 uppercase">Prod. PV</div>
-                                                    {getFactureBackedHistoryValues(year, 'pvProd').map((val, i) => (
-                                                        <input key={i} type="number" className={`w-20 p-2 text-center text-xs border rounded outline-none ${isFactureBackedYear(year) ? 'border-orange-200 bg-orange-50 text-orange-700 cursor-not-allowed' : 'border-orange-200 focus:border-orange-600 bg-orange-50'}`} placeholder="-"
-                                                            value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'pvProd')} readOnly={isFactureBackedYear(year)} title={isFactureBackedYear(year) ? 'Valeur alimentee automatiquement depuis les factures' : 'Valeur modifiable'} />
-                                                    ))}
-                                                </div>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <div className="w-32 text-xs font-bold text-green-600 uppercase">Export STEG</div>
-                                                    {getFactureBackedHistoryValues(year, 'pvExport').map((val, i) => (
-                                                        <input key={i} type="number" className={`w-20 p-2 text-center text-xs border rounded outline-none ${isFactureBackedYear(year) ? 'border-green-200 bg-green-50 text-green-700 cursor-not-allowed' : 'border-green-200 focus:border-green-600 bg-green-50'}`} placeholder="-"
-                                                            value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'pvExport')} readOnly={isFactureBackedYear(year)} title={isFactureBackedYear(year) ? 'Valeur alimentee automatiquement depuis les factures' : 'Valeur modifiable'} />
                                                     ))}
                                                 </div>
                                              </>

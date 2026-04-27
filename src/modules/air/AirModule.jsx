@@ -2042,23 +2042,40 @@ const AirModule = ({ onBack, user }) => {
           (log) => log.compName === compressor.name
         );
 
-        accumulator[compressor.id] = latestLog
-          ? calculateCompressorKPI({
+        if (latestLog) {
+          const calculatedMetrics = calculateCompressorKPI({
               id: compressor.id,
               runHours: latestLog.runDelta,
               loadHours: latestLog.loadDelta,
               powerLoadKw: latestLog.powerLoadKw ?? compressor.powerLoadKw,
               powerIdleKw: latestLog.powerIdleKw ?? compressor.powerIdleKw,
               debitNominal: latestLog.debitNominal ?? compressor.debitNominal,
-            })
-          : calculateCompressorKPI({
-              id: compressor.id,
-              runHours: 0,
-              loadHours: 0,
-              powerLoadKw: compressor.powerLoadKw,
-              powerIdleKw: compressor.powerIdleKw,
-              debitNominal: compressor.debitNominal,
             });
+
+          accumulator[compressor.id] = {
+            ...calculatedMetrics,
+            idleHours: toNumber(latestLog.idleHours ?? calculatedMetrics.idleHours),
+            energyConsumedKwh: toNumber(
+              latestLog.energyConsumedKwh ?? calculatedMetrics.energyConsumedKwh
+            ),
+            volumeProducedM3: toNumber(
+              latestLog.volumeProducedM3 ?? calculatedMetrics.volumeProducedM3
+            ),
+            tauxCharge: toNumber(latestLog.tauxCharge ?? calculatedMetrics.tauxCharge),
+            taux: toNumber(latestLog.taux ?? latestLog.tauxCharge ?? calculatedMetrics.tauxCharge),
+            usageRate: toNumber(latestLog.loadRate ?? latestLog.usageRate ?? calculatedMetrics.usageRate),
+            kpi: toNumber(latestLog.kpi ?? calculatedMetrics.kpi),
+          };
+        } else {
+          accumulator[compressor.id] = calculateCompressorKPI({
+            id: compressor.id,
+            runHours: 0,
+            loadHours: 0,
+            powerLoadKw: compressor.powerLoadKw,
+            powerIdleKw: compressor.powerIdleKw,
+            debitNominal: compressor.debitNominal,
+          });
+        }
 
         return accumulator;
       }, {}),

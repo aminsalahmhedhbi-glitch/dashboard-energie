@@ -831,7 +831,7 @@ const StegModule = ({ onBack, userRole, user }) => {
         const refSeries = normalizeSeries(refRow[refSeriesType]);
         const annualOptimisations = [];
 
-        for (let offset = 1; offset <= 12; offset += 1) {
+        for (let offset = 1; offset <= 6; offset += 1) {
           const baseDate = new Date(currentYearPerf, currentMonthPerf - offset, 1);
           const histYear = baseDate.getFullYear();
           const histMonthIdx = baseDate.getMonth();
@@ -848,9 +848,9 @@ const StegModule = ({ onBack, userRole, user }) => {
           }
         }
 
-        if (annualOptimisations.length > 0) {
+        if (annualOptimisations.length === 6) {
           tauxOptimisationAnnuel =
-            annualOptimisations.reduce((sum, value) => sum + value, 0) / annualOptimisations.length;
+            annualOptimisations.reduce((sum, value) => sum + value, 0) / 6;
           optimisationAvailable = true;
         }
       }
@@ -926,12 +926,12 @@ const StegModule = ({ onBack, userRole, user }) => {
       }
     }
 
-    if (monthlyOptimisations.length === 0) {
+    if (monthlyOptimisations.length < 6) {
       return { available: false, reason: "Pas assez d'historique pour calculer l'optimisation 6 mois." };
     }
 
     const optimisation6Mois =
-      monthlyOptimisations.reduce((sum, value) => sum + value, 0) / monthlyOptimisations.length;
+      monthlyOptimisations.reduce((sum, value) => sum + value, 0) / 6;
 
     const tauxOptimisation = Math.max(0, Math.min(1 + optimisation6Mois, 1));
     const facteurClimatique = 1;
@@ -1390,7 +1390,7 @@ const StegModule = ({ onBack, userRole, user }) => {
                                 </div>
 
                                 <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                    <div className="text-[10px] uppercase font-bold text-slate-500">Taux d’optimisation moyen 1 an</div>
+                                    <div className="text-[10px] uppercase font-bold text-slate-500">Taux d’optimisation moyen 6 mois</div>
                                     <div className={`text-xl font-black ${performanceSiteData.tauxOptimisationAnnuel <= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                                         {performanceSiteData.optimisationAvailable
                                             ? `${performanceSiteData.tauxOptimisationAnnuel > 0 ? '+' : ''}${formatNumber(performanceSiteData.tauxOptimisationAnnuel * 100)} %`

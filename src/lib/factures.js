@@ -114,6 +114,12 @@ const average = (values = []) => {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 };
 
+const getReferenceMonthCandidates = (yearIndex, targetYear, monthIndex) =>
+  Array.from(yearIndex.entries())
+    .filter(([year]) => year < targetYear)
+    .map(([, rows]) => toNumber(rows?.[monthIndex]?.consommationKwh))
+    .filter((value) => value > 0);
+
 export const buildFactureInsights = (factures = [], { currentDate = new Date() } = {}) => {
   const monthlyRows = aggregateFacturesByMonth(factures);
   const yearIndex = buildYearIndex(monthlyRows);
@@ -130,9 +136,11 @@ export const buildFactureInsights = (factures = [], { currentDate = new Date() }
   const currentYearRows = yearIndex.get(analysisYear) || Array.from({ length: 12 }, () => ({ consommationKwh: 0, prixDt: 0 }));
   const currentMonthValue = currentYearRows[analysisMonthIndex]?.consommationKwh || 0;
 
-  const referenceMonthCandidates = referenceYears
-    .map((year) => yearIndex.get(year)?.[analysisMonthIndex]?.consommationKwh || 0)
-    .filter((value) => value > 0);
+  const referenceMonthCandidates = getReferenceMonthCandidates(
+    yearIndex,
+    analysisYear,
+    analysisMonthIndex
+  );
   const referenceMonthValue = average(referenceMonthCandidates);
 
   const currentYtdValue = currentYearRows
@@ -151,6 +159,49 @@ export const buildFactureInsights = (factures = [], { currentDate = new Date() }
   const diffMonth = referenceMonthValue > 0 ? ((currentMonthValue - referenceMonthValue) / referenceMonthValue) * 100 : 0;
   const diffYtd = referenceYtdValue > 0 ? ((currentYtdValue - referenceYtdValue) / referenceYtdValue) * 100 : 0;
 
+  const monthlyComparisons = monthlyRows.map((row) => {
+    const referenceValue = average(
+      getReferenceMonthCandidates(yearIndex, row.year, row.monthIndex)
+    );
+    const optimisationRate =
+      referenceValue > 0 && row.consommationKwh > 0
+        ? (row.consommationKwh - referenceValue) / referenceValue
+        : null;
+
+    return {
+      ...row,
+      referenceValue,
+      optimisationRate,
+    };
+  });
+
+  const optimisationDuMois =
+    referenceMonthValue > 0 && currentMonthValue > 0
+      ? (currentMonthValue - referenceMonthValue) / referenceMonthValue
+      : 0;
+
+  const optimisationCandidates = monthlyComparisons
+    .filter((row) => row.monthKey !== latestRow?.monthKey)
+    .filter((row) => row.optimisationRate !== null)
+    .slice(-6);
+
+  const hasOptimisation6Months = optimisationCandidates.length === 6;
+  const optimisationMoyenne6Mois = hasOptimisation6Months
+    ? optimisationCandidates.reduce(
+        (sum, row) => sum + toNumber(row.optimisationRate),
+        0
+      ) / 6
+    : 0;
+  const facteurClimatique = 1;
+  const tauxOptimisation = Math.max(
+    0,
+    Math.min(1 + optimisationMoyenne6Mois, 1)
+  );
+  const consommationEstimee =
+    hasOptimisation6Months && referenceMonthValue > 0
+      ? referenceMonthValue * tauxOptimisation * facteurClimatique
+      : 0;
+
   const factureMetrics = factures.map(getFactureMetrics);
   const pmaxHistorique = factureMetrics.length ? Math.max(...factureMetrics.map((item) => item.pmaxKva)) : 0;
   const cosPhiValues = factureMetrics.map((item) => item.cosPhi).filter((value) => value > 0);
@@ -163,6 +214,19 @@ export const buildFactureInsights = (factures = [], { currentDate = new Date() }
   }, {});
 
   const totalConsommation = monthlyRows.reduce((sum, row) => sum + row.consommationKwh, 0);
+  const latestFacture = [...factures].sort((left, right) => {
+    const monthLeft = getFactureMonthKey(left) || '';
+    const monthRight = getFactureMonthKey(right) || '';
+    return monthRight.localeCompare(monthLeft);
+  })[0] || null;
+  const latestKnownIndex = toNumber(
+    latestFacture?.newIndex ??
+      latestFacture?.indexActif ??
+      latestFacture?.index ??
+      latestFacture?.currentIndex
+  );
+  const nouvelIndexEstime =
+    latestKnownIndex > 0 ? latestKnownIndex + consommationEstimee : 0;
 
   return {
     hasData: monthlyRows.length > 0,
@@ -179,8 +243,20 @@ export const buildFactureInsights = (factures = [], { currentDate = new Date() }
     pmaxHistorique,
     cosPhiMoyenne,
     rolling12Consumption,
-    optimisationRate: diffYtd / 100,
+    optimisationRate: optimisationMoyenne6Mois,
+    optimisationDuMois,
+    optimisationMonthPercent: optimisationDuMois * 100,
+    optimisationMoyenne6Mois,
+    optimisationAverage6MonthsPercent: optimisationMoyenne6Mois * 100,
+    optimisationMonthsUsed: optimisationCandidates.length,
+    hasOptimisation6Months,
+    tauxOptimisation,
+    facteurClimatique,
+    consommationEstimee,
+    latestKnownIndex,
+    nouvelIndexEstime,
     totalConsommation,
+    monthlyComparisons,
     monthlyRows,
     yearlyTotals,
     recentFactures: [...factures].sort((a, b) => {
