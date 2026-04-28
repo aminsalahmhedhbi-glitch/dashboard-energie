@@ -3,6 +3,15 @@ import { Check, CloudSun, Database, Snowflake, Sun } from 'lucide-react';
 
 const getLastDayOfMonth = (year, month) => new Date(year, month, 0).getDate();
 
+const getAvailableLastDay = (year, month) => {
+  const lastDayOfMonth = getLastDayOfMonth(year, month);
+  const today = new Date();
+  const isCurrentMonth =
+    today.getFullYear() === year && today.getMonth() + 1 === month;
+
+  return isCurrentMonth ? Math.min(today.getDate(), lastDayOfMonth) : lastDayOfMonth;
+};
+
 const buildArchiveUrl = ({ latitude, longitude, year, monthStr, lastDay }) =>
   `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${year}-${monthStr}-01&end_date=${year}-${monthStr}-${String(lastDay).padStart(2, '0')}&daily=temperature_2m_max,temperature_2m_min&timezone=Africa%2FTunis`;
 
@@ -84,7 +93,7 @@ export default function EstimationClimatique({
     const estEte = mois >= 5 && mois <= 10;
     const baseTemp = estEte ? 24 : 18;
     const typeDJ = estEte ? 'DJC' : 'DJH';
-    const lastDay = getLastDayOfMonth(anneeN, mois);
+    const lastDay = getAvailableLastDay(anneeN, mois);
 
     try {
       const { latitude, longitude } = coordinates;
@@ -93,7 +102,7 @@ export default function EstimationClimatique({
 
       const [resN, resN_1] = await Promise.all([fetch(urlN), fetch(urlN_1)]);
       if (!resN.ok || !resN_1.ok) {
-        throw new Error("Impossible de recuperer les donnees Open-Meteo.");
+        throw new Error("Impossible de recuperer les donnees Open-Meteo pour cette periode.");
       }
 
       const dataN = await resN.json();
