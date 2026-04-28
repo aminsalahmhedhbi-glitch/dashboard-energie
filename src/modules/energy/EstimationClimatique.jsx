@@ -333,15 +333,15 @@ export default function EstimationClimatique({
               </table>
             </div>
 
-            <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 md:grid-cols-[140px_1fr_1fr] md:items-end">
-              <div className="text-3xl font-black tracking-tight text-slate-900">
+            <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 md:grid-cols-[120px_1fr_1fr] md:items-end">
+              <div className="text-2xl font-black tracking-tight text-slate-900">
                 Totale
               </div>
               <div className="rounded-lg bg-slate-50 px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   {DISPLAY_DJ_LABEL} N-1
                 </div>
-                <div className="mt-1 text-xl font-black text-slate-900">
+                <div className="mt-1 text-lg font-black text-slate-900">
                   {resultats.totalDjN_1.toFixed(1)}
                 </div>
                 <div className="mt-1 text-[10px] text-slate-500">
@@ -349,10 +349,10 @@ export default function EstimationClimatique({
                 </div>
               </div>
               <div className="rounded-lg bg-blue-50 px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">
                   {DISPLAY_DJ_LABEL} N
                 </div>
-                <div className="mt-1 text-xl font-black text-blue-900">
+                <div className="mt-1 text-lg font-black text-blue-900">
                   {resultats.totalDjN.toFixed(1)}
                 </div>
                 <div className="mt-1 text-[10px] text-blue-700">

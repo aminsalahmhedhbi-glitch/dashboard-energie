@@ -1592,7 +1592,7 @@ const StegModule = ({ onBack, userRole, user }) => {
                                             x {(climatePreview?.multiplicateurOpti ?? indexEstimation.tauxOptimisation).toFixed(3)}
                                         </div>
                                         <div className="mt-1 text-xs text-slate-500">
-                                            (Influence : {((climateEstimationContext.tauxOpti ?? indexEstimation.optimisation6Mois ?? 0) * 100).toFixed(2)}%)
+                                            Influence : {((climateEstimationContext.tauxOpti ?? indexEstimation.optimisation6Mois ?? 0) * 100).toFixed(2)}%
                                         </div>
                                     </div>
 
