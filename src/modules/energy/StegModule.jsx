@@ -1611,14 +1611,28 @@ const StegModule = ({ onBack, userRole, user }) => {
                         ) : (
                             sortedBillingHistory.slice(0, 24).map((log, i) => {
                                 const consommation = Number(log.billedKwh ?? log.consumptionGrid ?? log.energyRecorded ?? 0);
+                                const consommationReseau = Number(log.consumptionGrid ?? log.billedKwh ?? log.energyRecorded ?? 0);
                                 const consommationTotale = Number(log.consommationTotale ?? 0);
                                 const coutBrut = Number(log.coutBrut ?? 0);
                                 const gainPv = Number(log.gainPv ?? 0);
+                                const productionPv = Number(log.productionPv ?? 0);
+                                const productionPvInjectee = Number(
+                                    log.productionPvInjectee ??
+                                    log.pvExport ??
+                                    log.exportSteg ??
+                                    log.pvInjected ??
+                                    0
+                                );
                                 const facteurPuissance = log.cosPhi ?? log.PF_SUM ?? null;
                                 const prix = Number(log.netToPay ?? 0);
                                 const pmax = Number(log.Pmax ?? log.maxPower ?? 0);
                                 const dateFacture = log.recordDate || log.date || log._createdAt || '-';
-                                const isShowroomLac = String(log.siteId) === '4' || String(log.site) === 'LAC';
+                                const isShowroomLac =
+                                    String(log.siteId) === '4' ||
+                                    String(log.siteId) === '4.0' ||
+                                    String(log.site).toUpperCase() === 'LAC' ||
+                                    String(log.siteKey).toUpperCase() === 'LAC' ||
+                                    String(log.siteName || '').toLowerCase().includes('showroom lac');
 
                                 return (
                                     <div
@@ -1632,17 +1646,26 @@ const StegModule = ({ onBack, userRole, user }) => {
                                                     <span className="text-slate-500">{dateFacture}</span>
                                                 </div>
 
-                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-slate-700 mt-1">
-                                                    <span>Conso: <b>{formatNumber(consommation)} kWh</b></span>
-                                                    <span>Pmax: <b>{pmax > 0 ? `${formatNumber(pmax)} kVA` : '-'}</b></span>
-                                                    <span>Cos φ: <b>{facteurPuissance !== null && facteurPuissance !== '' ? formatNumber(Number(facteurPuissance)) : '-'}</b></span>
-                                                    <span className="text-emerald-700">Prix: <b>{formatMoney(prix)}</b></span>
-                                                </div>
-                                                {isShowroomLac && (
-                                                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-slate-600">
-                                                        <span>Conso totale: <b>{formatNumber(consommationTotale)} kWh</b></span>
-                                                        <span>Coût brut: <b>{formatMoney(coutBrut)}</b></span>
-                                                        <span className={gainPv >= 0 ? 'text-emerald-700' : 'text-red-700'}>Gain PV: <b>{formatMoney(gainPv)}</b></span>
+                                                {isShowroomLac ? (
+                                                    <>
+                                                        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-slate-700">
+                                                            <span>Consommation reseau: <b>{formatNumber(consommationReseau)} kWh</b></span>
+                                                            <span>Production PV: <b>{formatNumber(productionPv)} kWh</b></span>
+                                                            <span>PV injectee: <b>{formatNumber(productionPvInjectee)} kWh</b></span>
+                                                            <span className="text-emerald-700">Net a payer: <b>{formatMoney(prix)}</b></span>
+                                                        </div>
+                                                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-slate-600">
+                                                            <span>Consommation totale: <b>{formatNumber(consommationTotale)} kWh</b></span>
+                                                            <span>Cout brut: <b>{formatMoney(coutBrut)}</b></span>
+                                                            <span className={gainPv >= 0 ? 'text-emerald-700' : 'text-red-700'}>Gain PV: <b>{formatMoney(gainPv)}</b></span>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-slate-700 mt-1">
+                                                        <span>Conso: <b>{formatNumber(consommation)} kWh</b></span>
+                                                        <span>Pmax: <b>{pmax > 0 ? `${formatNumber(pmax)} kVA` : '-'}</b></span>
+                                                        <span>Cos phi: <b>{facteurPuissance !== null && facteurPuissance !== '' ? formatNumber(Number(facteurPuissance)) : '-'}</b></span>
+                                                        <span className="text-emerald-700">Prix: <b>{formatMoney(prix)}</b></span>
                                                     </div>
                                                 )}
                                             </div>
