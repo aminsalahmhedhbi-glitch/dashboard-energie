@@ -28,6 +28,7 @@ import { apiFetch, saveCollectionItem as saveData } from '../../lib/api';
 import { getSiteDisplayName } from '../../lib/sites';
 import { useData } from '../../hooks/useData';
 import { emitFacturesChanged } from '../../hooks/useFactures';
+import EstimationClimatique from './EstimationClimatique';
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(() =>
@@ -829,6 +830,16 @@ const StegModule = ({ onBack, userRole, user }) => {
     7: 'CHARGUEYAA'
   };
 
+  const SITE_CLIMATE_CONFIG = {
+    1: { latitude: 36.7699, longitude: 10.2294, partCVC: 0.4 },
+    2: { latitude: 36.8399, longitude: 10.1947, partCVC: 0.4 },
+    3: { latitude: 36.6466, longitude: 10.1012, partCVC: 0.35 },
+    4: { latitude: 36.8421, longitude: 10.2723, partCVC: 0.55 },
+    5: { latitude: 36.8664, longitude: 10.3321, partCVC: 0.45 },
+    6: { latitude: 36.8531, longitude: 10.3235, partCVC: 0.45 },
+    7: { latitude: 36.8531, longitude: 10.3235, partCVC: 0.45 }
+  };
+
   const siteHistoryById = useMemo(() => {
     const map = new Map();
     (siteHistoryRecords || []).forEach((item) => {
@@ -1011,6 +1022,76 @@ const StegModule = ({ onBack, userRole, user }) => {
       monthsUsed: monthlyOptimisations.length
     };
   }, [currentSite, formData.date, formData.lastIndex, siteHistoryById, billingHistoryByMonth]);
+
+  const latestBilledMonthForSite = useMemo(() => {
+    const monthKeys = filteredBillingHistory
+      .map((log) => String(log.recordDate || log.date || '').slice(0, 7))
+      .filter((value) => /^\d{4}-\d{2}$/.test(value))
+      .sort();
+
+    return monthKeys.length ? monthKeys[monthKeys.length - 1] : '';
+  }, [filteredBillingHistory]);
+
+  const climateEstimationContext = useMemo(() => {
+    const siteKey = SITE_HISTORY_KEYS[currentSite];
+    const climateConfig = SITE_CLIMATE_CONFIG[currentSite] || SITE_CLIMATE_CONFIG[1];
+    const selectedMonth = formData.date || latestBilledMonthForSite;
+
+    if (!siteKey || !selectedMonth || !/^\d{4}-\d{2}$/.test(selectedMonth)) {
+      return { available: false, reason: "Mois cible indisponible pour l'analyse climatique." };
+    }
+
+    const [selectedYearStr, selectedMonthStr] = selectedMonth.split('-');
+    const selectedYear = Number(selectedYearStr);
+    const selectedMonthIdx = Math.max(0, Number(selectedMonthStr) - 1);
+    const previousYearSameMonth = getSiteHistoryMonthValue(siteKey, selectedYear - 1, selectedMonthIdx);
+    const refRow = siteHistoryById.get(`${siteKey}_REF`);
+    const refSeries = normalizeHistorySeries(refRow?.[siteKey === 'LAC' ? 'grid' : 'months']);
+    const fallbackRefValue = Number(refSeries[selectedMonthIdx] || 0);
+    const climateReferenceConsumption = previousYearSameMonth > 0 ? previousYearSameMonth : fallbackRefValue;
+    const tauxOptimisationBrut =
+      typeof indexEstimation.optimisation6Mois === 'number'
+        ? indexEstimation.optimisation6Mois
+        : performanceSiteData.optimisationAvailable
+          ? performanceSiteData.tauxOptimisationAnnuel
+          : 0;
+
+    if (!(climateReferenceConsumption > 0)) {
+      return { available: false, reason: "Reference N-1 ou REF manquante pour l'estimation climatique." };
+    }
+
+    const dernierMoisFacture =
+      latestBilledMonthForSite && /^\d{4}-\d{2}$/.test(latestBilledMonthForSite)
+        ? latestBilledMonthForSite
+        : (() => {
+            const targetDate = new Date(`${selectedMonth}-01T00:00:00`);
+            targetDate.setMonth(targetDate.getMonth() - 1);
+            return `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+          })();
+
+    return {
+      available: true,
+      siteKey,
+      selectedMonth,
+      dernierMoisFacture,
+      consoRefN_1: climateReferenceConsumption,
+      tauxOpti: tauxOptimisationBrut,
+      partCVC: climateConfig.partCVC,
+      coordinates: {
+        latitude: climateConfig.latitude,
+        longitude: climateConfig.longitude
+      }
+    };
+  }, [
+    currentSite,
+    filteredBillingHistory,
+    formData.date,
+    indexEstimation.optimisation6Mois,
+    latestBilledMonthForSite,
+    performanceSiteData.optimisationAvailable,
+    performanceSiteData.tauxOptimisationAnnuel,
+    siteHistoryById
+  ]);
 
   const currentSiteObj = SITES.find(s => s.id === currentSite) || SITES[0];
   const isBT = currentSiteObj.type.startsWith('BT');
@@ -1521,6 +1602,26 @@ const StegModule = ({ onBack, userRole, user }) => {
                                 </div>
                             )}
                         </div>
+
+                        {climateEstimationContext.available && (
+                            <EstimationClimatique
+                                siteId={currentSiteObj.code}
+                                siteLabel={currentSiteObj.name}
+                                dernierMoisFacture={climateEstimationContext.dernierMoisFacture}
+                                moisCibleOverride={climateEstimationContext.selectedMonth}
+                                consoRefN_1={climateEstimationContext.consoRefN_1}
+                                tauxOpti={climateEstimationContext.tauxOpti}
+                                partCVC={climateEstimationContext.partCVC}
+                                coordinates={climateEstimationContext.coordinates}
+                                onSave={({ estimationFinale }) => {
+                                    const ancienIndex = Number(formData.lastIndex || 0);
+                                    const nouvelIndexEstime = ancienIndex + Number(estimationFinale || 0);
+                                    handleInputChange('newIndex', String(Math.round(nouvelIndexEstime)));
+                                    setNotification({ msg: "Estimation climatique appliquee a l'index", type: 'success' });
+                                    setTimeout(() => setNotification(null), 3000);
+                                }}
+                            />
+                        )}
 
 
                         {billingAnomalies.length > 0 && (
