@@ -509,12 +509,20 @@ const StegModule = ({ onBack, userRole, user }) => {
             method: 'DELETE'
         });
 
-        setNotification({ msg: "Facture supprimée du PC", type: 'success' });
+        setBillingHistory((prev) => prev.filter((item) => String(item._id || item.id) !== String(billingId)));
+        setNotification({ msg: "Facture supprimee", type: 'success' });
         await fetchBillingHistory();
         emitFacturesChanged();
     } catch (error) {
-        console.error(error);
-        setNotification({ msg: "Erreur suppression facture", type: 'error' });
+        if (error?.status === 404) {
+            setBillingHistory((prev) => prev.filter((item) => String(item._id || item.id) !== String(billingId)));
+            setNotification({ msg: "Facture deja supprimee, historique actualise", type: 'success' });
+            await fetchBillingHistory();
+            emitFacturesChanged();
+        } else {
+            console.error(error);
+            setNotification({ msg: "Erreur suppression facture", type: 'error' });
+        }
     }
 
     setTimeout(() => setNotification(null), 3000);
@@ -1656,7 +1664,7 @@ const StegModule = ({ onBack, userRole, user }) => {
                                                         </div>
                                                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-slate-600">
                                                             <span>Consommation totale: <b>{formatNumber(consommationTotale)} kWh</b></span>
-                                                            <span>Cout brut: <b>{formatMoney(coutBrut)}</b></span>
+                                                            <span className="text-red-700">Cout brut: <b>{formatMoney(coutBrut)}</b></span>
                                                             <span className={gainPv >= 0 ? 'text-emerald-700' : 'text-red-700'}>Gain PV: <b>{formatMoney(gainPv)}</b></span>
                                                         </div>
                                                     </>
