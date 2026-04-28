@@ -299,6 +299,7 @@ const StegModule = ({ onBack, userRole, user }) => {
     lastIndex: '', newIndex: '', 
     lastIndexPv: '', newIndexPv: '', 
     previousBalance: '',
+    productionPv: '',
     cosPhi: '', reactiveCons: '', maxPower: '', 
     lateFees: '', relanceFees: '', adjustment: '',
   });
@@ -325,14 +326,18 @@ const StegModule = ({ onBack, userRole, user }) => {
       ...prev,
       lastIndex: lastLog?.newIndex ?? '',
       ...(currentSiteType === 'BT_PV'
-        ? { lastIndexPv: lastLog?.newIndexPv ?? '', previousBalance: lastLog?.newCarryOver ?? '' }
+        ? {
+            lastIndexPv: lastLog?.newIndexPv ?? '',
+            previousBalance: lastLog?.newCarryOver ?? '',
+            productionPv: currentSite === 4 ? lastLog?.productionPv ?? '' : prev.productionPv
+          }
         : {})
     }));
   }
 }, [currentSite, billingHistory]);
 
   const handleInputChange = (field, value) => {
-    const cleanValue = ['lastIndex', 'newIndex', 'lastIndexPv', 'newIndexPv', 'previousBalance', 'maxPower', 'reactiveCons'].includes(field) ? parseInputValue(value) : value;
+    const cleanValue = ['lastIndex', 'newIndex', 'lastIndexPv', 'newIndexPv', 'previousBalance', 'productionPv', 'maxPower', 'reactiveCons'].includes(field) ? parseInputValue(value) : value;
     setFormData(prev => ({ ...prev, [field]: cleanValue }));
   };
 
@@ -365,22 +370,32 @@ const StegModule = ({ onBack, userRole, user }) => {
         let billedKwh = consumptionGrid;
         let newCarryOver = 0;
         let productionPv = 0;
+        let productionPvInjectee = 0;
         let prevBalance = 0;
         let currentMonthBalance = 0;
         let totalBalance = 0;
+        let consommationTotale = 0;
+        let coutBrut = 0;
+        let gainPv = 0;
+        let unitPriceBT = parseFloat(cfg.unitPriceKwhBT) || 0.391;
 
         if (site.type === 'BT_PV') {
             const newIdxPv = parseFloat(formData.newIndexPv) || 0;
             const oldIdxPv = parseFloat(formData.lastIndexPv) || 0;
             prevBalance = parseFloat(formData.previousBalance) || 0;
-            productionPv = Math.max(0, newIdxPv - oldIdxPv);
-            currentMonthBalance = consumptionGrid - productionPv;
+            productionPvInjectee = Math.max(0, newIdxPv - oldIdxPv);
+            productionPv = site.id === 4 ? Math.max(0, parseFloat(formData.productionPv) || 0) : productionPvInjectee;
+            currentMonthBalance = consumptionGrid - productionPvInjectee;
             totalBalance = currentMonthBalance + prevBalance;
             if (totalBalance > 0) { billedKwh = totalBalance; newCarryOver = 0; } 
             else { billedKwh = 0; newCarryOver = totalBalance; }
+
+            if (site.id === 4) {
+                consommationTotale = consumptionGrid + (productionPv - productionPvInjectee);
+                coutBrut = consommationTotale * unitPriceBT;
+            }
         }
 
-        const unitPriceBT = parseFloat(cfg.unitPriceKwhBT) || 0.391;
         const fixedFees = parseFloat(cfg.fixedFeesBT) || 115.5;
         const services = parseFloat(cfg.servicesBT) || 0;
         
@@ -395,10 +410,14 @@ const StegModule = ({ onBack, userRole, user }) => {
         
         const totalFinalTTC = totalTTC + contributionCL + rtt + fteElec + fteGaz;
         const netToPay = totalFinalTTC + adjustment + lateFees + relanceFees;
+        if (site.id === 4) {
+            gainPv = coutBrut - netToPay;
+        }
         
         return { 
-            type: site.type, consumptionGrid, productionPv, currentMonthBalance, prevBalance, totalBalance, 
-            billedKwh, newCarryOver, consoAmountHT, fixedAmountHT, totalTTC, contributionCL, fteElec, fteGaz, netToPay, totalFinalTTC, totalHT 
+            type: site.type, consumptionGrid, productionPv, productionPvInjectee, currentMonthBalance, prevBalance, totalBalance, 
+            billedKwh, newCarryOver, consoAmountHT, fixedAmountHT, totalTTC, contributionCL, fteElec, fteGaz, netToPay, totalFinalTTC, totalHT,
+            consommationTotale, coutBrut, gainPv, unitPriceKwh: unitPriceBT
         };
     }
     else {
@@ -524,6 +543,18 @@ const StegModule = ({ onBack, userRole, user }) => {
         prixDt: Number(metrics.netToPay ?? metrics.totalFinalTTC ?? 0),
         Pmax: parseFloat(formData.maxPower) || 0,
         ...formData,
+        productionPvInjectee:
+          Number(
+            metrics.productionPvInjectee ??
+            formData.pvExport ??
+            formData.productionPvInjectee ??
+            formData.exportSteg ??
+            formData.pvInjected ??
+            0
+          ),
+        consommationTotale: Number(metrics.consommationTotale ?? 0),
+        coutBrut: Number(metrics.coutBrut ?? 0),
+        gainPv: Number(metrics.gainPv ?? 0),
         ...metrics
     };
 
@@ -545,7 +576,8 @@ const StegModule = ({ onBack, userRole, user }) => {
                 ? {
                     lastIndexPv: formData.newIndexPv,
                     newIndexPv: '',
-                    previousBalance: metrics.newCarryOver
+                    previousBalance: metrics.newCarryOver,
+                    ...(site.id === 4 ? { productionPv: '' } : {})
                   }
                 : {}),
             cosPhi: '',
@@ -1236,6 +1268,17 @@ const StegModule = ({ onBack, userRole, user }) => {
                                         <div><label className="text-[10px] font-bold text-orange-800">Nouveau PV</label><input type="text" value={formatInputDisplay(formData.newIndexPv)} onChange={e => handleInputChange('newIndexPv', e.target.value)} className="w-full text-xs p-1 border rounded font-mono" /></div>
                                     </div>
                                     <div><label className="text-xs font-bold text-slate-600">Solde N-1</label><input type="text" value={formatInputDisplay(formData.previousBalance)} onChange={e => handleInputChange('previousBalance', e.target.value)} className="w-full text-sm p-2 border rounded" /></div>
+                                    {currentSite === 4 && (
+                                        <div>
+                                            <label className="text-xs font-bold text-emerald-700">Production PV</label>
+                                            <input
+                                                type="text"
+                                                value={formatInputDisplay(formData.productionPv)}
+                                                onChange={e => handleInputChange('productionPv', e.target.value)}
+                                                className="w-full text-sm p-2 border rounded border-emerald-200 bg-white font-mono"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             ) : currentSiteObj.type === 'MT' ? (
                                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
@@ -1284,7 +1327,15 @@ const StegModule = ({ onBack, userRole, user }) => {
                              <>
                                <div className="pb-3 border-b border-slate-50 border-dashed space-y-2">
                                   <div className="flex justify-between text-slate-600"><span>Conso Réseau</span><span className="font-mono">{formatNumber(displayMetrics.consumptionGrid)} kWh</span></div>
-                                  <div className="flex justify-between text-orange-600"><span>Prod Photovoltaïque</span><span className="font-mono">-{formatNumber(displayMetrics.productionPv)} kWh</span></div>
+                                  <div className="flex justify-between text-orange-600"><span>PV injectée</span><span className="font-mono">-{formatNumber(displayMetrics.productionPvInjectee ?? displayMetrics.productionPv)} kWh</span></div>
+                                  {currentSite === 4 && (
+                                      <>
+                                        <div className="flex justify-between text-emerald-700"><span>Production PV</span><span className="font-mono">{formatNumber(displayMetrics.productionPv)} kWh</span></div>
+                                        <div className="flex justify-between text-slate-700"><span>Consommation totale</span><span className="font-mono">{formatNumber(displayMetrics.consommationTotale)} kWh</span></div>
+                                        <div className="flex justify-between text-slate-700"><span>Coût brut</span><span className="font-mono">{formatMoney(displayMetrics.coutBrut)}</span></div>
+                                        <div className={`flex justify-between font-bold ${Number(displayMetrics.gainPv) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}><span>Gain PV</span><span className="font-mono">{formatMoney(displayMetrics.gainPv)}</span></div>
+                                      </>
+                                  )}
                                   <div className="flex justify-between text-slate-500 text-xs bg-slate-50 p-1 rounded"><span>Solde N-1</span><span className="font-mono">{formatNumber(displayMetrics.prevBalance)} kWh</span></div>
                                   <div className={`flex justify-between font-bold p-2 rounded ${displayMetrics.totalBalance > 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}><span>Solde Final</span><span>{formatNumber(displayMetrics.totalBalance)} kWh</span></div>
                                   {displayMetrics.totalBalance <= 0 ? <div className="text-xs text-center text-emerald-600 italic">Crédit reporté au mois prochain</div> : <div className="flex justify-between text-slate-800 font-bold border-t pt-2"><span>Facturé ({formatNumber(displayMetrics.billedKwh)} kWh)</span><span>{formatMoney(displayMetrics.consoAmountHT)}</span></div>}
@@ -1560,10 +1611,14 @@ const StegModule = ({ onBack, userRole, user }) => {
                         ) : (
                             sortedBillingHistory.slice(0, 24).map((log, i) => {
                                 const consommation = Number(log.billedKwh ?? log.consumptionGrid ?? log.energyRecorded ?? 0);
+                                const consommationTotale = Number(log.consommationTotale ?? 0);
+                                const coutBrut = Number(log.coutBrut ?? 0);
+                                const gainPv = Number(log.gainPv ?? 0);
                                 const facteurPuissance = log.cosPhi ?? log.PF_SUM ?? null;
                                 const prix = Number(log.netToPay ?? 0);
                                 const pmax = Number(log.Pmax ?? log.maxPower ?? 0);
                                 const dateFacture = log.recordDate || log.date || log._createdAt || '-';
+                                const isShowroomLac = String(log.siteId) === '4' || String(log.site) === 'LAC';
 
                                 return (
                                     <div
@@ -1583,6 +1638,13 @@ const StegModule = ({ onBack, userRole, user }) => {
                                                     <span>Cos φ: <b>{facteurPuissance !== null && facteurPuissance !== '' ? formatNumber(Number(facteurPuissance)) : '-'}</b></span>
                                                     <span className="text-emerald-700">Prix: <b>{formatMoney(prix)}</b></span>
                                                 </div>
+                                                {isShowroomLac && (
+                                                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-slate-600">
+                                                        <span>Conso totale: <b>{formatNumber(consommationTotale)} kWh</b></span>
+                                                        <span>Coût brut: <b>{formatMoney(coutBrut)}</b></span>
+                                                        <span className={gainPv >= 0 ? 'text-emerald-700' : 'text-red-700'}>Gain PV: <b>{formatMoney(gainPv)}</b></span>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {userRole === 'ADMIN' && (
