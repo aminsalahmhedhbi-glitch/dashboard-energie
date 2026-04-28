@@ -1568,15 +1568,6 @@ const StegModule = ({ onBack, userRole, user }) => {
                                         Estimation pour le mois {formData.date || new Date().toISOString().slice(0, 7)} bas??e sur le mois REF ??quivalent.
                                     </div>
                                 </div>
-                                {indexEstimation.available && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleInputChange('newIndex', String(Math.round(indexEstimation.nouvelIndexEstime)))}
-                                        className="rounded-lg bg-blue-900 text-white px-4 py-2 text-xs font-bold hover:bg-blue-800 transition-colors"
-                                    >
-                                        Utiliser l???index estim??
-                                    </button>
-                                )}
                             </div>
 
                             {indexEstimation.available ? (

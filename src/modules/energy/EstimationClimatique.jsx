@@ -369,7 +369,7 @@ export default function EstimationClimatique({
                   Estimation appliquee
                 </span>
               ) : (
-                'Valider et utiliser cette estimation'
+                'Utiliser cette estimation'
               )}
             </button>
           </div>
