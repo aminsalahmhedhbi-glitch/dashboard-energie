@@ -1560,12 +1560,12 @@ const StegModule = ({ onBack, userRole, user }) => {
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 space-y-4">
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
                                 <div>
-                                    <div className="text-[10px] uppercase font-bold text-emerald-700">Consommation estimée</div>
+                                    <div className="text-[10px] uppercase font-bold text-emerald-700">Consommation estim??e</div>
                                     <div className="text-xs text-slate-600">
-                                        Estimation pour le mois {formData.date || new Date().toISOString().slice(0, 7)} basée sur le mois REF équivalent.
+                                        Estimation pour le mois {formData.date || new Date().toISOString().slice(0, 7)} bas??e sur le mois REF ??quivalent.
                                     </div>
                                 </div>
                                 {indexEstimation.available && (
@@ -1574,54 +1574,55 @@ const StegModule = ({ onBack, userRole, user }) => {
                                         onClick={() => handleInputChange('newIndex', String(Math.round(indexEstimation.nouvelIndexEstime)))}
                                         className="rounded-lg bg-blue-900 text-white px-4 py-2 text-xs font-bold hover:bg-blue-800 transition-colors"
                                     >
-                                        Utiliser l’index estimé
+                                        Utiliser l???index estim??
                                     </button>
                                 )}
                             </div>
 
                             {indexEstimation.available ? (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">Conso REF du même mois</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-500">Conso REF du m??me mois</div>
                                         <div className="text-xl font-black text-slate-900">{formatNumber(indexEstimation.referenceMonthConsumption)} kWh</div>
                                     </div>
 
                                     <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">Taux d’optimisation</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-500">Taux d???optimisation</div>
                                         <div className="text-xl font-black text-blue-900">{formatNumber(indexEstimation.tauxOptimisation)}</div>
                                     </div>
 
                                     <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">Conso estimée</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-500">Conso estim??e</div>
                                         <div className="text-xl font-black text-emerald-700">{formatNumber(indexEstimation.consommationEstimee)} kWh</div>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-500 italic mt-3">
+                                <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-500 italic">
                                     {indexEstimation.reason}
                                 </div>
                             )}
-                        </div>
 
-                        {climateEstimationContext.available && (
-                            <EstimationClimatique
-                                siteId={currentSiteObj.code}
-                                siteLabel={currentSiteObj.name}
-                                dernierMoisFacture={climateEstimationContext.dernierMoisFacture}
-                                moisCibleOverride={climateEstimationContext.selectedMonth}
-                                consoRefN_1={climateEstimationContext.consoRefN_1}
-                                tauxOpti={climateEstimationContext.tauxOpti}
-                                partCVC={climateEstimationContext.partCVC}
-                                coordinates={climateEstimationContext.coordinates}
-                                onSave={({ estimationFinale }) => {
-                                    const ancienIndex = Number(formData.lastIndex || 0);
-                                    const nouvelIndexEstime = ancienIndex + Number(estimationFinale || 0);
-                                    handleInputChange('newIndex', String(Math.round(nouvelIndexEstime)));
-                                    setNotification({ msg: "Estimation climatique appliquee a l'index", type: 'success' });
-                                    setTimeout(() => setNotification(null), 3000);
-                                }}
-                            />
-                        )}
+                            {climateEstimationContext.available && (
+                                <EstimationClimatique
+                                    siteId={currentSiteObj.code}
+                                    siteLabel={currentSiteObj.name}
+                                    dernierMoisFacture={climateEstimationContext.dernierMoisFacture}
+                                    moisCibleOverride={climateEstimationContext.selectedMonth}
+                                    consoRefN_1={climateEstimationContext.consoRefN_1}
+                                    tauxOpti={climateEstimationContext.tauxOpti}
+                                    partCVC={climateEstimationContext.partCVC}
+                                    coordinates={climateEstimationContext.coordinates}
+                                    embedded
+                                    onSave={({ estimationFinale }) => {
+                                        const ancienIndex = Number(formData.lastIndex || 0);
+                                        const nouvelIndexEstime = ancienIndex + Number(estimationFinale || 0);
+                                        handleInputChange('newIndex', String(Math.round(nouvelIndexEstime)));
+                                        setNotification({ msg: "Estimation climatique appliquee a l'index", type: 'success' });
+                                        setTimeout(() => setNotification(null), 3000);
+                                    }}
+                                />
+                            )}
+                        </div>
 
 
                         {billingAnomalies.length > 0 && (

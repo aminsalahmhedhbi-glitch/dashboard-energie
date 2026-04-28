@@ -25,6 +25,7 @@ export default function EstimationClimatique({
   partCVC = 0.4,
   coordinates = { latitude: 36.8065, longitude: 10.1815 },
   onSave = () => {},
+  embedded = false,
 }) {
   const [moisCible, setMoisCible] = useState('');
   const [isFetching, setIsFetching] = useState(false);
@@ -202,8 +203,12 @@ export default function EstimationClimatique({
 
   if (!dernierMoisFacture && !moisCibleOverride) return null;
 
+  const rootClassName = embedded
+    ? 'border-t border-emerald-200 pt-4'
+    : 'mt-4 rounded-xl border border-emerald-100 bg-white p-4 shadow-sm';
+
   return (
-    <div className="mt-4 rounded-xl border border-emerald-100 bg-white p-4 shadow-sm">
+    <div className={rootClassName}>
       <div className="flex flex-col gap-4 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-blue-900">
@@ -248,7 +253,7 @@ export default function EstimationClimatique({
         <div className="mt-4 space-y-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <div className="rounded-lg border border-slate-200 bg-white p-3">
-              <div className="mb-1 text-[10px] font-bold uppercase text-slate-500">Conso ref N-1</div>
+              <div className="mb-1 text-[10px] font-bold uppercase text-slate-500">Conso REF N-1</div>
               <div className="text-xl font-black text-slate-900">
                 {Number(consoRefN_1 || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kWh
               </div>
@@ -303,9 +308,9 @@ export default function EstimationClimatique({
                   {donneesJournalieres.slice(0, 4).map((row) => (
                     <tr key={`${row.dateN}-${row.jour}`}>
                       <td className="py-1 text-slate-500">{row.jour}</td>
-                      <td className="py-1 text-right">{row.tMoyN_1.toFixed(1)}°</td>
+                      <td className="py-1 text-right">{row.tMoyN_1.toFixed(1)} deg</td>
                       <td className="py-1 text-right font-semibold">{row.djN_1.toFixed(1)}</td>
-                      <td className="py-1 text-right text-blue-600">{row.tMoyN.toFixed(1)}°</td>
+                      <td className="py-1 text-right text-blue-600">{row.tMoyN.toFixed(1)} deg</td>
                       <td className="py-1 text-right font-semibold text-blue-700">{row.djN.toFixed(1)}</td>
                     </tr>
                   ))}
