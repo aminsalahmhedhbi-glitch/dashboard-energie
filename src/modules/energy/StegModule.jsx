@@ -1023,6 +1023,13 @@ const StegModule = ({ onBack, userRole, user }) => {
     };
   }, [currentSite, formData.date, formData.lastIndex, siteHistoryById, billingHistoryByMonth]);
 
+  const estimationMonthLabel = useMemo(() => {
+    const targetMonth = formData.date || new Date().toISOString().slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(targetMonth)) return '';
+    const [year, month] = targetMonth.split('-').map(Number);
+    return new Date(year, month - 1, 1).toLocaleDateString('fr-FR', { month: 'long' });
+  }, [formData.date]);
+
   const latestBilledMonthForSite = useMemo(() => {
     const monthKeys = filteredBillingHistory
       .map((log) => String(log.recordDate || log.date || '').slice(0, 7))
@@ -1563,9 +1570,9 @@ const StegModule = ({ onBack, userRole, user }) => {
                         <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 space-y-4">
                             <div className="flex items-start justify-between gap-3 flex-wrap">
                                 <div>
-                                    <div className="text-[10px] uppercase font-bold text-emerald-700">Consommation estim??e</div>
+                                    <div className="text-[10px] uppercase font-bold text-emerald-700">Consommation estim&eacute;e</div>
                                     <div className="text-xs text-slate-600">
-                                        Estimation pour le mois {formData.date || new Date().toISOString().slice(0, 7)} bas??e sur le mois REF ??quivalent.
+                                        Estimation pour le mois {formData.date || new Date().toISOString().slice(0, 7)} bas&eacute;e sur le mois REF &eacute;quivalent.
                                     </div>
                                 </div>
                             </div>
@@ -1573,17 +1580,17 @@ const StegModule = ({ onBack, userRole, user }) => {
                             {indexEstimation.available ? (
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">Conso REF du m??me mois</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-500">Conso REF du m&ecirc;me mois ({estimationMonthLabel})</div>
                                         <div className="text-xl font-black text-slate-900">{formatNumber(indexEstimation.referenceMonthConsumption)} kWh</div>
                                     </div>
 
                                     <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">Taux d???optimisation</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-500">Taux d&rsquo;optimisation</div>
                                         <div className="text-xl font-black text-blue-900">{formatNumber(indexEstimation.tauxOptimisation)}</div>
                                     </div>
 
                                     <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">Conso estim??e</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-500">Conso estim&eacute;e</div>
                                         <div className="text-xl font-black text-emerald-700">{formatNumber(indexEstimation.consommationEstimee)} kWh</div>
                                     </div>
                                 </div>
