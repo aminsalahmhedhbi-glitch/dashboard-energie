@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Check, CloudSun, Database, Snowflake, Sun } from 'lucide-react';
 
 const getLastDayOfMonth = (year, month) => new Date(year, month, 0).getDate();
+const DISPLAY_DJ_LABEL = 'DJ H/C';
 
 const getAvailableLastDay = (year, month) => {
   const lastDayOfMonth = getLastDayOfMonth(year, month);
@@ -25,6 +26,7 @@ export default function EstimationClimatique({
   partCVC = 0.4,
   coordinates = { latitude: 36.8065, longitude: 10.1815 },
   onSave = () => {},
+  onResultChange = () => {},
   embedded = false,
 }) {
   const [moisCible, setMoisCible] = useState('');
@@ -62,6 +64,10 @@ export default function EstimationClimatique({
     setErrorMessage('');
     setIsSaved(false);
   }, [dernierMoisFacture, moisCibleOverride, siteId]);
+
+  useEffect(() => {
+    onResultChange(resultats);
+  }, [onResultChange, resultats]);
 
   const canRun = useMemo(
     () => Boolean(moisCible) && Number(consoRefN_1) > 0,
@@ -251,40 +257,42 @@ export default function EstimationClimatique({
 
       {resultats && (
         <div className="mt-4 space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <div className="rounded-lg border border-slate-200 bg-white p-3">
-              <div className="mb-1 text-[10px] font-bold uppercase text-slate-500">Conso REF N-1</div>
-              <div className="text-xl font-black text-slate-900">
-                {Number(consoRefN_1 || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kWh
+          {!embedded && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-4">
+              <div className="rounded-lg border border-slate-200 bg-white p-3">
+                <div className="mb-1 text-[10px] font-bold uppercase text-slate-500">Conso REF N-1</div>
+                <div className="text-xl font-black text-slate-900">
+                  {Number(consoRefN_1 || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kWh
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white p-3">
+                <div className="mb-1 text-[10px] font-bold uppercase text-slate-500">Optimisation</div>
+                <div className="text-xl font-black text-blue-900">x {resultats.multiplicateurOpti.toFixed(3)}</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  Influence : {(Number(tauxOpti || 0) * 100).toFixed(2)} %
+                </div>
+              </div>
+              <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                <div className="mb-1 text-[10px] font-bold uppercase text-blue-700">Facteur climatique</div>
+                <div className="text-xl font-black text-blue-900">x {resultats.facteurClimatique.toFixed(4)}</div>
+                <div className="mt-1 text-xs text-blue-700">
+                  Influence : {(resultats.influenceGlobale * 100).toFixed(2)} %
+                </div>
+              </div>
+              <div className="rounded-lg border-2 border-emerald-500 bg-emerald-50 p-3">
+                <div className="mb-1 text-[10px] font-bold uppercase text-emerald-700">Estimation finale</div>
+                <div className="text-xl font-black text-emerald-800">
+                  {resultats.estimationFinale.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kWh
+                </div>
               </div>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-3">
-              <div className="mb-1 text-[10px] font-bold uppercase text-slate-500">Optimisation</div>
-              <div className="text-xl font-black text-blue-900">x {resultats.multiplicateurOpti.toFixed(3)}</div>
-              <div className="mt-1 text-[10px] text-slate-500">
-                {(Number(tauxOpti || 0) * 100).toFixed(2)} %
-              </div>
-            </div>
-            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
-              <div className="mb-1 text-[10px] font-bold uppercase text-blue-700">Facteur climatique</div>
-              <div className="text-xl font-black text-blue-900">x {resultats.facteurClimatique.toFixed(4)}</div>
-              <div className="mt-1 text-[10px] text-blue-700">
-                Influence DJ: {(resultats.influenceGlobale * 100).toFixed(2)} %
-              </div>
-            </div>
-            <div className="rounded-lg border-2 border-emerald-500 bg-emerald-50 p-3">
-              <div className="mb-1 text-[10px] font-bold uppercase text-emerald-700">Estimation finale</div>
-              <div className="text-xl font-black text-emerald-800">
-                {resultats.estimationFinale.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kWh
-              </div>
-            </div>
-          </div>
+          )}
 
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h4 className="flex items-center gap-2 text-xs font-bold uppercase text-slate-700">
                 <Database size={14} />
-                Apercu jours ({resultats.typeDJ}) - Base {resultats.baseTemp} degC
+                Apercu jours ({DISPLAY_DJ_LABEL}) - Base {resultats.baseTemp} degC
               </h4>
               {resultats.estEte ? (
                 <Sun size={16} className="text-orange-500" />
@@ -299,9 +307,9 @@ export default function EstimationClimatique({
                   <tr>
                     <th className="py-2 text-left font-medium">Jour</th>
                     <th className="py-2 text-right font-medium">Temperature N-1</th>
-                    <th className="py-2 text-right font-semibold">{resultats.typeDJ} N-1</th>
+                    <th className="py-2 text-right font-semibold">{DISPLAY_DJ_LABEL} N-1</th>
                     <th className="py-2 text-right font-medium text-blue-600">Temperature N</th>
-                    <th className="py-2 text-right font-semibold text-blue-600">{resultats.typeDJ} N</th>
+                    <th className="py-2 text-right font-semibold text-blue-600">{DISPLAY_DJ_LABEL} N</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -325,29 +333,29 @@ export default function EstimationClimatique({
               </table>
             </div>
 
-            <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 md:grid-cols-[160px_1fr_1fr] md:items-end">
-              <div className="text-4xl font-black tracking-tight text-slate-900">
+            <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 md:grid-cols-[140px_1fr_1fr] md:items-end">
+              <div className="text-3xl font-black tracking-tight text-slate-900">
                 Totale
               </div>
               <div className="rounded-lg bg-slate-50 px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {resultats.typeDJ} N-1
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  {DISPLAY_DJ_LABEL} N-1
                 </div>
-                <div className="mt-1 text-2xl font-black text-slate-900">
+                <div className="mt-1 text-xl font-black text-slate-900">
                   {resultats.totalDjN_1.toFixed(1)}
                 </div>
-                <div className="mt-1 text-xs text-slate-500">
+                <div className="mt-1 text-[10px] text-slate-500">
                   Somme des valeurs de tout le mois
                 </div>
               </div>
               <div className="rounded-lg bg-blue-50 px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                  {resultats.typeDJ} N
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                  {DISPLAY_DJ_LABEL} N
                 </div>
-                <div className="mt-1 text-2xl font-black text-blue-900">
+                <div className="mt-1 text-xl font-black text-blue-900">
                   {resultats.totalDjN.toFixed(1)}
                 </div>
-                <div className="mt-1 text-xs text-blue-700">
+                <div className="mt-1 text-[10px] text-blue-700">
                   Somme des valeurs de tout le mois
                 </div>
               </div>

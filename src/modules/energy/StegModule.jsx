@@ -305,6 +305,8 @@ const StegModule = ({ onBack, userRole, user }) => {
     lateFees: '', relanceFees: '', adjustment: '',
   });
 
+  const [climatePreview, setClimatePreview] = useState(null);
+
   const formatMoney = (amount) => amount?.toLocaleString('fr-TN', { style: 'currency', currency: 'TND', minimumFractionDigits: 3 });
   const formatNumber = (num) => num?.toLocaleString('fr-TN', { maximumFractionDigits: 2 });
   const formatInputDisplay = (val) => { if (val === '' || val === undefined || val === null) return ''; const cleanVal = val.toString().replace(/[^0-9.-]/g, ''); return cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, " "); };
@@ -1578,20 +1580,37 @@ const StegModule = ({ onBack, userRole, user }) => {
                             </div>
 
                             {indexEstimation.available ? (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                                     <div className="rounded-lg border border-slate-200 bg-white p-3">
                                         <div className="text-[10px] uppercase font-bold text-slate-500">Conso REF du m&ecirc;me mois ({estimationMonthLabel})</div>
                                         <div className="text-xl font-black text-slate-900">{formatNumber(indexEstimation.referenceMonthConsumption)} kWh</div>
                                     </div>
 
                                     <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">Taux d&rsquo;optimisation</div>
-                                        <div className="text-xl font-black text-blue-900">{formatNumber(indexEstimation.tauxOptimisation)}</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-500">Optimisation</div>
+                                        <div className="text-xl font-black text-blue-900">
+                                            x {(climatePreview?.multiplicateurOpti ?? indexEstimation.tauxOptimisation).toFixed(3)}
+                                        </div>
+                                        <div className="mt-1 text-xs text-slate-500">
+                                            (Influence : {((climateEstimationContext.tauxOpti ?? indexEstimation.optimisation6Mois ?? 0) * 100).toFixed(2)}%)
+                                        </div>
                                     </div>
 
-                                    <div className="rounded-lg border border-slate-200 bg-white p-3">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">Conso estim&eacute;e</div>
-                                        <div className="text-xl font-black text-emerald-700">{formatNumber(indexEstimation.consommationEstimee)} kWh</div>
+                                    <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                                        <div className="text-[10px] uppercase font-bold text-blue-700">Facteur climatique</div>
+                                        <div className="text-xl font-black text-blue-900">
+                                            x {Number(climatePreview?.facteurClimatique ?? 1).toFixed(4)}
+                                        </div>
+                                        <div className="mt-1 text-xs text-blue-700">
+                                            Influence : {(Number(climatePreview?.influenceGlobale ?? 0) * 100).toFixed(2)} %
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-lg border-2 border-emerald-500 bg-emerald-50 p-3">
+                                        <div className="text-[10px] uppercase font-bold text-emerald-700">Estimation finale</div>
+                                        <div className="text-xl font-black text-emerald-700">
+                                            {formatNumber(Number((climatePreview?.estimationFinale ?? indexEstimation.consommationEstimee) || 0))} kWh
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
@@ -1611,6 +1630,7 @@ const StegModule = ({ onBack, userRole, user }) => {
                                     partCVC={climateEstimationContext.partCVC}
                                     coordinates={climateEstimationContext.coordinates}
                                     embedded
+                                    onResultChange={setClimatePreview}
                                     onSave={({ estimationFinale }) => {
                                         const ancienIndex = Number(formData.lastIndex || 0);
                                         const nouvelIndexEstime = ancienIndex + Number(estimationFinale || 0);
