@@ -1625,6 +1625,7 @@ const StegModule = ({ onBack, userRole, user }) => {
                                     siteLabel={currentSiteObj.name}
                                     dernierMoisFacture={climateEstimationContext.dernierMoisFacture}
                                     moisCibleOverride={climateEstimationContext.selectedMonth}
+                                    baseConsumption={indexEstimation.referenceMonthConsumption}
                                     consoRefN_1={climateEstimationContext.consoRefN_1}
                                     tauxOpti={climateEstimationContext.tauxOpti}
                                     partCVC={climateEstimationContext.partCVC}

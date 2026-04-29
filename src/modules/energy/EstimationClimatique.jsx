@@ -21,6 +21,7 @@ export default function EstimationClimatique({
   siteLabel = 'Site',
   dernierMoisFacture = '',
   moisCibleOverride = '',
+  baseConsumption = null,
   consoRefN_1 = 0,
   tauxOpti = 0,
   partCVC = 0.4,
@@ -69,9 +70,14 @@ export default function EstimationClimatique({
     onResultChange(resultats);
   }, [onResultChange, resultats]);
 
+  const estimationBaseConsumption = useMemo(
+    () => Number((baseConsumption ?? consoRefN_1) || 0),
+    [baseConsumption, consoRefN_1]
+  );
+
   const canRun = useMemo(
-    () => Boolean(moisCible) && Number(consoRefN_1) > 0,
-    [moisCible, consoRefN_1]
+    () => Boolean(moisCible) && estimationBaseConsumption > 0,
+    [moisCible, estimationBaseConsumption]
   );
 
   const lancerAnalyseClimatique = async () => {
@@ -161,7 +167,7 @@ export default function EstimationClimatique({
       }
 
       const multiplicateurOpti = 1 + Number(tauxOpti || 0);
-      const consoApresOpti = Number(consoRefN_1 || 0) * multiplicateurOpti;
+      const consoApresOpti = estimationBaseConsumption * multiplicateurOpti;
       const variationDJ = totalDjN_1 > 0 ? (totalDjN - totalDjN_1) / totalDjN_1 : 0;
       const influenceGlobale = variationDJ * Number(partCVC || 0);
       const facteurClimatique = 1 + influenceGlobale;
@@ -198,6 +204,7 @@ export default function EstimationClimatique({
       estimationFinale: resultats.estimationFinale,
       facteurClimatique: resultats.facteurClimatique,
       multiplicateurOpti: resultats.multiplicateurOpti,
+      baseConsumption: estimationBaseConsumption,
       consoRefN_1: Number(consoRefN_1 || 0),
       tauxOpti: Number(tauxOpti || 0),
       partCVC: Number(partCVC || 0),
@@ -260,9 +267,9 @@ export default function EstimationClimatique({
           {!embedded && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-4">
               <div className="rounded-lg border border-slate-200 bg-white p-3">
-                <div className="mb-1 text-[10px] font-bold uppercase text-slate-500">Conso REF N-1</div>
+                <div className="mb-1 text-[10px] font-bold uppercase text-slate-500">Conso REF du meme mois</div>
                 <div className="text-xl font-black text-slate-900">
-                  {Number(consoRefN_1 || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kWh
+                  {estimationBaseConsumption.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kWh
                 </div>
               </div>
               <div className="rounded-lg border border-slate-200 bg-white p-3">
