@@ -39,10 +39,10 @@ const COMPRESSORS = [
     serial: 'CAI 827281',
     powerLoadKw: 22,
     powerIdleKw: 6.6,
-    debitNominal: 170,
-    startWeek: '2026-W10',
-    previousRunHours: 22838,
-    previousLoadHours: 7932,
+    debitNominal: 186,
+    startWeek: '2026-W01',
+    previousRunHours: 22662,
+    previousLoadHours: 7887,
   },
   {
     id: 2,
@@ -52,10 +52,10 @@ const COMPRESSORS = [
     serial: 'CAI 808264',
     powerLoadKw: 22,
     powerIdleKw: 6.6,
-    debitNominal: 170,
-    startWeek: '2026-W10',
-    previousRunHours: 15506,
-    previousLoadHours: 5988,
+    debitNominal: 186,
+    startWeek: '2026-W01',
+    previousRunHours: 14976,
+    previousLoadHours: 5858,
   },
 ];
 
@@ -195,8 +195,8 @@ const formatPercent = (value) =>
 
 const formatKpi = (value) =>
   toNumber(value).toLocaleString('fr-FR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
   });
 
 const safeDivide = (numerator, denominator) => {
@@ -237,7 +237,7 @@ const getCompressorKpiConfig = (compressorLike = {}) => {
         compressorLike?.nominalFlow ??
         compressorLike?.nominalFlowM3h ??
         compressorMeta.debitNominal ??
-        170
+        186
     ),
   };
 };
@@ -1005,7 +1005,7 @@ const KpiTrendChart = ({ data }) => (
               tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
               axisLine={{ stroke: '#cbd5e1' }}
               tickLine={false}
-              tickFormatter={(value) => Number(value).toFixed(2)}
+              tickFormatter={(value) => Number(value).toFixed(3)}
               label={{
                 value: 'KPI',
                 angle: -90,
@@ -1204,7 +1204,7 @@ const MultiKpiTrendChart = ({ data }) => (
             tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
             axisLine={{ stroke: '#cbd5e1' }}
             tickLine={false}
-            tickFormatter={(value) => Number(value).toFixed(2)}
+            tickFormatter={(value) => Number(value).toFixed(3)}
             label={{
               value: 'KPI',
               angle: -90,
