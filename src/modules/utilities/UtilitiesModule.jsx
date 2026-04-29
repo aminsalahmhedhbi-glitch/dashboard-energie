@@ -226,8 +226,8 @@ const INITIAL_MODULE_STATE = {
 const TABS = [
   {
     id: 'pestel',
-    title: 'Analyse PESTEL',
-    subtitle: 'Enjeux & SWOT',
+    title: 'Analyse Strategique',
+    subtitle: 'PESTEL, SWOT et Enjeux',
     chapter: 'Ch 4.1',
     icon: Globe,
     color: 'blue',
@@ -267,12 +267,12 @@ const TABS = [
 ];
 
 const PESTEL_META = {
-  Politique: { icon: Landmark },
-  Economique: { icon: TrendingUp },
-  Societal: { icon: Users },
-  Technologique: { icon: Cpu },
-  Environnemental: { icon: Leaf },
-  Legal: { icon: Scale },
+  Politique: { icon: Cpu, label: 'Technologique' },
+  Economique: { icon: Landmark, label: 'Politique' },
+  Societal: { icon: Leaf, label: 'Ecologique' },
+  Technologique: { icon: Scale, label: 'Legislatif' },
+  Environnemental: { icon: TrendingUp, label: 'Economique' },
+  Legal: { icon: Users, label: 'Social' },
 };
 
 const SWOT_CLASSES = {
@@ -876,21 +876,22 @@ export default function UtilitiesModule({ onBack, user }) {
 
       <main className="px-4 pb-10 pt-2 lg:px-6">
         {activeTab === 'pestel' && (
-          <section className="mx-auto max-w-7xl space-y-6">
+          <section className="w-full space-y-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <h3 className="mb-6 flex items-center gap-3 text-lg font-bold text-slate-900">
                 <Globe className="h-5 w-5 text-[#233876]" />
-                Analyse PESTEL
+                Analyse Strategique : PESTEL, SWOT et Enjeux
               </h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
                 {Object.entries(pestel).map(([key, items]) => {
                   const Icon = PESTEL_META[key].icon;
+                  const displayLabel = PESTEL_META[key].label || key;
                   return (
                     <div key={key} className="flex flex-col rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-2">
                         <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                           <Icon className="h-3.5 w-3.5" />
-                          {key}
+                          {displayLabel}
                         </div>
                         <button
                           onClick={() => openGenericModal('pestel', key)}
@@ -1023,7 +1024,7 @@ export default function UtilitiesModule({ onBack, user }) {
         )}
 
         {activeTab === 'parties' && (
-          <section className="mx-auto max-w-7xl">
+          <section className="w-full">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                 <div className="flex items-center gap-3">
@@ -1133,7 +1134,7 @@ export default function UtilitiesModule({ onBack, user }) {
           </section>
         )}
         {activeTab === 'perimetre' && (
-          <section className="mx-auto max-w-5xl">
+          <section className="w-full">
             <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
               <div className="mb-8 flex items-center gap-3 border-b border-slate-100 pb-4">
                 <ScanLine className="h-6 w-6 text-[#233876]" />
@@ -1279,7 +1280,7 @@ export default function UtilitiesModule({ onBack, user }) {
         )}
 
         {activeTab === 'politique' && (
-          <section className="mx-auto max-w-6xl">
+          <section className="w-full">
             <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
               <div className="mb-6 flex items-center gap-3">
                 <FileText className="h-6 w-6 text-[#233876]" />
@@ -1354,7 +1355,7 @@ export default function UtilitiesModule({ onBack, user }) {
           </section>
         )}
         {activeTab === 'documents' && (
-          <section className="mx-auto max-w-7xl space-y-6">
+          <section className="w-full space-y-6">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5">
                 <div className="flex items-center gap-3">
