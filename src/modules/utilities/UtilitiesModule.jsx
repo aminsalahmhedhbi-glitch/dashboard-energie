@@ -303,8 +303,13 @@ const emptyGenericModal = {
 };
 
 const emptyAttenteForm = {
+  mode: 'create',
+  itemId: null,
   piName: '',
+  originalPiName: '',
   impact: 'true',
+  impactEnergy: false,
+  impactClimate: false,
   num: '',
   desc: '',
   resp: '',
@@ -700,7 +705,29 @@ export default function UtilitiesModule({ onBack, user }) {
   const openAttenteModal = () => {
     setAttenteForm({
       ...emptyAttenteForm,
+      mode: 'create',
+      itemId: null,
       num: nextAttenteCode,
+    });
+    setAttenteModalOpen(true);
+  };
+
+  const openAttenteEditModal = (stakeholderName, attente) => {
+    setAttenteForm({
+      ...emptyAttenteForm,
+      mode: 'edit',
+      itemId: attente.id,
+      piName: stakeholderName,
+      originalPiName: stakeholderName,
+      impact: 'true',
+      impactEnergy: Boolean(attente.impactEnergy),
+      impactClimate: Boolean(attente.impactClimate),
+      num: attente.num || '',
+      desc: attente.desc || '',
+      resp: attente.resp || '',
+      pert: attente.pert || 'Haute',
+      surv: attente.surv || '',
+      freq: attente.freq || 'Mensuelle',
     });
     setAttenteModalOpen(true);
   };
@@ -713,24 +740,97 @@ export default function UtilitiesModule({ onBack, user }) {
     }
 
     const newAttente = {
-      id: createId(),
+      id: attenteForm.itemId ?? createId(),
       num: attenteForm.num.trim() || nextAttenteCode,
       desc: attenteForm.desc.trim(),
       resp: attenteForm.resp.trim(),
       pert: attenteForm.pert,
       surv: attenteForm.surv.trim(),
       freq: attenteForm.freq,
+      impactEnergy: Boolean(attenteForm.impactEnergy),
+      impactClimate: Boolean(attenteForm.impactClimate),
     };
 
     setStakeholders((prev) => {
       const existingIndex = prev.findIndex(
         (stakeholder) => stakeholder.nom.toLowerCase() === piName.toLowerCase()
       );
+      const originalIndex = prev.findIndex(
+        (stakeholder) =>
+          stakeholder.nom.toLowerCase() === String(attenteForm.originalPiName || '').toLowerCase()
+      );
+
+      const appendOrReplaceAttente = (attentes = []) =>
+        attenteForm.mode === 'edit'
+          ? attentes.map((attente) =>
+              attente.id === attenteForm.itemId ? { ...attente, ...newAttente } : attente
+            )
+          : [...attentes, newAttente];
+
+      const removeExistingAttente = (attentes = []) =>
+        attentes.filter((attente) => attente.id !== attenteForm.itemId);
+
+      if (attenteForm.mode === 'edit' && originalIndex >= 0) {
+        const originalName = prev[originalIndex].nom;
+        const isSameStakeholder = originalName.toLowerCase() === piName.toLowerCase();
+
+        if (isSameStakeholder) {
+          return prev.map((stakeholder, index) =>
+            index === originalIndex
+              ? {
+                  ...stakeholder,
+                  impact: attenteForm.impact === 'true',
+                  attentes: appendOrReplaceAttente(stakeholder.attentes),
+                }
+              : stakeholder
+          );
+        }
+
+        const withoutOriginal = prev
+          .map((stakeholder, index) =>
+            index === originalIndex
+              ? {
+                  ...stakeholder,
+                  attentes: removeExistingAttente(stakeholder.attentes),
+                }
+              : stakeholder
+          )
+          .filter((stakeholder) => stakeholder.attentes.length > 0);
+
+        const targetIndex = withoutOriginal.findIndex(
+          (stakeholder) => stakeholder.nom.toLowerCase() === piName.toLowerCase()
+        );
+
+        if (targetIndex >= 0) {
+          return withoutOriginal.map((stakeholder, index) =>
+            index === targetIndex
+              ? {
+                  ...stakeholder,
+                  impact: attenteForm.impact === 'true',
+                  attentes: [...stakeholder.attentes, newAttente],
+                }
+              : stakeholder
+          );
+        }
+
+        return [
+          ...withoutOriginal,
+          {
+            nom: piName,
+            impact: attenteForm.impact === 'true',
+            attentes: [newAttente],
+          },
+        ];
+      }
 
       if (existingIndex >= 0) {
         return prev.map((stakeholder, index) =>
           index === existingIndex
-            ? { ...stakeholder, attentes: [...stakeholder.attentes, newAttente] }
+            ? {
+                ...stakeholder,
+                impact: attenteForm.impact === 'true',
+                attentes: appendOrReplaceAttente(stakeholder.attentes),
+              }
             : stakeholder
         );
       }
@@ -1052,12 +1152,13 @@ export default function UtilitiesModule({ onBack, user }) {
                     <tr>
                       {[
                         'Partie interessee',
-                        'Impact SMQEn',
+                        'Impact',
                         'Ndeg',
                         'Attente / Exigence',
                         'Responsable',
                         'Pertinence',
                         'Surveillance',
+                        'Frequence',
                         'Action',
                       ].map((header) => (
                         <th
@@ -1100,7 +1201,15 @@ export default function UtilitiesModule({ onBack, user }) {
                           <td className="p-3 font-mono text-xs font-bold text-slate-500">
                             {attente.num}
                           </td>
-                          <td className="p-3 text-sm font-semibold text-slate-800">{attente.desc}</td>
+                          <td className="p-3">
+                            <div className="space-y-2">
+                              <div className="text-sm font-semibold text-slate-800">{attente.desc}</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {attente.impactEnergy && <EnergyBadge />}
+                                {attente.impactClimate && <ClimateBadge />}
+                              </div>
+                            </div>
+                          </td>
                           <td className="p-3 text-sm text-slate-600">{attente.resp}</td>
                           <td className="p-3 text-center">
                             <span
@@ -1116,13 +1225,26 @@ export default function UtilitiesModule({ onBack, user }) {
                             </span>
                           </td>
                           <td className="p-3 text-xs text-slate-600">{attente.surv}</td>
+                          <td className="p-3 text-xs text-slate-600">{attente.freq}</td>
                           <td className="p-3 text-center">
-                            <button
-                              onClick={() => deleteAttente(stakeholder.nom, attente.id)}
-                              className="rounded p-1.5 text-red-400 transition hover:bg-red-50 hover:text-red-600"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => openAttenteEditModal(stakeholder.nom, attente)}
+                                className="rounded p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-[#233876]"
+                                title="Modifier"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteAttente(stakeholder.nom, attente.id)}
+                                className="rounded p-1.5 text-red-400 transition hover:bg-red-50 hover:text-red-600"
+                                title="Supprimer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1637,7 +1759,11 @@ export default function UtilitiesModule({ onBack, user }) {
         </ModalFrame>
       )}
       {attenteModalOpen && (
-        <ModalFrame title="Ajouter une attente" onClose={() => setAttenteModalOpen(false)} maxWidth="max-w-2xl">
+        <ModalFrame
+          title={attenteForm.mode === 'edit' ? 'Modifier une attente' : 'Ajouter une attente'}
+          onClose={() => setAttenteModalOpen(false)}
+          maxWidth="max-w-2xl"
+        >
           <form onSubmit={saveAttente} className="grid grid-cols-2 gap-5">
             <div className="col-span-2">
               <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
@@ -1662,7 +1788,7 @@ export default function UtilitiesModule({ onBack, user }) {
 
             <div>
               <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Impact sur le SMQEn
+                Impact sur ITALCAR
               </label>
               <select
                 value={attenteForm.impact}
@@ -1674,6 +1800,37 @@ export default function UtilitiesModule({ onBack, user }) {
                 <option value="true">OUI</option>
                 <option value="false">NON</option>
               </select>
+            </div>
+
+            <div className="col-span-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                <input
+                  type="checkbox"
+                  checked={attenteForm.impactEnergy}
+                  onChange={(event) =>
+                    setAttenteForm((prev) => ({ ...prev, impactEnergy: event.target.checked }))
+                  }
+                  className="h-4 w-4 rounded border-slate-300 text-[#233876]"
+                />
+                <span className="flex items-center gap-2 text-sm font-bold text-yellow-900">
+                  <Zap className="h-4 w-4 text-yellow-500" />
+                  Impact energetique
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                <input
+                  type="checkbox"
+                  checked={attenteForm.impactClimate}
+                  onChange={(event) =>
+                    setAttenteForm((prev) => ({ ...prev, impactClimate: event.target.checked }))
+                  }
+                  className="h-4 w-4 rounded border-slate-300 text-[#233876]"
+                />
+                <span className="flex items-center gap-2 text-sm font-bold text-emerald-900">
+                  <Leaf className="h-4 w-4 text-emerald-500" />
+                  Impact climatique
+                </span>
+              </label>
             </div>
 
             <div>
