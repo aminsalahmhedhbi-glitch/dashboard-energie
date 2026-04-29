@@ -6,6 +6,7 @@ import {
   Building2,
   Cpu,
   Download,
+  Edit2,
   FileText,
   FolderOpen,
   Globe,
@@ -291,9 +292,14 @@ const emptyGenericModal = {
   title: '',
   category: '',
   subCategory: null,
+  itemId: null,
+  mode: 'create',
+  titleText: '',
   text: '',
   energy: false,
+  climate: false,
   allowEnergy: true,
+  allowClimate: false,
 };
 
 const emptyAttenteForm = {
@@ -324,6 +330,71 @@ const EnergyBadge = () => (
     Energie
   </span>
 );
+
+const ClimateBadge = () => (
+  <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-700">
+    <Leaf className="h-2.5 w-2.5" />
+    Climat
+  </span>
+);
+
+const normalizeGenericAnalysisItem = (item = {}, { withTitle = false } = {}) => ({
+  ...item,
+  title: withTitle ? String(item?.title || 'aucun titre') : String(item?.title || ''),
+  text: String(item?.text || item?.description || ''),
+  energy: Boolean(item?.energy),
+  climate: Boolean(item?.climate),
+});
+
+function ExpandableDescription({ text, expanded, onToggle, lines = 2 }) {
+  const normalizedText = String(text || '').trim();
+  const canExpand = normalizedText.length > 120 || normalizedText.includes('\n');
+
+  return (
+    <div className="space-y-1">
+      <div
+        className="text-xs font-medium leading-snug text-slate-700"
+        style={
+          expanded
+            ? undefined
+            : {
+                display: '-webkit-box',
+                WebkitLineClamp: lines,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }
+        }
+      >
+        {normalizedText}
+      </div>
+      {canExpand && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="text-[11px] font-bold text-[#233876] transition hover:text-[#1a2f64]"
+        >
+          {expanded ? 'Voir moins' : 'Voir plus'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ItemActionButtons({ onEdit, onDelete }) {
+  return (
+    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <button
+        type="button"
+        onClick={onEdit}
+        className="text-slate-400 transition hover:text-[#233876]"
+        title="Modifier"
+      >
+        <Edit2 className="h-3.5 w-3.5" />
+      </button>
+      <ItemDeleteButton onClick={onDelete} />
+    </div>
+  );
+}
 
 function TabCard({ tab, active, onClick }) {
   const Icon = tab.icon;
@@ -403,12 +474,31 @@ function ModalFrame({ title, children, onClose, maxWidth = 'max-w-lg' }) {
 
 export default function UtilitiesModule({ onBack, user }) {
   const [activeTab, setActiveTab] = useState('pestel');
+  const [expandedItems, setExpandedItems] = useState({});
   const { data: moduleData, setData: setModuleData } = useModuleState(
     'governance_engagement_module',
     INITIAL_MODULE_STATE
   );
-  const pestel = moduleData.pestel || INITIAL_PESTEL;
-  const swot = moduleData.swot || INITIAL_SWOT;
+  const pestel = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(moduleData.pestel || INITIAL_PESTEL).map(([key, items]) => [
+          key,
+          (items || []).map((item) => normalizeGenericAnalysisItem(item, { withTitle: true })),
+        ])
+      ),
+    [moduleData.pestel]
+  );
+  const swot = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(moduleData.swot || INITIAL_SWOT).map(([key, items]) => [
+          key,
+          (items || []).map((item) => normalizeGenericAnalysisItem(item)),
+        ])
+      ),
+    [moduleData.swot]
+  );
   const enjeux = moduleData.enjeux || INITIAL_ENJEUX;
   const stakeholders = moduleData.stakeholders || INITIAL_STAKEHOLDERS;
   const perimetre = moduleData.perimetre || INITIAL_PERIMETRE;
@@ -452,6 +542,7 @@ export default function UtilitiesModule({ onBack, user }) {
   const openGenericModal = (category, subCategory = null) => {
     let title = 'Ajouter un element';
     let allowEnergy = true;
+    let allowClimate = false;
 
     if (category === 'activites') {
       title = 'Ajouter une activite';
@@ -465,6 +556,7 @@ export default function UtilitiesModule({ onBack, user }) {
       title = 'Ajouter un axe strategique';
     } else if (category === 'pestel') {
       title = `Ajouter au PESTEL (${subCategory})`;
+      allowClimate = true;
     } else if (category === 'swot') {
       title = `Ajouter au SWOT (${subCategory})`;
     } else if (category === 'enjeux') {
@@ -476,9 +568,50 @@ export default function UtilitiesModule({ onBack, user }) {
       title,
       category,
       subCategory,
+      itemId: null,
+      mode: 'create',
+      titleText: category === 'pestel' ? 'aucun titre' : '',
       text: '',
       energy: false,
+      climate: false,
       allowEnergy,
+      allowClimate,
+    });
+  };
+
+  const openGenericEditModal = (category, subCategory, item) => {
+    let title = 'Modifier un element';
+    let allowEnergy = true;
+    let allowClimate = false;
+
+    if (category === 'pestel') {
+      title = `Modifier PESTEL (${subCategory})`;
+      allowClimate = true;
+    } else if (category === 'swot') {
+      title = `Modifier SWOT (${subCategory})`;
+    } else if (category === 'enjeux') {
+      title = `Modifier enjeu (${subCategory})`;
+    } else {
+      allowEnergy = false;
+    }
+
+    const normalizedItem = normalizeGenericAnalysisItem(item, {
+      withTitle: category === 'pestel',
+    });
+
+    setGenericModal({
+      open: true,
+      title,
+      category,
+      subCategory,
+      itemId: item.id,
+      mode: 'edit',
+      titleText: category === 'pestel' ? normalizedItem.title : '',
+      text: normalizedItem.text,
+      energy: normalizedItem.energy,
+      climate: normalizedItem.climate,
+      allowEnergy,
+      allowClimate,
     });
   };
 
@@ -488,34 +621,48 @@ export default function UtilitiesModule({ onBack, user }) {
     event.preventDefault();
 
     const newItem = {
-      id: createId(),
+      id: genericModal.itemId ?? createId(),
       text: genericModal.text.trim(),
       ...(genericModal.allowEnergy ? { energy: genericModal.energy } : {}),
+      ...(genericModal.allowClimate ? { climate: genericModal.climate } : {}),
+      ...(genericModal.category === 'pestel'
+        ? { title: genericModal.titleText.trim() || 'aucun titre' }
+        : {}),
     };
 
     if (!newItem.text) return;
 
+    const appendOrReplace = (items = []) => {
+      if (genericModal.mode !== 'edit') {
+        return [...items, newItem];
+      }
+
+      return items.map((item) =>
+        item.id === genericModal.itemId ? { ...item, ...newItem } : item
+      );
+    };
+
     if (genericModal.category === 'pestel') {
       setPestel((prev) => ({
         ...prev,
-        [genericModal.subCategory]: [...prev[genericModal.subCategory], newItem],
+        [genericModal.subCategory]: appendOrReplace(prev[genericModal.subCategory]),
       }));
     } else if (genericModal.category === 'swot') {
       setSwot((prev) => ({
         ...prev,
-        [genericModal.subCategory]: [...prev[genericModal.subCategory], newItem],
+        [genericModal.subCategory]: appendOrReplace(prev[genericModal.subCategory]),
       }));
     } else if (genericModal.category === 'enjeux') {
       setEnjeux((prev) => ({
         ...prev,
-        [genericModal.subCategory]: [...prev[genericModal.subCategory], newItem],
+        [genericModal.subCategory]: appendOrReplace(prev[genericModal.subCategory]),
       }));
     } else if (genericModal.category === 'axes') {
-      setAxes((prev) => [...prev, newItem]);
+      setAxes((prev) => appendOrReplace(prev));
     } else {
       setPerimetre((prev) => ({
         ...prev,
-        [genericModal.category]: [...prev[genericModal.category], newItem],
+        [genericModal.category]: appendOrReplace(prev[genericModal.category]),
       }));
     }
 
@@ -756,12 +903,28 @@ export default function UtilitiesModule({ onBack, user }) {
                             key={item.id}
                             className="group flex items-start justify-between rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm"
                           >
-                            <div className="space-y-1">
-                              <div className="text-xs font-medium leading-snug text-slate-700">{item.text}</div>
-                              {item.energy && <EnergyBadge />}
+                            <div className="min-w-0 space-y-1">
+                              <div className="text-xs font-black leading-snug text-slate-900">
+                                {item.title || 'aucun titre'}
+                              </div>
+                              <ExpandableDescription
+                                text={item.text}
+                                expanded={Boolean(expandedItems[`pestel-${key}-${item.id}`])}
+                                onToggle={() =>
+                                  setExpandedItems((prev) => ({
+                                    ...prev,
+                                    [`pestel-${key}-${item.id}`]: !prev[`pestel-${key}-${item.id}`],
+                                  }))
+                                }
+                              />
+                              <div className="flex flex-wrap items-center gap-2">
+                                {item.energy && <EnergyBadge />}
+                                {item.climate && <ClimateBadge />}
+                              </div>
                             </div>
-                            <ItemDeleteButton
-                              onClick={() => deleteGenericItem('pestel', key, item.id)}
+                            <ItemActionButtons
+                              onEdit={() => openGenericEditModal('pestel', key, item)}
+                              onDelete={() => deleteGenericItem('pestel', key, item.id)}
                             />
                           </div>
                         ))}
@@ -800,8 +963,9 @@ export default function UtilitiesModule({ onBack, user }) {
                               <div className="text-xs font-semibold leading-snug">{item.text}</div>
                               {item.energy && <EnergyBadge />}
                             </div>
-                            <ItemDeleteButton
-                              onClick={() => deleteGenericItem('swot', key, item.id)}
+                            <ItemActionButtons
+                              onEdit={() => openGenericEditModal('swot', key, item)}
+                              onDelete={() => deleteGenericItem('swot', key, item.id)}
                             />
                           </div>
                         ))}
@@ -1381,6 +1545,22 @@ export default function UtilitiesModule({ onBack, user }) {
       {genericModal.open && (
         <ModalFrame title={genericModal.title} onClose={closeGenericModal}>
           <form onSubmit={saveGenericItem} className="space-y-4">
+            {genericModal.category === 'pestel' && (
+              <div>
+                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                  Titre
+                </label>
+                <input
+                  required
+                  value={genericModal.titleText}
+                  onChange={(event) =>
+                    setGenericModal((prev) => ({ ...prev, titleText: event.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#233876]"
+                  placeholder="aucun titre"
+                />
+              </div>
+            )}
             <div>
               <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
                 Description
@@ -1397,20 +1577,39 @@ export default function UtilitiesModule({ onBack, user }) {
             </div>
 
             {genericModal.allowEnergy && (
-              <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                <input
-                  type="checkbox"
-                  checked={genericModal.energy}
-                  onChange={(event) =>
-                    setGenericModal((prev) => ({ ...prev, energy: event.target.checked }))
-                  }
-                  className="h-4 w-4 rounded border-slate-300 text-[#233876]"
-                />
-                <span className="flex items-center gap-2 text-sm font-bold text-yellow-900">
-                  <Zap className="h-4 w-4 text-yellow-500" />
-                  Marquer comme aspect energetique
-                </span>
-              </label>
+              <div className="space-y-3">
+                <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                  <input
+                    type="checkbox"
+                    checked={genericModal.energy}
+                    onChange={(event) =>
+                      setGenericModal((prev) => ({ ...prev, energy: event.target.checked }))
+                    }
+                    className="h-4 w-4 rounded border-slate-300 text-[#233876]"
+                  />
+                  <span className="flex items-center gap-2 text-sm font-bold text-yellow-900">
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                    Marquer comme aspect energetique
+                  </span>
+                </label>
+
+                {genericModal.allowClimate && (
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                    <input
+                      type="checkbox"
+                      checked={genericModal.climate}
+                      onChange={(event) =>
+                        setGenericModal((prev) => ({ ...prev, climate: event.target.checked }))
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-[#233876]"
+                    />
+                    <span className="flex items-center gap-2 text-sm font-bold text-emerald-900">
+                      <Leaf className="h-4 w-4 text-emerald-500" />
+                      Marquer comme aspect climatique
+                    </span>
+                  </label>
+                )}
+              </div>
             )}
 
             <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
