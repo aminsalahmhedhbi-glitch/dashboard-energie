@@ -29,13 +29,35 @@ const toNumber = (value) => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
+const isShowroomLacFacture = (facture = {}) => {
+  const siteId = String(facture?.siteId ?? '');
+  const site = String(facture?.site ?? facture?.siteKey ?? '').toUpperCase();
+  const siteName = String(facture?.siteName ?? '').toLowerCase();
+
+  return (
+    siteId === '4' ||
+    siteId === '4.0' ||
+    site === 'LAC' ||
+    site === 'SHOWROOM_LAC' ||
+    siteName.includes('showroom lac')
+  );
+};
+
 export const getFactureMetrics = (facture) => ({
   consommationKwh: toNumber(
-    facture?.consommationKwh ??
-      facture?.consommation_kwh ??
-      facture?.billedKwh ??
-      facture?.consumptionGrid ??
-      facture?.energyRecorded
+    isShowroomLacFacture(facture)
+      ? facture?.consommationTotale ??
+          facture?.consommation_totale ??
+          facture?.consommationKwh ??
+          facture?.consommation_kwh ??
+          facture?.billedKwh ??
+          facture?.consumptionGrid ??
+          facture?.energyRecorded
+      : facture?.consommationKwh ??
+          facture?.consommation_kwh ??
+          facture?.billedKwh ??
+          facture?.consumptionGrid ??
+          facture?.energyRecorded
   ),
   pmaxKva: toNumber(facture?.pmaxKva ?? facture?.pmax_kva ?? facture?.Pmax ?? facture?.maxPower),
   cosPhi: toNumber(facture?.cosPhi ?? facture?.cos_phi ?? facture?.PF_SUM),

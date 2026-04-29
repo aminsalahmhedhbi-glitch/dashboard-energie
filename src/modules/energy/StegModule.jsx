@@ -628,7 +628,16 @@ const StegModule = ({ onBack, userRole, user }) => {
 
       if (monthKey === '-') return;
 
-      const consommation = Number(log.billedKwh ?? log.consumptionGrid ?? log.energyRecorded ?? 0);
+      const consommation = Number(
+        currentSite === 4
+          ? log.consommationTotale ??
+              log.consommation_kwh ??
+              log.billedKwh ??
+              log.consumptionGrid ??
+              log.energyRecorded ??
+              0
+          : log.billedKwh ?? log.consumptionGrid ?? log.energyRecorded ?? 0
+      );
       monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + consommation);
     });
 
@@ -1740,10 +1749,20 @@ const StegModule = ({ onBack, userRole, user }) => {
                         ) : (
                             sortedBillingHistory.slice(0, 24).map((log, i) => {
                                 const consommation = Number(log.billedKwh ?? log.consumptionGrid ?? log.energyRecorded ?? 0);
-                                const consommationReseau = Number(log.consumptionGrid ?? log.billedKwh ?? log.energyRecorded ?? 0);
+                                const consommationReseau = Number(
+                                    (Number(log.newIndex ?? 0) > 0 || Number(log.lastIndex ?? 0) > 0)
+                                      ? Math.max(0, Number(log.newIndex ?? 0) - Number(log.lastIndex ?? 0))
+                                      : Number(log.consumptionGrid ?? log.billedKwh ?? log.energyRecorded ?? 0)
+                                );
                                 const consommationTotale = Number(log.consommationTotale ?? 0);
                                 const coutBrut = Number(log.coutBrut ?? 0);
                                 const gainPv = Number(log.gainPv ?? 0);
+                                const solde = Number(
+                                    log.totalBalance ??
+                                    log.newCarryOver ??
+                                    log.currentMonthBalance ??
+                                    0
+                                );
                                 const productionPv = Number(log.productionPv ?? 0);
                                 const productionPvInjectee = Number(
                                     log.productionPvInjectee ??
@@ -1781,6 +1800,7 @@ const StegModule = ({ onBack, userRole, user }) => {
                                                             <span>Consommation reseau: <b>{formatNumber(consommationReseau)} kWh</b></span>
                                                             <span>Production PV: <b>{formatNumber(productionPv)} kWh</b></span>
                                                             <span>PV injectee: <b>{formatNumber(productionPvInjectee)} kWh</b></span>
+                                                            <span>Solde: <b>{formatNumber(solde)} kWh</b></span>
                                                             <span className="text-emerald-700">Net a payer: <b>{formatMoney(prix)}</b></span>
                                                         </div>
                                                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-slate-600">
