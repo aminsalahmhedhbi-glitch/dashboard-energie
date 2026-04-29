@@ -559,6 +559,7 @@ export default function UtilitiesModule({ onBack, user }) {
       allowClimate = true;
     } else if (category === 'swot') {
       title = `Ajouter au SWOT (${subCategory})`;
+      allowClimate = true;
     } else if (category === 'enjeux') {
       title = `Ajouter un enjeu (${subCategory})`;
     }
@@ -589,6 +590,7 @@ export default function UtilitiesModule({ onBack, user }) {
       allowClimate = true;
     } else if (category === 'swot') {
       title = `Modifier SWOT (${subCategory})`;
+      allowClimate = true;
     } else if (category === 'enjeux') {
       title = `Modifier enjeu (${subCategory})`;
     } else {
@@ -961,7 +963,10 @@ export default function UtilitiesModule({ onBack, user }) {
                           >
                             <div className="space-y-1">
                               <div className="text-xs font-semibold leading-snug">{item.text}</div>
-                              {item.energy && <EnergyBadge />}
+                              <div className="flex flex-wrap items-center gap-2">
+                                {item.energy && <EnergyBadge />}
+                                {item.climate && <ClimateBadge />}
+                              </div>
                             </div>
                             <ItemActionButtons
                               onEdit={() => openGenericEditModal('swot', key, item)}
