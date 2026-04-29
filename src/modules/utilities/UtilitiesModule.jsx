@@ -461,7 +461,9 @@ function ItemDeleteButton({ onClick }) {
 function ModalFrame({ title, children, onClose, maxWidth = 'max-w-lg' }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-      <div className={`w-full ${maxWidth} overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl`}>
+      <div
+        className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl ${maxWidth}`}
+      >
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <h3 className="text-lg font-black text-slate-900">{title}</h3>
           <button
@@ -471,7 +473,7 @@ function ModalFrame({ title, children, onClose, maxWidth = 'max-w-lg' }) {
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="bg-slate-50 px-6 py-5">{children}</div>
+        <div className="overflow-y-auto bg-slate-50 px-6 py-5">{children}</div>
       </div>
     </div>
   );
@@ -712,14 +714,14 @@ export default function UtilitiesModule({ onBack, user }) {
     setAttenteModalOpen(true);
   };
 
-  const openAttenteEditModal = (stakeholderName, attente) => {
+  const openAttenteEditModal = (stakeholderName, attente, stakeholderImpact = true) => {
     setAttenteForm({
       ...emptyAttenteForm,
       mode: 'edit',
       itemId: attente.id,
       piName: stakeholderName,
       originalPiName: stakeholderName,
-      impact: 'true',
+      impact: String(attente.impact ?? stakeholderImpact),
       impactEnergy: Boolean(attente.impactEnergy),
       impactClimate: Boolean(attente.impactClimate),
       num: attente.num || '',
@@ -742,6 +744,7 @@ export default function UtilitiesModule({ onBack, user }) {
     const newAttente = {
       id: attenteForm.itemId ?? createId(),
       num: attenteForm.num.trim() || nextAttenteCode,
+      impact: attenteForm.impact === 'true',
       desc: attenteForm.desc.trim(),
       resp: attenteForm.resp.trim(),
       pert: attenteForm.pert,
@@ -779,7 +782,6 @@ export default function UtilitiesModule({ onBack, user }) {
             index === originalIndex
               ? {
                   ...stakeholder,
-                  impact: attenteForm.impact === 'true',
                   attentes: appendOrReplaceAttente(stakeholder.attentes),
                 }
               : stakeholder
@@ -806,7 +808,6 @@ export default function UtilitiesModule({ onBack, user }) {
             index === targetIndex
               ? {
                   ...stakeholder,
-                  impact: attenteForm.impact === 'true',
                   attentes: [...stakeholder.attentes, newAttente],
                 }
               : stakeholder
@@ -828,7 +829,6 @@ export default function UtilitiesModule({ onBack, user }) {
           index === existingIndex
             ? {
                 ...stakeholder,
-                impact: attenteForm.impact === 'true',
                 attentes: appendOrReplaceAttente(stakeholder.attentes),
               }
             : stakeholder
@@ -980,7 +980,7 @@ export default function UtilitiesModule({ onBack, user }) {
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <h3 className="mb-6 flex items-center gap-3 text-lg font-bold text-slate-900">
                 <Globe className="h-5 w-5 text-[#233876]" />
-                Analyse Strategique : PESTEL, SWOT et Enjeux
+                Analyse PESTEL
               </h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
                 {Object.entries(pestel).map(([key, items]) => {
@@ -1175,29 +1175,24 @@ export default function UtilitiesModule({ onBack, user }) {
                       stakeholder.attentes.map((attente, index) => (
                         <tr key={attente.id} className="transition hover:bg-slate-50">
                           {index === 0 && (
-                            <>
-                              <td
-                                rowSpan={stakeholder.attentes.length}
-                                className="border-r border-slate-100 p-3 align-middle font-bold text-slate-900"
-                              >
-                                {stakeholder.nom}
-                              </td>
-                              <td
-                                rowSpan={stakeholder.attentes.length}
-                                className="border-r border-slate-100 p-3 text-center align-middle"
-                              >
-                                <span
-                                  className={`rounded px-2 py-1 text-[10px] font-bold uppercase ${
-                                    stakeholder.impact
-                                      ? 'border border-red-100 bg-red-50 text-red-500'
-                                      : 'border border-slate-200 bg-slate-50 text-slate-500'
-                                  }`}
-                                >
-                                  {stakeholder.impact ? 'OUI' : 'NON'}
-                                </span>
-                              </td>
-                            </>
+                            <td
+                              rowSpan={stakeholder.attentes.length}
+                              className="border-r border-slate-100 p-3 align-middle font-bold text-slate-900"
+                            >
+                              {stakeholder.nom}
+                            </td>
                           )}
+                          <td className="p-3 text-center align-middle">
+                            <span
+                              className={`rounded px-2 py-1 text-[10px] font-bold uppercase ${
+                                (attente.impact ?? stakeholder.impact)
+                                  ? 'border border-red-100 bg-red-50 text-red-500'
+                                  : 'border border-slate-200 bg-slate-50 text-slate-500'
+                              }`}
+                            >
+                              {(attente.impact ?? stakeholder.impact) ? 'OUI' : 'NON'}
+                            </span>
+                          </td>
                           <td className="p-3 font-mono text-xs font-bold text-slate-500">
                             {attente.num}
                           </td>
@@ -1230,7 +1225,13 @@ export default function UtilitiesModule({ onBack, user }) {
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 type="button"
-                                onClick={() => openAttenteEditModal(stakeholder.nom, attente)}
+                                onClick={() =>
+                                  openAttenteEditModal(
+                                    stakeholder.nom,
+                                    attente,
+                                    stakeholder.impact
+                                  )
+                                }
                                 className="rounded p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-[#233876]"
                                 title="Modifier"
                               >
