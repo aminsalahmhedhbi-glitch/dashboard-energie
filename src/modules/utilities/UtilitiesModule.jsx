@@ -1068,7 +1068,7 @@ export default function UtilitiesModule({ onBack, user }) {
                 isAdmin={isAdmin}
                 onMetaChange={(field, value) => updateSectionMeta('pestel', field, value)}
               />
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+              <div className="space-y-4">
                 {Object.entries(pestel).map(([key, items]) => {
                   const Icon = PESTEL_META[key].icon;
                   const displayLabel = PESTEL_META[key].label || key;
