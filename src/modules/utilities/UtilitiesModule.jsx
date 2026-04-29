@@ -213,6 +213,16 @@ const INITIAL_DOCUMENTS = [
   },
 ];
 
+const INITIAL_SECTION_META = {
+  pestel: { date: '2026-04-29', reference: 'CH 4.1' },
+  swot: { date: '2026-04-29', reference: 'CH 4.1' },
+  enjeux: { date: '2026-04-29', reference: 'CH 4.1' },
+  parties: { date: '2026-04-29', reference: 'CH 4.2' },
+  perimetre: { date: '2026-04-29', reference: 'CH 4.3' },
+  politique: { date: '2026-04-29', reference: 'CH 5.2' },
+  documents: { date: '2026-04-29', reference: 'CH 7.5' },
+};
+
 const INITIAL_MODULE_STATE = {
   pestel: INITIAL_PESTEL,
   swot: INITIAL_SWOT,
@@ -221,6 +231,7 @@ const INITIAL_MODULE_STATE = {
   perimetre: INITIAL_PERIMETRE,
   axes: INITIAL_AXES,
   documents: INITIAL_DOCUMENTS,
+  sectionMeta: INITIAL_SECTION_META,
 };
 
 const TABS = [
@@ -428,13 +439,6 @@ function TabCard({ tab, active, onClick }) {
         >
           <Icon className="h-4 w-4" />
         </div>
-        <span
-          className={`rounded px-2 py-1 text-[10px] font-bold ${
-            active ? 'bg-white/15 text-white' : inactiveByColor[tab.color]
-          }`}
-        >
-          {tab.chapter}
-        </span>
       </div>
       <div>
         <div className="text-sm font-bold tracking-wide">{tab.title}</div>
@@ -479,6 +483,62 @@ function ModalFrame({ title, children, onClose, maxWidth = 'max-w-lg' }) {
   );
 }
 
+function formatSectionDate(value) {
+  if (!value) return 'Date non renseignee';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  return value;
+}
+
+function SectionHeader({ icon: Icon, title, subtitle, meta, isAdmin, onMetaChange, actions }) {
+  return (
+    <div className="mb-6 flex flex-col gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex items-start gap-3">
+        <Icon className="mt-0.5 h-5 w-5 text-[#233876]" />
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+          {isAdmin ? (
+            <input
+              type="text"
+              value={meta.reference}
+              onChange={(event) => onMetaChange('reference', event.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-slate-500 outline-none transition focus:border-[#233876] lg:w-64"
+              placeholder="Reference"
+            />
+          ) : (
+            <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+              {meta.reference || subtitle}
+            </p>
+          )}
+          {!meta.reference && subtitle && !isAdmin && (
+            <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-col gap-3 lg:items-end">
+        <div className="flex flex-col gap-1 text-right">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            Date
+          </span>
+          {isAdmin ? (
+            <input
+              type="date"
+              value={meta.date}
+              onChange={(event) => onMetaChange('date', event.target.value)}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#233876]"
+            />
+          ) : (
+            <span className="text-sm font-semibold text-slate-700">{formatSectionDate(meta.date)}</span>
+          )}
+        </div>
+        {actions}
+      </div>
+    </div>
+  );
+}
+
 export default function UtilitiesModule({ onBack, user }) {
   const [activeTab, setActiveTab] = useState('pestel');
   const [expandedItems, setExpandedItems] = useState({});
@@ -512,11 +572,19 @@ export default function UtilitiesModule({ onBack, user }) {
   const perimetre = moduleData.perimetre || INITIAL_PERIMETRE;
   const axes = moduleData.axes || INITIAL_AXES;
   const documents = moduleData.documents || INITIAL_DOCUMENTS;
+  const sectionMeta = useMemo(
+    () => ({
+      ...INITIAL_SECTION_META,
+      ...(moduleData.sectionMeta || {}),
+    }),
+    [moduleData.sectionMeta]
+  );
   const [documentSearch, setDocumentSearch] = useState('');
   const [genericModal, setGenericModal] = useState(emptyGenericModal);
   const [attenteModalOpen, setAttenteModalOpen] = useState(false);
   const [attenteForm, setAttenteForm] = useState(emptyAttenteForm);
   const [docForm, setDocForm] = useState(emptyDocForm);
+  const isAdmin = user?.role === 'ADMIN';
 
   const createSliceSetter = (key) => (updater) =>
     setModuleData((prev) => ({
@@ -531,6 +599,19 @@ export default function UtilitiesModule({ onBack, user }) {
   const setPerimetre = createSliceSetter('perimetre');
   const setAxes = createSliceSetter('axes');
   const setDocuments = createSliceSetter('documents');
+  const setSectionMeta = createSliceSetter('sectionMeta');
+
+  const updateSectionMeta = (sectionKey, field, value) => {
+    if (!isAdmin) return;
+    setSectionMeta((prev) => ({
+      ...(prev || {}),
+      [sectionKey]: {
+        ...(INITIAL_SECTION_META[sectionKey] || {}),
+        ...((prev || {})[sectionKey] || {}),
+        [field]: value,
+      },
+    }));
+  };
 
   const filteredDocuments = useMemo(() => {
     const query = documentSearch.trim().toLowerCase();
@@ -979,10 +1060,14 @@ export default function UtilitiesModule({ onBack, user }) {
         {activeTab === 'pestel' && (
           <section className="w-full space-y-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="mb-6 flex items-center gap-3 text-lg font-bold text-slate-900">
-                <Globe className="h-5 w-5 text-[#233876]" />
-                Analyse PESTEL
-              </h3>
+              <SectionHeader
+                icon={Globe}
+                title="Analyse PESTEL"
+                subtitle="Contexte strategique"
+                meta={sectionMeta.pestel}
+                isAdmin={isAdmin}
+                onMetaChange={(field, value) => updateSectionMeta('pestel', field, value)}
+              />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
                 {Object.entries(pestel).map(([key, items]) => {
                   const Icon = PESTEL_META[key].icon;
@@ -1041,12 +1126,18 @@ export default function UtilitiesModule({ onBack, user }) {
 
             <div className="space-y-6">
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-6 flex items-center gap-3 text-lg font-bold text-slate-900">
-                  <ShieldCheck className="h-5 w-5 text-[#233876]" />
-                  Matrice SWOT
-                </h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  {Object.entries(swot).map(([key, items]) => (
+                <SectionHeader
+                  icon={ShieldCheck}
+                  title="Analyse SWOT"
+                  subtitle="Lecture interne et externe"
+                  meta={sectionMeta.swot}
+                  isAdmin={isAdmin}
+                  onMetaChange={(field, value) => updateSectionMeta('swot', field, value)}
+                />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {['Forces', 'Faiblesses', 'Opportunites', 'Menaces'].map((key) => {
+                    const items = swot[key] || [];
+                    return (
                     <div key={key} className={`rounded-xl border p-5 ${SWOT_CLASSES[key]}`}>
                       <div className="mb-4 flex items-center justify-between border-b border-black/5 pb-2">
                         <h4 className="text-[11px] font-black uppercase tracking-widest">{key}</h4>
@@ -1064,7 +1155,7 @@ export default function UtilitiesModule({ onBack, user }) {
                             className="group flex items-start justify-between rounded-lg border border-white/20 bg-white/80 p-2.5 shadow-sm"
                           >
                             <div className="space-y-1">
-                              <div className="text-xs font-semibold leading-snug">{item.text}</div>
+                              <div className="text-sm font-semibold leading-snug">{item.text}</div>
                               <div className="flex flex-wrap items-center gap-2">
                                 {item.energy && <EnergyBadge />}
                                 {item.climate && <ClimateBadge />}
@@ -1078,16 +1169,22 @@ export default function UtilitiesModule({ onBack, user }) {
                         ))}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-6 flex items-center gap-3 text-lg font-bold text-slate-900">
-                  <Target className="h-5 w-5 text-[#233876]" />
-                  Enjeux Identifies
-                </h3>
+                <SectionHeader
+                  icon={Target}
+                  title="Enjeux Identifies"
+                  subtitle="Priorites internes et externes"
+                  meta={sectionMeta.enjeux}
+                  isAdmin={isAdmin}
+                  onMetaChange={(field, value) => updateSectionMeta('enjeux', field, value)}
+                />
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {Object.entries(enjeux).map(([key, items]) => (
+                  {['Internes', 'Externes'].map((key) => {
+                    const items = enjeux[key] || [];
+                    return (
                     <div key={key} className={`rounded-xl border p-4 ${ENJEUX_CLASSES[key]}`}>
                       <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-2">
                         <h4 className="text-[11px] font-black uppercase tracking-widest">{key}</h4>
@@ -1105,7 +1202,7 @@ export default function UtilitiesModule({ onBack, user }) {
                             className="group flex items-start justify-between rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm"
                           >
                             <div className="space-y-1">
-                              <div className="text-xs font-semibold leading-snug text-slate-700">
+                              <div className="text-sm font-semibold leading-snug text-slate-700">
                                 {item.text}
                               </div>
                               {item.energy && <EnergyBadge />}
@@ -1117,7 +1214,7 @@ export default function UtilitiesModule({ onBack, user }) {
                         ))}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             </div>
@@ -1127,25 +1224,24 @@ export default function UtilitiesModule({ onBack, user }) {
         {activeTab === 'parties' && (
           <section className="w-full">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-[#233876]" />
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">
-                      Attentes des Parties Interessees
-                    </h3>
-                    <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                      Identification et surveillance
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={openAttenteModal}
-                  className="flex items-center gap-2 rounded-xl bg-[#233876] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1a2f64]"
-                >
-                  <Plus className="h-4 w-4" />
-                  Ajouter une attente
-                </button>
+              <div className="px-6 py-5">
+                <SectionHeader
+                  icon={Users}
+                  title="Attentes des Parties Interessees"
+                  subtitle="Identification et surveillance"
+                  meta={sectionMeta.parties}
+                  isAdmin={isAdmin}
+                  onMetaChange={(field, value) => updateSectionMeta('parties', field, value)}
+                  actions={
+                    <button
+                      onClick={openAttenteModal}
+                      className="flex items-center gap-2 rounded-xl bg-[#233876] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1a2f64]"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Ajouter une attente
+                    </button>
+                  }
+                />
               </div>
               <div className="overflow-x-auto p-2">
                 <table className="w-full border-collapse text-left text-sm">
@@ -1279,17 +1375,14 @@ export default function UtilitiesModule({ onBack, user }) {
         {activeTab === 'perimetre' && (
           <section className="w-full">
             <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-              <div className="mb-8 flex items-center gap-3 border-b border-slate-100 pb-4">
-                <ScanLine className="h-6 w-6 text-[#233876]" />
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">
-                    Perimetre du Systeme de Management
-                  </h3>
-                  <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                    Domaine d'application
-                  </p>
-                </div>
-              </div>
+              <SectionHeader
+                icon={ScanLine}
+                title="Perimetre du Systeme de Management"
+                subtitle="Domaine d'application"
+                meta={sectionMeta.perimetre}
+                isAdmin={isAdmin}
+                onMetaChange={(field, value) => updateSectionMeta('perimetre', field, value)}
+              />
 
               <div className="grid grid-cols-1 gap-8 text-slate-700 md:grid-cols-2">
                 <div className="space-y-6">
@@ -1425,15 +1518,14 @@ export default function UtilitiesModule({ onBack, user }) {
         {activeTab === 'politique' && (
           <section className="w-full">
             <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-              <div className="mb-6 flex items-center gap-3">
-                <FileText className="h-6 w-6 text-[#233876]" />
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">Politique Qualite & Energie</h3>
-                  <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                    Engagement de la direction
-                  </p>
-                </div>
-              </div>
+              <SectionHeader
+                icon={FileText}
+                title="Politique Qualite & Energie"
+                subtitle="Engagement de la direction"
+                meta={sectionMeta.politique}
+                isAdmin={isAdmin}
+                onMetaChange={(field, value) => updateSectionMeta('politique', field, value)}
+              />
 
               <div className="mb-8 space-y-4 text-sm leading-7 text-slate-600">
                 <p className="text-[15px] font-semibold text-slate-900">
@@ -1500,25 +1592,26 @@ export default function UtilitiesModule({ onBack, user }) {
         {activeTab === 'documents' && (
           <section className="w-full space-y-6">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5">
-                <div className="flex items-center gap-3">
-                  <FolderOpen className="h-5 w-5 text-[#233876]" />
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">Base Documentaire</h3>
-                    <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                      Informations documentees
-                    </p>
-                  </div>
-                </div>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Rechercher..."
-                    value={documentSearch}
-                    onChange={(event) => setDocumentSearch(event.target.value)}
-                    className="w-64 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm outline-none transition focus:border-[#233876]"
-                  />
-                </div>
+              <div className="border-b border-slate-200 bg-white px-6 py-5">
+                <SectionHeader
+                  icon={FolderOpen}
+                  title="Base Documentaire"
+                  subtitle="Informations documentees"
+                  meta={sectionMeta.documents}
+                  isAdmin={isAdmin}
+                  onMetaChange={(field, value) => updateSectionMeta('documents', field, value)}
+                  actions={
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Rechercher..."
+                        value={documentSearch}
+                        onChange={(event) => setDocumentSearch(event.target.value)}
+                        className="w-64 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm outline-none transition focus:border-[#233876]"
+                      />
+                    </div>
+                  }
+                />
               </div>
               <div className="overflow-x-auto p-2">
                 <table className="w-full border-collapse whitespace-nowrap text-left">
