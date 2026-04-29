@@ -482,6 +482,7 @@ function ModalFrame({ title, children, onClose, maxWidth = 'max-w-lg' }) {
 export default function UtilitiesModule({ onBack, user }) {
   const [activeTab, setActiveTab] = useState('pestel');
   const [expandedItems, setExpandedItems] = useState({});
+  const [selectedStakeholderName, setSelectedStakeholderName] = useState('');
   const { data: moduleData, setData: setModuleData } = useModuleState(
     'governance_engagement_module',
     INITIAL_MODULE_STATE
@@ -1038,13 +1039,13 @@ export default function UtilitiesModule({ onBack, user }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div className="space-y-6">
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-6 flex items-center gap-3 text-lg font-bold text-slate-900">
                   <ShieldCheck className="h-5 w-5 text-[#233876]" />
                   Matrice SWOT
                 </h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {Object.entries(swot).map(([key, items]) => (
                     <div key={key} className={`rounded-xl border p-5 ${SWOT_CLASSES[key]}`}>
                       <div className="mb-4 flex items-center justify-between border-b border-black/5 pb-2">
@@ -1153,7 +1154,7 @@ export default function UtilitiesModule({ onBack, user }) {
                       {[
                         'Partie interessee',
                         'Impact',
-                        'Ndeg',
+                        'N°',
                         'Attente / Exigence',
                         'Responsable',
                         'Pertinence',
@@ -1173,13 +1174,32 @@ export default function UtilitiesModule({ onBack, user }) {
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {stakeholders.flatMap((stakeholder) =>
                       stakeholder.attentes.map((attente, index) => (
-                        <tr key={attente.id} className="transition hover:bg-slate-50">
+                        <tr
+                          key={attente.id}
+                          className={`transition ${
+                            selectedStakeholderName === stakeholder.nom
+                              ? 'bg-blue-50/70'
+                              : 'hover:bg-slate-50'
+                          }`}
+                        >
                           {index === 0 && (
                             <td
                               rowSpan={stakeholder.attentes.length}
-                              className="border-r border-slate-100 p-3 align-middle font-bold text-slate-900"
+                              className={`border-r border-slate-100 p-3 align-middle font-bold text-slate-900 ${
+                                selectedStakeholderName === stakeholder.nom ? 'bg-blue-100/80' : ''
+                              }`}
                             >
-                              {stakeholder.nom}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedStakeholderName((prev) =>
+                                    prev === stakeholder.nom ? '' : stakeholder.nom
+                                  )
+                                }
+                                className="w-full text-left"
+                              >
+                                {stakeholder.nom}
+                              </button>
                             </td>
                           )}
                           <td className="p-3 text-center align-middle">
