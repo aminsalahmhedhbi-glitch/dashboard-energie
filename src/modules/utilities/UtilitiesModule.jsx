@@ -277,6 +277,12 @@ const TABS = [
   },
 ];
 
+const STRATEGIC_VIEWS = [
+  { id: 'pestel', label: 'Analyse PESTEL', icon: Globe },
+  { id: 'swot', label: 'Analyse SWOT', icon: ShieldCheck },
+  { id: 'enjeux', label: 'Enjeux Identifies', icon: Target },
+];
+
 const PESTEL_META = {
   Politique: { icon: Cpu, label: 'Technologique' },
   Economique: { icon: Landmark, label: 'Politique' },
@@ -541,6 +547,7 @@ function SectionHeader({ icon: Icon, title, subtitle, meta, isAdmin, onMetaChang
 
 export default function UtilitiesModule({ onBack, user }) {
   const [activeTab, setActiveTab] = useState('pestel');
+  const [strategicView, setStrategicView] = useState('pestel');
   const [expandedItems, setExpandedItems] = useState({});
   const [selectedStakeholderName, setSelectedStakeholderName] = useState('');
   const { data: moduleData, setData: setModuleData } = useModuleState(
@@ -1060,163 +1067,204 @@ export default function UtilitiesModule({ onBack, user }) {
         {activeTab === 'pestel' && (
           <section className="w-full space-y-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <SectionHeader
-                icon={Globe}
-                title="Analyse PESTEL"
-                subtitle="Contexte strategique"
-                meta={sectionMeta.pestel}
-                isAdmin={isAdmin}
-                onMetaChange={(field, value) => updateSectionMeta('pestel', field, value)}
-              />
-              <div className="space-y-4">
-                {Object.entries(pestel).map(([key, items]) => {
-                  const Icon = PESTEL_META[key].icon;
-                  const displayLabel = PESTEL_META[key].label || key;
-                  return (
-                    <div key={key} className="flex flex-col rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-2">
-                        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                          <Icon className="h-3.5 w-3.5" />
-                          {displayLabel}
-                        </div>
-                        <button
-                          onClick={() => openGenericModal('pestel', key)}
-                          className="text-slate-400 transition hover:text-[#233876]"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="group flex items-start justify-between rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm"
-                          >
-                            <div className="min-w-0 space-y-1">
-                              <div className="text-xs font-black leading-snug text-slate-900">
-                                {item.title || 'aucun titre'}
-                              </div>
-                              <ExpandableDescription
-                                text={item.text}
-                                expanded={Boolean(expandedItems[`pestel-${key}-${item.id}`])}
-                                onToggle={() =>
-                                  setExpandedItems((prev) => ({
-                                    ...prev,
-                                    [`pestel-${key}-${item.id}`]: !prev[`pestel-${key}-${item.id}`],
-                                  }))
-                                }
-                              />
-                              <div className="flex flex-wrap items-center gap-2">
-                                {item.energy && <EnergyBadge />}
-                                {item.climate && <ClimateBadge />}
-                              </div>
-                            </div>
-                            <ItemActionButtons
-                              onEdit={() => openGenericEditModal('pestel', key, item)}
-                              onDelete={() => deleteGenericItem('pestel', key, item.id)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="mb-6 flex flex-col gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Analyse Strategique : PESTEL, SWOT et Enjeux
+                  </h3>
+                  <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                    Sous-modules dedies a l'analyse strategique
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {STRATEGIC_VIEWS.map((view) => {
+                    const Icon = view.icon;
+                    const active = strategicView === view.id;
+                    return (
+                      <button
+                        key={view.id}
+                        type="button"
+                        onClick={() => setStrategicView(view.id)}
+                        className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition ${
+                          active
+                            ? 'border-transparent bg-[#233876] text-white shadow-sm'
+                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {view.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <SectionHeader
-                  icon={ShieldCheck}
-                  title="Analyse SWOT"
-                  subtitle="Lecture interne et externe"
-                  meta={sectionMeta.swot}
-                  isAdmin={isAdmin}
-                  onMetaChange={(field, value) => updateSectionMeta('swot', field, value)}
-                />
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {['Forces', 'Faiblesses', 'Opportunites', 'Menaces'].map((key) => {
-                    const items = swot[key] || [];
-                    return (
-                    <div key={key} className={`rounded-xl border p-5 ${SWOT_CLASSES[key]}`}>
-                      <div className="mb-4 flex items-center justify-between border-b border-black/5 pb-2">
-                        <h4 className="text-[11px] font-black uppercase tracking-widest">{key}</h4>
-                        <button
-                          onClick={() => openGenericModal('swot', key)}
-                          className="rounded px-2 py-1 text-xs font-bold transition hover:bg-white/70"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="group flex items-start justify-between rounded-lg border border-white/20 bg-white/80 p-2.5 shadow-sm"
-                          >
-                            <div className="space-y-1">
-                              <div className="text-sm font-semibold leading-snug">{item.text}</div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {item.energy && <EnergyBadge />}
-                                {item.climate && <ClimateBadge />}
-                              </div>
+              {strategicView === 'pestel' && (
+                <>
+                  <SectionHeader
+                    icon={Globe}
+                    title="Analyse PESTEL"
+                    subtitle="Contexte strategique"
+                    meta={sectionMeta.pestel}
+                    isAdmin={isAdmin}
+                    onMetaChange={(field, value) => updateSectionMeta('pestel', field, value)}
+                  />
+                  <div className="space-y-4">
+                    {Object.entries(pestel).map(([key, items]) => {
+                      const Icon = PESTEL_META[key].icon;
+                      const displayLabel = PESTEL_META[key].label || key;
+                      return (
+                        <div key={key} className="flex flex-col rounded-xl border border-slate-200 bg-slate-50 p-4">
+                          <div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-2">
+                            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                              <Icon className="h-3.5 w-3.5" />
+                              {displayLabel}
                             </div>
-                            <ItemActionButtons
-                              onEdit={() => openGenericEditModal('swot', key, item)}
-                              onDelete={() => deleteGenericItem('swot', key, item.id)}
-                            />
+                            <button
+                              onClick={() => openGenericModal('pestel', key)}
+                              className="text-slate-400 transition hover:text-[#233876]"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )})}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <SectionHeader
-                  icon={Target}
-                  title="Enjeux Identifies"
-                  subtitle="Priorites internes et externes"
-                  meta={sectionMeta.enjeux}
-                  isAdmin={isAdmin}
-                  onMetaChange={(field, value) => updateSectionMeta('enjeux', field, value)}
-                />
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {['Internes', 'Externes'].map((key) => {
-                    const items = enjeux[key] || [];
-                    return (
-                    <div key={key} className={`rounded-xl border p-4 ${ENJEUX_CLASSES[key]}`}>
-                      <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-2">
-                        <h4 className="text-[11px] font-black uppercase tracking-widest">{key}</h4>
-                        <button
-                          onClick={() => openGenericModal('enjeux', key)}
-                          className="text-slate-400 transition hover:text-[#233876]"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="group flex items-start justify-between rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm"
-                          >
-                            <div className="space-y-1">
-                              <div className="text-sm font-semibold leading-snug text-slate-700">
-                                {item.text}
+                          <div className="space-y-2">
+                            {items.map((item) => (
+                              <div
+                                key={item.id}
+                                className="group flex items-start justify-between rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm"
+                              >
+                                <div className="min-w-0 space-y-1">
+                                  <div className="text-xs font-black leading-snug text-slate-900">
+                                    {item.title || 'aucun titre'}
+                                  </div>
+                                  <ExpandableDescription
+                                    text={item.text}
+                                    expanded={Boolean(expandedItems[`pestel-${key}-${item.id}`])}
+                                    onToggle={() =>
+                                      setExpandedItems((prev) => ({
+                                        ...prev,
+                                        [`pestel-${key}-${item.id}`]: !prev[`pestel-${key}-${item.id}`],
+                                      }))
+                                    }
+                                  />
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {item.energy && <EnergyBadge />}
+                                    {item.climate && <ClimateBadge />}
+                                  </div>
+                                </div>
+                                <ItemActionButtons
+                                  onEdit={() => openGenericEditModal('pestel', key, item)}
+                                  onDelete={() => deleteGenericItem('pestel', key, item.id)}
+                                />
                               </div>
-                              {item.energy && <EnergyBadge />}
-                            </div>
-                            <ItemDeleteButton
-                              onClick={() => deleteGenericItem('enjeux', key, item.id)}
-                            />
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )})}
-                </div>
-              </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {strategicView === 'swot' && (
+                <>
+                  <SectionHeader
+                    icon={ShieldCheck}
+                    title="Analyse SWOT"
+                    subtitle="Lecture interne et externe"
+                    meta={sectionMeta.swot}
+                    isAdmin={isAdmin}
+                    onMetaChange={(field, value) => updateSectionMeta('swot', field, value)}
+                  />
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {['Forces', 'Faiblesses', 'Opportunites', 'Menaces'].map((key) => {
+                      const items = swot[key] || [];
+                      return (
+                        <div key={key} className={`rounded-xl border p-5 ${SWOT_CLASSES[key]}`}>
+                          <div className="mb-4 flex items-center justify-between border-b border-black/5 pb-2">
+                            <h4 className="text-base font-black uppercase tracking-wide">{key}</h4>
+                            <button
+                              onClick={() => openGenericModal('swot', key)}
+                              className="rounded px-2 py-1 text-xs font-bold transition hover:bg-white/70"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            {items.map((item) => (
+                              <div
+                                key={item.id}
+                                className="group flex items-start justify-between rounded-lg border border-white/20 bg-white/80 p-2.5 shadow-sm"
+                              >
+                                <div className="space-y-1">
+                                  <div className="text-sm font-semibold leading-snug">{item.text}</div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {item.energy && <EnergyBadge />}
+                                    {item.climate && <ClimateBadge />}
+                                  </div>
+                                </div>
+                                <ItemActionButtons
+                                  onEdit={() => openGenericEditModal('swot', key, item)}
+                                  onDelete={() => deleteGenericItem('swot', key, item.id)}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {strategicView === 'enjeux' && (
+                <>
+                  <SectionHeader
+                    icon={Target}
+                    title="Enjeux Identifies"
+                    subtitle="Priorites internes et externes"
+                    meta={sectionMeta.enjeux}
+                    isAdmin={isAdmin}
+                    onMetaChange={(field, value) => updateSectionMeta('enjeux', field, value)}
+                  />
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {['Internes', 'Externes'].map((key) => {
+                      const items = enjeux[key] || [];
+                      return (
+                        <div key={key} className={`rounded-xl border p-4 ${ENJEUX_CLASSES[key]}`}>
+                          <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-2">
+                            <h4 className="text-base font-black uppercase tracking-wide">{key}</h4>
+                            <button
+                              onClick={() => openGenericModal('enjeux', key)}
+                              className="text-slate-400 transition hover:text-[#233876]"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            {items.map((item) => (
+                              <div
+                                key={item.id}
+                                className="group flex items-start justify-between rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm"
+                              >
+                                <div className="space-y-1">
+                                  <div className="text-sm font-semibold leading-snug text-slate-700">
+                                    {item.text}
+                                  </div>
+                                  {item.energy && <EnergyBadge />}
+                                </div>
+                                <ItemDeleteButton
+                                  onClick={() => deleteGenericItem('enjeux', key, item.id)}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </section>
         )}
