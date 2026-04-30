@@ -34,6 +34,7 @@ import ModuleHeader from '../../components/layout/ModuleHeader';
 import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
 import politiqueSignature from '../../assets/politique-signature.png';
 import italcarMarquesGrid from '../../assets/italcar-marques-grid.png';
+import tunisiaGovernoratesMap from '../../assets/tunisia-governorates-map.png';
 
 const INITIAL_PESTEL = {
   Politique: [{ id: 1, text: 'Reglementations etatiques importation', energy: false }],
@@ -662,14 +663,13 @@ function TunisiaNetworkMapCard({ propre, sousConcessionnaires }) {
         <MapPin className="h-3.5 w-3.5" />
         Carte du reseau en Tunisie
       </div>
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),transparent_40%),linear-gradient(180deg,#f8fbff_0%,#eef6ff_45%,#f8fafc_100%)] p-4">
-        <div className="absolute inset-x-6 top-7 h-20 rounded-full bg-sky-100/80 blur-2xl" />
-        <div className="relative mx-auto h-[360px] w-full max-w-[250px]">
-          <div className="absolute inset-0 rounded-[42%_48%_44%_40%/18%_24%_60%_58%] border border-slate-300 bg-white/70 shadow-inner" />
-          <div className="absolute left-[18%] top-[10%] h-[78%] w-[64%] rounded-[38%_42%_40%_44%/14%_20%_64%_62%] border border-slate-300 bg-gradient-to-b from-slate-100 via-white to-slate-50" />
-          <div className="absolute left-[28%] top-[82%] text-sm font-black uppercase tracking-widest text-slate-600">
-            Tunisie
-          </div>
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="relative mx-auto w-full max-w-[420px]">
+          <img
+            src={tunisiaGovernoratesMap}
+            alt="Carte de la Tunisie"
+            className="h-auto w-full rounded-xl object-contain"
+          />
           {markers.map((marker) => (
             <div
               key={marker.id}
