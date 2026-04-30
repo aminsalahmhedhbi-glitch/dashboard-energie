@@ -1,5 +1,5 @@
 ﻿
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BookOpen,
@@ -751,15 +751,204 @@ function ProcessNode({ process }) {
   );
 }
 
-function CartographieCanvas({ data }) {
+function CartographieCanvas({ data, isEditing = false, onUpdateProcesses, onUpdateConnexions }) {
   const processes = data?.processus || [];
   const connections = data?.connexions || [];
+  const containerRef = useRef(null);
+  const [mode, setMode] = useState('move');
+  const [draggingId, setDraggingId] = useState(null);
+  const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [newProcessName, setNewProcessName] = useState('');
+  const [newProcessType, setNewProcessType] = useState('realisation');
+
+  const handleMouseDown = (event, id) => {
+    if (!isEditing) return;
+    event.stopPropagation();
+
+    if (mode === 'move' && id !== 'exigences' && id !== 'satisfaction') {
+      setDraggingId(id);
+      return;
+    }
+
+    if (mode === 'link') {
+      if (!selectedNodeId) {
+        setSelectedNodeId(id);
+        return;
+      }
+      if (selectedNodeId !== id && onUpdateConnexions) {
+        onUpdateConnexions([
+          ...connections,
+          { id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`, from: selectedNodeId, to: id },
+        ]);
+      }
+      setSelectedNodeId(null);
+      return;
+    }
+
+    if (mode === 'delete' && id !== 'exigences' && id !== 'satisfaction' && onUpdateProcesses && onUpdateConnexions) {
+      onUpdateProcesses(processes.filter((process) => process.id !== id));
+      onUpdateConnexions(connections.filter((connection) => connection.from !== id && connection.to !== id));
+      setSelectedNodeId(null);
+    }
+  };
+
+  const handleMouseMove = (event) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    setMousePos({ x, y });
+
+    if (draggingId && mode === 'move' && onUpdateProcesses) {
+      onUpdateProcesses(
+        processes.map((process) =>
+          process.id === draggingId
+            ? {
+                ...process,
+                x: Math.max(140, Math.min(PROCESS_CANVAS_WIDTH - 140, x)),
+                y: Math.max(70, Math.min(PROCESS_CANVAS_HEIGHT - 60, y)),
+              }
+            : process
+        )
+      );
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (draggingId) setDraggingId(null);
+  };
+
+  const addProcess = () => {
+    if (!isEditing || !onUpdateProcesses || !newProcessName.trim()) return;
+    onUpdateProcesses([
+      ...processes,
+      {
+        id: Date.now(),
+        nom: newProcessName.trim(),
+        type: newProcessType,
+        x: 560,
+        y: 360,
+        w: newProcessType === 'support' ? 220 : 180,
+      },
+    ]);
+    setNewProcessName('');
+  };
+
+  const removeConnection = (connectionId) => {
+    if (mode !== 'delete' || !isEditing || !onUpdateConnexions) return;
+    onUpdateConnexions(connections.filter((connection) => connection.id !== connectionId));
+  };
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-inner">
+    <div className="space-y-4">
+      {isEditing && (
+        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-inner">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+              Outils matrice :
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('move');
+                setSelectedNodeId(null);
+              }}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                mode === 'move'
+                  ? 'bg-[#233876] text-white'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              Deplacer
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('link');
+                setSelectedNodeId(null);
+              }}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                mode === 'link'
+                  ? 'bg-[#233876] text-white'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              Lier
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('delete');
+                setSelectedNodeId(null);
+              }}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                mode === 'delete'
+                  ? 'bg-red-600 text-white'
+                  : 'border border-red-200 bg-white text-red-600 hover:bg-red-50'
+              }`}
+            >
+              Supprimer
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-3">
+            <div className="min-w-[220px] flex-1">
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Nouveau processus
+              </label>
+              <input
+                type="text"
+                value={newProcessName}
+                onChange={(event) => setNewProcessName(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#233876]"
+                placeholder="Nom du processus"
+              />
+            </div>
+            <div className="min-w-[180px]">
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Categorie
+              </label>
+              <select
+                value={newProcessType}
+                onChange={(event) => setNewProcessType(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#233876]"
+              >
+                <option value="pilotage">Pilotage</option>
+                <option value="realisation">Realisation</option>
+                <option value="support">Support</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={addProcess}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700"
+            >
+              Ajouter
+            </button>
+          </div>
+
+          {mode === 'link' && (
+            <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
+              Cliquez sur un premier bloc puis sur un second pour creer une liaison.
+            </p>
+          )}
+          {mode === 'delete' && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+              Cliquez sur un bloc ou une liaison pour la supprimer.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-inner">
       <div
+        ref={containerRef}
         className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white"
         style={{ width: `${PROCESS_CANVAS_WIDTH}px`, height: `${PROCESS_CANVAS_HEIGHT}px` }}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
         <div
           className="absolute inset-0 opacity-25"
@@ -784,21 +973,68 @@ function CartographieCanvas({ data }) {
               stroke="#94a3b8"
               strokeWidth="3"
               strokeLinecap="round"
+              className={isEditing && mode === 'delete' ? 'cursor-pointer hover:stroke-red-500 hover:stroke-[4]' : ''}
+              onClick={() => removeConnection(connection.id)}
             />
           ))}
+          {isEditing && selectedNodeId && mode === 'link' && (
+            <path
+              d={(() => {
+                const fromNode = getStaticProcessNode(processes, selectedNodeId);
+                if (!fromNode) return '';
+                const from = getProcessAnchor(fromNode, 'right');
+                const dx = mousePos.x - from.x;
+                const curve = Math.max(60, Math.abs(dx) * 0.35);
+                return `M ${from.x} ${from.y} C ${from.x + curve} ${from.y}, ${mousePos.x - curve} ${mousePos.y}, ${mousePos.x} ${mousePos.y}`;
+              })()}
+              fill="none"
+              stroke="#233876"
+              strokeDasharray="8 6"
+              strokeWidth="3"
+            />
+          )}
         </svg>
 
-        <div className="absolute left-4 top-10 flex h-[500px] w-[96px] items-center justify-center rounded-2xl border-2 border-sky-200 bg-sky-50 px-3 text-center text-xs font-black uppercase tracking-wide text-sky-900 shadow-sm">
+        <div
+          className={`absolute left-4 top-10 flex h-[500px] w-[96px] items-center justify-center rounded-2xl border-2 border-sky-200 bg-sky-50 px-3 text-center text-xs font-black uppercase tracking-wide text-sky-900 shadow-sm ${
+            isEditing ? 'cursor-pointer transition hover:ring-2 hover:ring-sky-300' : ''
+          } ${selectedNodeId === 'exigences' ? 'ring-4 ring-emerald-400' : ''}`}
+          onMouseDown={(event) => handleMouseDown(event, 'exigences')}
+        >
           Exigences des PI
         </div>
-        <div className="absolute right-4 top-10 flex h-[500px] w-[96px] items-center justify-center rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-3 text-center text-xs font-black uppercase tracking-wide text-emerald-900 shadow-sm">
+        <div
+          className={`absolute right-4 top-10 flex h-[500px] w-[96px] items-center justify-center rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-3 text-center text-xs font-black uppercase tracking-wide text-emerald-900 shadow-sm ${
+            isEditing ? 'cursor-pointer transition hover:ring-2 hover:ring-emerald-300' : ''
+          } ${selectedNodeId === 'satisfaction' ? 'ring-4 ring-emerald-400' : ''}`}
+          onMouseDown={(event) => handleMouseDown(event, 'satisfaction')}
+        >
           Satisfaction des PI
         </div>
 
         {processes.map((process) => (
-          <ProcessNode key={process.id} process={process} />
+          <div key={process.id} onMouseDown={(event) => handleMouseDown(event, process.id)}>
+            <ProcessNode
+              process={{
+                ...process,
+                h: process.type === 'support' ? 78 : 58,
+              }}
+            />
+            {selectedNodeId === process.id && (
+              <div
+                className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl ring-4 ring-emerald-400"
+                style={{
+                  left: `${process.x}px`,
+                  top: `${process.y}px`,
+                  width: `${process.w}px`,
+                  height: `${process.type === 'support' ? 78 : 58}px`,
+                }}
+              />
+            )}
+          </div>
         ))}
       </div>
+    </div>
     </div>
   );
 }
@@ -806,6 +1042,8 @@ function CartographieCanvas({ data }) {
 export default function UtilitiesModule({ onBack, user }) {
   const [activeTab, setActiveTab] = useState('pestel');
   const [strategicView, setStrategicView] = useState('pestel');
+  const [presentationEditing, setPresentationEditing] = useState(false);
+  const [cartographieEditing, setCartographieEditing] = useState(false);
   const [expandedItems, setExpandedItems] = useState({});
   const [selectedStakeholderName, setSelectedStakeholderName] = useState('');
   const { data: moduleData, setData: setModuleData } = useModuleState(
@@ -912,6 +1150,7 @@ export default function UtilitiesModule({ onBack, user }) {
   const setEnjeux = createSliceSetter('enjeux');
   const setStakeholders = createSliceSetter('stakeholders');
   const setPerimetre = createSliceSetter('perimetre');
+  const setCartographie = createSliceSetter('cartographie');
   const setAxes = createSliceSetter('axes');
   const setDocuments = createSliceSetter('documents');
   const setPolitiqueIntro = createSliceSetter('politiqueIntro');
@@ -925,6 +1164,78 @@ export default function UtilitiesModule({ onBack, user }) {
         ...(INITIAL_SECTION_META[sectionKey] || {}),
         ...((prev || {})[sectionKey] || {}),
         [field]: value,
+      },
+    }));
+  };
+
+  const updatePerimetreValue = (field, value) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const updatePerimetreNestedObject = (parentKey, field, value) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      [parentKey]: {
+        ...(prev?.[parentKey] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const updatePerimetreArrayItem = (arrayKey, itemId, field, value) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      [arrayKey]: (prev?.[arrayKey] || []).map((item) =>
+        item.id === itemId ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const addPerimetreArrayItem = (arrayKey, template) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      [arrayKey]: [...(prev?.[arrayKey] || []), { id: createId(), ...template }],
+    }));
+  };
+
+  const removePerimetreArrayItem = (arrayKey, itemId) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      [arrayKey]: (prev?.[arrayKey] || []).filter((item) => item.id !== itemId),
+    }));
+  };
+
+  const updatePerimetreNestedArrayItem = (parentKey, arrayKey, itemId, field, value) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      [parentKey]: {
+        ...(prev?.[parentKey] || {}),
+        [arrayKey]: (prev?.[parentKey]?.[arrayKey] || []).map((item) =>
+          item.id === itemId ? { ...item, [field]: value } : item
+        ),
+      },
+    }));
+  };
+
+  const addPerimetreNestedArrayItem = (parentKey, arrayKey, template) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      [parentKey]: {
+        ...(prev?.[parentKey] || {}),
+        [arrayKey]: [...(prev?.[parentKey]?.[arrayKey] || []), { id: createId(), ...template }],
+      },
+    }));
+  };
+
+  const removePerimetreNestedArrayItem = (parentKey, arrayKey, itemId) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      [parentKey]: {
+        ...(prev?.[parentKey] || {}),
+        [arrayKey]: (prev?.[parentKey]?.[arrayKey] || []).filter((item) => item.id !== itemId),
       },
     }));
   };
@@ -1739,6 +2050,21 @@ export default function UtilitiesModule({ onBack, user }) {
                 meta={sectionMeta.perimetre}
                 isAdmin={isAdmin}
                 onMetaChange={(field, value) => updateSectionMeta('perimetre', field, value)}
+                actions={
+                  isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => setPresentationEditing((prev) => !prev)}
+                      className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+                        presentationEditing
+                          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                          : 'bg-[#233876] text-white hover:bg-[#1a2f64]'
+                      }`}
+                    >
+                      {presentationEditing ? 'Terminer les modifications' : 'Modifier le contenu'}
+                    </button>
+                  ) : null
+                }
               />
 
               <div className="space-y-8 text-slate-700">
@@ -1754,25 +2080,79 @@ export default function UtilitiesModule({ onBack, user }) {
                           <strong className="inline-block w-36 font-semibold text-slate-900">
                             Entreprise:
                           </strong>
-                          {perimetre.identiteJuridique.entreprise}
+                          {presentationEditing ? (
+                            <input
+                              type="text"
+                              value={perimetre.identiteJuridique.entreprise}
+                              onChange={(event) =>
+                                updatePerimetreNestedObject(
+                                  'identiteJuridique',
+                                  'entreprise',
+                                  event.target.value
+                                )
+                              }
+                              className="w-[220px] rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                            />
+                          ) : (
+                            perimetre.identiteJuridique.entreprise
+                          )}
                         </li>
                         <li>
                           <strong className="inline-block w-36 font-semibold text-slate-900">
                             Forme Juridique:
                           </strong>
-                          {perimetre.identiteJuridique.formeJuridique}
+                          {presentationEditing ? (
+                            <input
+                              type="text"
+                              value={perimetre.identiteJuridique.formeJuridique}
+                              onChange={(event) =>
+                                updatePerimetreNestedObject(
+                                  'identiteJuridique',
+                                  'formeJuridique',
+                                  event.target.value
+                                )
+                              }
+                              className="w-[220px] rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                            />
+                          ) : (
+                            perimetre.identiteJuridique.formeJuridique
+                          )}
                         </li>
                         <li>
                           <strong className="inline-block w-36 font-semibold text-slate-900">
                             Effectif:
                           </strong>
-                          {perimetre.identiteJuridique.effectif}
+                          {presentationEditing ? (
+                            <input
+                              type="text"
+                              value={perimetre.identiteJuridique.effectif}
+                              onChange={(event) =>
+                                updatePerimetreNestedObject(
+                                  'identiteJuridique',
+                                  'effectif',
+                                  event.target.value
+                                )
+                              }
+                              className="w-[220px] rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                            />
+                          ) : (
+                            perimetre.identiteJuridique.effectif
+                          )}
                         </li>
                         <li className="border-t border-slate-200 pt-3">
                           <strong className="mb-1 block font-semibold text-slate-900">
                             Domaine principal:
                           </strong>
-                          {perimetre.domainePrincipal}
+                          {presentationEditing ? (
+                            <input
+                              type="text"
+                              value={perimetre.domainePrincipal}
+                              onChange={(event) => updatePerimetreValue('domainePrincipal', event.target.value)}
+                              className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                            />
+                          ) : (
+                            perimetre.domainePrincipal
+                          )}
                         </li>
                       </ul>
                     </div>
@@ -1784,13 +2164,36 @@ export default function UtilitiesModule({ onBack, user }) {
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {perimetre.marques.map((item) => (
-                          <span
+                          <div
                             key={item.id}
-                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700"
+                            className="group flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700"
                           >
-                            {item.text}
-                          </span>
+                            {presentationEditing ? (
+                              <>
+                                <input
+                                  type="text"
+                                  value={item.text}
+                                  onChange={(event) =>
+                                    updatePerimetreArrayItem('marques', item.id, 'text', event.target.value)
+                                  }
+                                  className="w-24 bg-transparent outline-none"
+                                />
+                                <ItemDeleteButton onClick={() => removePerimetreArrayItem('marques', item.id)} />
+                              </>
+                            ) : (
+                              item.text
+                            )}
+                          </div>
                         ))}
+                        {presentationEditing && (
+                          <button
+                            type="button"
+                            onClick={() => addPerimetreArrayItem('marques', { text: 'Nouvelle marque' })}
+                            className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                          >
+                            + Ajouter
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -1814,7 +2217,18 @@ export default function UtilitiesModule({ onBack, user }) {
                             className="group flex items-center gap-2 rounded-lg border border-yellow-200 bg-white px-3 py-1.5 text-xs font-semibold text-yellow-900 shadow-sm"
                           >
                             <Zap className="h-3.5 w-3.5 text-yellow-500" />
-                            {item.text}
+                            {presentationEditing ? (
+                              <input
+                                type="text"
+                                value={item.text}
+                                onChange={(event) =>
+                                  updatePerimetreArrayItem('ues', item.id, 'text', event.target.value)
+                                }
+                                className="w-48 bg-transparent outline-none"
+                              />
+                            ) : (
+                              item.text
+                            )}
                             <ItemDeleteButton onClick={() => deleteGenericItem('ues', null, item.id)} />
                           </div>
                         ))}
@@ -1828,10 +2242,45 @@ export default function UtilitiesModule({ onBack, user }) {
                       <div className="space-y-3">
                         {perimetre.abreviations.map((item) => (
                           <div key={item.id} className="flex items-start gap-3 text-sm">
-                            <span className="min-w-[48px] font-bold text-[#233876]">{item.court}</span>
-                            <span className="text-slate-600">{item.long}</span>
+                            {presentationEditing ? (
+                              <>
+                                <input
+                                  type="text"
+                                  value={item.court}
+                                  onChange={(event) =>
+                                    updatePerimetreArrayItem('abreviations', item.id, 'court', event.target.value)
+                                  }
+                                  className="w-16 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-[#233876]"
+                                />
+                                <input
+                                  type="text"
+                                  value={item.long}
+                                  onChange={(event) =>
+                                    updatePerimetreArrayItem('abreviations', item.id, 'long', event.target.value)
+                                  }
+                                  className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                />
+                                <ItemDeleteButton onClick={() => removePerimetreArrayItem('abreviations', item.id)} />
+                              </>
+                            ) : (
+                              <>
+                                <span className="min-w-[48px] font-bold text-[#233876]">{item.court}</span>
+                                <span className="text-slate-600">{item.long}</span>
+                              </>
+                            )}
                           </div>
                         ))}
+                        {presentationEditing && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addPerimetreArrayItem('abreviations', { court: 'NEW', long: 'Nouvelle abreviation' })
+                            }
+                            className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                          >
+                            + Ajouter
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1849,9 +2298,42 @@ export default function UtilitiesModule({ onBack, user }) {
                             className="flex items-start gap-3 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm"
                           >
                             <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-200" />
-                            <span className="text-sm font-medium leading-relaxed">{item.text}</span>
+                            {presentationEditing ? (
+                              <div className="flex flex-1 items-start gap-2">
+                                <textarea
+                                  rows="2"
+                                  value={item.text}
+                                  onChange={(event) =>
+                                    updatePerimetreArrayItem('domainesActivite', item.id, 'text', event.target.value)
+                                  }
+                                  className="w-full rounded border border-white/20 bg-white/15 px-3 py-2 text-sm text-white outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removePerimetreArrayItem('domainesActivite', item.id)}
+                                  className="mt-1 text-red-200 hover:text-white"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-sm font-medium leading-relaxed">{item.text}</span>
+                            )}
                           </div>
                         ))}
+                        {presentationEditing && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addPerimetreArrayItem('domainesActivite', {
+                                text: "Nouveau domaine d'activite",
+                              })
+                            }
+                            className="rounded-xl border border-dashed border-white/30 bg-white/5 px-4 py-2 text-xs font-bold text-blue-100 hover:bg-white/10"
+                          >
+                            + Ajouter un domaine
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -1865,10 +2347,45 @@ export default function UtilitiesModule({ onBack, user }) {
                           {perimetre.reseau.propre.map((item) => (
                             <div key={item.id} className="flex items-start gap-3 text-sm">
                               <span className="mt-1 text-[#233876]">•</span>
-                              <span>{item.text}</span>
+                              {presentationEditing ? (
+                                <div className="flex flex-1 items-center gap-2">
+                                  <input
+                                    type="text"
+                                    value={item.text}
+                                    onChange={(event) =>
+                                      updatePerimetreNestedArrayItem(
+                                        'reseau',
+                                        'propre',
+                                        item.id,
+                                        'text',
+                                        event.target.value
+                                      )
+                                    }
+                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                  />
+                                  <ItemDeleteButton
+                                    onClick={() =>
+                                      removePerimetreNestedArrayItem('reseau', 'propre', item.id)
+                                    }
+                                  />
+                                </div>
+                              ) : (
+                                <span>{item.text}</span>
+                              )}
                             </div>
                           ))}
                         </div>
+                        {presentationEditing && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addPerimetreNestedArrayItem('reseau', 'propre', { text: 'Nouveau site' })
+                            }
+                            className="mt-4 rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                          >
+                            + Ajouter un site
+                          </button>
+                        )}
                       </div>
 
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1882,13 +2399,71 @@ export default function UtilitiesModule({ onBack, user }) {
                               key={item.id}
                               className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
                             >
-                              <span className="font-semibold text-slate-800">{item.nom}</span>
-                              <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
-                                {item.ville}
-                              </span>
+                              {presentationEditing ? (
+                                <div className="flex w-full items-center gap-2">
+                                  <input
+                                    type="text"
+                                    value={item.nom}
+                                    onChange={(event) =>
+                                      updatePerimetreNestedArrayItem(
+                                        'reseau',
+                                        'sousConcessionnaires',
+                                        item.id,
+                                        'nom',
+                                        event.target.value
+                                      )
+                                    }
+                                    className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm font-semibold"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={item.ville}
+                                    onChange={(event) =>
+                                      updatePerimetreNestedArrayItem(
+                                        'reseau',
+                                        'sousConcessionnaires',
+                                        item.id,
+                                        'ville',
+                                        event.target.value
+                                      )
+                                    }
+                                    className="w-32 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                  />
+                                  <ItemDeleteButton
+                                    onClick={() =>
+                                      removePerimetreNestedArrayItem(
+                                        'reseau',
+                                        'sousConcessionnaires',
+                                        item.id
+                                      )
+                                    }
+                                  />
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="font-semibold text-slate-800">{item.nom}</span>
+                                  <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
+                                    {item.ville}
+                                  </span>
+                                </>
+                              )}
                             </div>
                           ))}
                         </div>
+                        {presentationEditing && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addPerimetreNestedArrayItem('reseau', 'sousConcessionnaires', {
+                                nom: 'Nouveau concessionnaire',
+                                ville: 'Ville',
+                              })
+                            }
+                            className="mt-4 rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                          >
+                            + Ajouter un concessionnaire
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -1901,10 +2476,33 @@ export default function UtilitiesModule({ onBack, user }) {
                           {perimetre.contexte.map((item) => (
                             <div key={item.id} className="flex gap-2">
                               <span className="mt-1 text-[#233876]">•</span>
-                              <span>{item.text}</span>
+                              {presentationEditing ? (
+                                <div className="flex flex-1 items-start gap-2">
+                                  <textarea
+                                    rows="2"
+                                    value={item.text}
+                                    onChange={(event) =>
+                                      updatePerimetreArrayItem('contexte', item.id, 'text', event.target.value)
+                                    }
+                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                  />
+                                  <ItemDeleteButton onClick={() => removePerimetreArrayItem('contexte', item.id)} />
+                                </div>
+                              ) : (
+                                <span>{item.text}</span>
+                              )}
                             </div>
                           ))}
                         </div>
+                        {presentationEditing && (
+                          <button
+                            type="button"
+                            onClick={() => addPerimetreArrayItem('contexte', { text: 'Nouvel element de contexte' })}
+                            className="mt-4 rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                          >
+                            + Ajouter
+                          </button>
+                        )}
                       </div>
 
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1915,10 +2513,44 @@ export default function UtilitiesModule({ onBack, user }) {
                           {perimetre.environnement.map((item) => (
                             <div key={item.id} className="flex gap-2">
                               <span className="mt-1 text-[#233876]">•</span>
-                              <span>{item.text}</span>
+                              {presentationEditing ? (
+                                <div className="flex flex-1 items-start gap-2">
+                                  <textarea
+                                    rows="2"
+                                    value={item.text}
+                                    onChange={(event) =>
+                                      updatePerimetreArrayItem(
+                                        'environnement',
+                                        item.id,
+                                        'text',
+                                        event.target.value
+                                      )
+                                    }
+                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                  />
+                                  <ItemDeleteButton
+                                    onClick={() => removePerimetreArrayItem('environnement', item.id)}
+                                  />
+                                </div>
+                              ) : (
+                                <span>{item.text}</span>
+                              )}
                             </div>
                           ))}
                         </div>
+                        {presentationEditing && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addPerimetreArrayItem('environnement', {
+                                text: "Nouvel element d'environnement",
+                              })
+                            }
+                            className="mt-4 rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                          >
+                            + Ajouter
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1956,7 +2588,18 @@ export default function UtilitiesModule({ onBack, user }) {
                             <div key={item.id} className="group flex items-start justify-between gap-3">
                               <div className="flex gap-2">
                                 <span className="mt-1 text-[#233876]">•</span>
-                                <span>{item.text}</span>
+                                {presentationEditing ? (
+                                  <input
+                                    type="text"
+                                    value={item.text}
+                                    onChange={(event) =>
+                                      updatePerimetreArrayItem('activites', item.id, 'text', event.target.value)
+                                    }
+                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                  />
+                                ) : (
+                                  <span>{item.text}</span>
+                                )}
                               </div>
                               <ItemDeleteButton onClick={() => deleteGenericItem('activites', null, item.id)} />
                             </div>
@@ -1966,7 +2609,18 @@ export default function UtilitiesModule({ onBack, user }) {
                           <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                             Exclusions
                           </div>
-                          <p>{perimetre.qualiteScope.exclusions}</p>
+                          {presentationEditing ? (
+                            <textarea
+                              rows="4"
+                              value={perimetre.qualiteScope.exclusions}
+                              onChange={(event) =>
+                                updatePerimetreNestedObject('qualiteScope', 'exclusions', event.target.value)
+                              }
+                              className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
+                            />
+                          ) : (
+                            <p>{perimetre.qualiteScope.exclusions}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1995,7 +2649,18 @@ export default function UtilitiesModule({ onBack, user }) {
                             <div key={item.id} className="group flex items-start justify-between gap-3">
                               <div className="flex gap-2">
                                 <span className="mt-1 text-[#233876]">•</span>
-                                <span>{item.text}</span>
+                                {presentationEditing ? (
+                                  <input
+                                    type="text"
+                                    value={item.text}
+                                    onChange={(event) =>
+                                      updatePerimetreArrayItem('sites', item.id, 'text', event.target.value)
+                                    }
+                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                  />
+                                ) : (
+                                  <span>{item.text}</span>
+                                )}
                               </div>
                               <ItemDeleteButton onClick={() => deleteGenericItem('sites', null, item.id)} />
                             </div>
@@ -2005,7 +2670,18 @@ export default function UtilitiesModule({ onBack, user }) {
                           <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                             Portee energie
                           </div>
-                          <p>{perimetre.energieScope.activites[0]}</p>
+                          {presentationEditing ? (
+                            <textarea
+                              rows="3"
+                              value={perimetre.energieScope.activites[0]}
+                              onChange={(event) =>
+                                updatePerimetreNestedObject('energieScope', 'activites', [event.target.value])
+                              }
+                              className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
+                            />
+                          ) : (
+                            <p>{perimetre.energieScope.activites[0]}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2026,6 +2702,21 @@ export default function UtilitiesModule({ onBack, user }) {
                 meta={sectionMeta.cartographie}
                 isAdmin={isAdmin}
                 onMetaChange={(field, value) => updateSectionMeta('cartographie', field, value)}
+                actions={
+                  isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => setCartographieEditing((prev) => !prev)}
+                      className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+                        cartographieEditing
+                          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                          : 'bg-[#233876] text-white hover:bg-[#1a2f64]'
+                      }`}
+                    >
+                      {cartographieEditing ? "Quitter l'edition" : 'Modifier la cartographie'}
+                    </button>
+                  ) : null
+                }
               />
 
               <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-slate-600">
@@ -2049,7 +2740,22 @@ export default function UtilitiesModule({ onBack, user }) {
                 </span>
               </div>
 
-              <CartographieCanvas data={cartographie} />
+              <CartographieCanvas
+                data={cartographie}
+                isEditing={Boolean(isAdmin && cartographieEditing)}
+                onUpdateProcesses={(newProcesses) =>
+                  setCartographie((prev) => ({
+                    ...(prev || {}),
+                    processus: newProcesses,
+                  }))
+                }
+                onUpdateConnexions={(newConnexions) =>
+                  setCartographie((prev) => ({
+                    ...(prev || {}),
+                    connexions: newConnexions,
+                  }))
+                }
+              />
             </div>
           </section>
         )}
