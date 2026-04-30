@@ -33,6 +33,7 @@ import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
 import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
 import politiqueSignature from '../../assets/politique-signature.png';
+import italcarMarquesGrid from '../../assets/italcar-marques-grid.png';
 
 const INITIAL_PESTEL = {
   Politique: [{ id: 1, text: 'Reglementations etatiques importation', energy: false }],
@@ -2165,14 +2166,24 @@ export default function UtilitiesModule({ onBack, user }) {
                         <Briefcase className="h-3.5 w-3.5" />
                         Marques representees
                       </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {perimetre.marques.map((item) => (
-                          <div
-                            key={item.id}
-                            className="group flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700"
-                          >
-                            {presentationEditing ? (
-                              <>
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <img
+                          src={italcarMarquesGrid}
+                          alt="Logos des marques representees par ITALCAR"
+                          className="mx-auto max-h-[420px] w-auto object-contain"
+                        />
+                      </div>
+                      {presentationEditing && (
+                        <div className="mt-4 space-y-3">
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            Libelles internes des marques
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {perimetre.marques.map((item) => (
+                              <div
+                                key={item.id}
+                                className="group flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700"
+                              >
                                 <input
                                   type="text"
                                   value={item.text}
@@ -2181,23 +2192,22 @@ export default function UtilitiesModule({ onBack, user }) {
                                   }
                                   className="w-24 bg-transparent outline-none"
                                 />
-                                <ItemDeleteButton onClick={() => removePerimetreArrayItem('marques', item.id)} />
-                              </>
-                            ) : (
-                              item.text
-                            )}
+                                <ItemDeleteButton
+                                  alwaysVisible
+                                  onClick={() => removePerimetreArrayItem('marques', item.id)}
+                                />
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => addPerimetreArrayItem('marques', { text: 'Nouvelle marque' })}
+                              className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                            >
+                              + Ajouter
+                            </button>
                           </div>
-                        ))}
-                        {presentationEditing && (
-                          <button
-                            type="button"
-                            onClick={() => addPerimetreArrayItem('marques', { text: 'Nouvelle marque' })}
-                            className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
-                          >
-                            + Ajouter
-                          </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="rounded-2xl border border-yellow-200 bg-yellow-50/70 p-5 shadow-sm">
