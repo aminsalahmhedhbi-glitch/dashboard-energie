@@ -29,6 +29,7 @@ import {
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
 import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
+import politiqueSignature from '../../assets/politique-signature.png';
 
 const INITIAL_PESTEL = {
   Politique: [{ id: 1, text: 'Reglementations etatiques importation', energy: false }],
@@ -1660,13 +1661,20 @@ export default function UtilitiesModule({ onBack, user }) {
                 </div>
               </div>
 
-              <div className="rounded-r-xl border-l-2 border-slate-300 bg-slate-50 p-4 pl-5 text-[13px] italic text-slate-500">
-                La Direction s'engage a mettre a disposition toutes les ressources et
-                l'environnement de travail necessaires pour l'atteinte de ces objectifs ainsi
-                que les moyens pour l'evaluation periodique de l'efficacite du systeme.
-                <br />
-                <br />
-                <strong className="not-italic text-slate-800">La Direction Generale</strong>
+              <div className="rounded-r-xl border-l-2 border-slate-300 bg-slate-50 p-5 pl-6 text-lg leading-8 text-black">
+                <p>
+                  La Direction s'engage a mettre a disposition toutes les ressources et
+                  l'environnement de travail necessaires pour l'atteinte de ces objectifs ainsi
+                  que les moyens pour l'evaluation periodique de l'efficacite du systeme.
+                </p>
+                <div className="mt-6 flex flex-col items-end text-right">
+                  <span className="text-lg font-semibold text-black">Direction Generale</span>
+                  <img
+                    src={politiqueSignature}
+                    alt="Signature Direction Generale"
+                    className="mt-3 h-auto w-48 object-contain"
+                  />
+                </div>
               </div>
             </div>
           </section>
