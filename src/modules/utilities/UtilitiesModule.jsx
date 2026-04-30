@@ -167,11 +167,11 @@ const INITIAL_PERIMETRE = {
   ],
   reseau: {
     propre: [
-      { id: 301, text: 'Siege / Showroom Megrine' },
-      { id: 302, text: 'Showroom les Berges du Lac' },
-      { id: 303, text: 'Concept Store Italcar Azur City' },
-      { id: 304, text: 'Service apres-vente sites Megrine & Cite el Khadhra' },
-      { id: 305, text: 'Parc Naassen' },
+      { id: 301, text: 'Siege / Showroom Megrine', lieu: 'Megrine' },
+      { id: 302, text: 'Showroom les Berges du Lac', lieu: 'Les Berges du Lac' },
+      { id: 303, text: 'Concept Store Italcar Azur City', lieu: 'Azur City' },
+      { id: 304, text: 'Service apres-vente sites Megrine & Cite el Khadhra', lieu: 'Megrine / Cite El Khadhra' },
+      { id: 305, text: 'Parc Naassen', lieu: 'Naassen' },
     ],
     sousConcessionnaires: [
       { id: 401, nom: 'Auto Service', ville: 'Sousse' },
@@ -330,6 +330,17 @@ const INITIAL_SECTION_META = {
   cartographie: { date: '2026-04-29', reference: 'CH 4.4' },
   politique: { date: '2026-04-29', reference: 'CH 5.2' },
   documents: { date: '2026-04-29', reference: 'CH 7.5' },
+};
+
+const RESEAU_MAP_POSITIONS = {
+  MEGRINE: { top: '73%', left: '58%' },
+  'LES BERGES DU LAC': { top: '49%', left: '61%' },
+  'AZUR CITY': { top: '67%', left: '65%' },
+  'CITE EL KHADHRA': { top: '44%', left: '57%' },
+  NAASSEN: { top: '80%', left: '50%' },
+  SOUSSE: { top: '47%', left: '75%' },
+  SFAX: { top: '67%', left: '78%' },
+  NABEUL: { top: '39%', left: '71%' },
 };
 
 const INITIAL_MODULE_STATE = {
@@ -587,6 +598,108 @@ function ItemDeleteButton({ onClick, alwaysVisible = false, className = '' }) {
     >
       <Trash2 className="h-3.5 w-3.5" />
     </button>
+  );
+}
+
+function normalizeReseauLieu(value = '') {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim();
+}
+
+function inferReseauPropreLieu(text = '') {
+  const normalized = normalizeReseauLieu(text);
+  if (normalized.includes('NAASSEN')) return 'Naassen';
+  if (normalized.includes('AZUR')) return 'Azur City';
+  if (normalized.includes('LAC')) return 'Les Berges du Lac';
+  if (normalized.includes('KHADHRA') && normalized.includes('MEGRINE')) return 'Megrine / Cite El Khadhra';
+  if (normalized.includes('KHADHRA')) return 'Cite El Khadhra';
+  if (normalized.includes('MEGRINE')) return 'Megrine';
+  return '';
+}
+
+function buildReseauMarkers(propre = [], sousConcessionnaires = []) {
+  const markers = [];
+
+  propre.forEach((item) => {
+    const label = item.lieu?.trim() || inferReseauPropreLieu(item.text);
+    const keys = normalizeReseauLieu(label).split('/').map((part) => part.trim()).filter(Boolean);
+    keys.forEach((key) => {
+      const position = RESEAU_MAP_POSITIONS[key];
+      if (position) {
+        markers.push({ id: `${item.id}-${key}`, label, type: 'propre', ...position });
+      }
+    });
+  });
+
+  sousConcessionnaires.forEach((item) => {
+    const key = normalizeReseauLieu(item.ville);
+    const position = RESEAU_MAP_POSITIONS[key];
+    if (position) {
+      markers.push({
+        id: `${item.id}-${key}`,
+        label: item.ville,
+        type: 'sous',
+        ...position,
+      });
+    }
+  });
+
+  return markers;
+}
+
+function TunisiaNetworkMapCard({ propre, sousConcessionnaires }) {
+  const markers = useMemo(
+    () => buildReseauMarkers(propre, sousConcessionnaires),
+    [propre, sousConcessionnaires]
+  );
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 p-5 shadow-sm">
+      <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        <MapPin className="h-3.5 w-3.5" />
+        Carte du reseau en Tunisie
+      </div>
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),transparent_40%),linear-gradient(180deg,#f8fbff_0%,#eef6ff_45%,#f8fafc_100%)] p-4">
+        <div className="absolute inset-x-6 top-7 h-20 rounded-full bg-sky-100/80 blur-2xl" />
+        <div className="relative mx-auto h-[360px] w-full max-w-[250px]">
+          <div className="absolute inset-0 rounded-[42%_48%_44%_40%/18%_24%_60%_58%] border border-slate-300 bg-white/70 shadow-inner" />
+          <div className="absolute left-[18%] top-[10%] h-[78%] w-[64%] rounded-[38%_42%_40%_44%/14%_20%_64%_62%] border border-slate-300 bg-gradient-to-b from-slate-100 via-white to-slate-50" />
+          <div className="absolute left-[28%] top-[82%] text-sm font-black uppercase tracking-widest text-slate-600">
+            Tunisie
+          </div>
+          {markers.map((marker) => (
+            <div
+              key={marker.id}
+              className="absolute -translate-x-1/2 -translate-y-1/2"
+              style={{ top: marker.top, left: marker.left }}
+            >
+              <div
+                className={`flex h-9 w-9 items-center justify-center rounded-full border-4 shadow-lg ${
+                  marker.type === 'propre'
+                    ? 'border-red-200 bg-red-500 text-white'
+                    : 'border-slate-200 bg-[#233876] text-white'
+                }`}
+              >
+                <MapPin className="h-4 w-4" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+            Reseaux propres
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-[#233876]/10 px-3 py-1 text-xs font-semibold text-[#233876]">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#233876]" />
+            Sous-concessionnaires
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1089,7 +1202,11 @@ export default function UtilitiesModule({ onBack, user }) {
       reseau: {
         ...INITIAL_PERIMETRE.reseau,
         ...(moduleData.perimetre?.reseau || {}),
-        propre: moduleData.perimetre?.reseau?.propre || INITIAL_PERIMETRE.reseau.propre,
+        propre:
+          moduleData.perimetre?.reseau?.propre?.map((item) => ({
+            ...item,
+            lieu: item.lieu ?? inferReseauPropreLieu(item.text),
+          })) || INITIAL_PERIMETRE.reseau.propre,
         sousConcessionnaires:
           moduleData.perimetre?.reseau?.sousConcessionnaires ||
           INITIAL_PERIMETRE.reseau.sousConcessionnaires,
@@ -2358,136 +2475,179 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h4 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        <div className="mb-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                           <MapPin className="h-3.5 w-3.5" />
-                          Reseau propre
-                        </h4>
-                        <div className="space-y-3">
-                          {perimetre.reseau.propre.map((item) => (
-                            <div key={item.id} className="flex items-start gap-3 text-sm">
-                              <span className="mt-1 text-[#233876]">•</span>
-                              {presentationEditing ? (
-                                <div className="flex flex-1 items-center gap-2">
-                                  <input
-                                    type="text"
-                                    value={item.text}
-                                    onChange={(event) =>
-                                      updatePerimetreNestedArrayItem(
-                                        'reseau',
-                                        'propre',
-                                        item.id,
-                                        'text',
-                                        event.target.value
-                                      )
-                                    }
-                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                  />
-                                <ItemDeleteButton
-                                  alwaysVisible
+                          Reseau ITALCAR
+                        </div>
+
+                        <div className="space-y-6">
+                          <div>
+                            <div className="mb-3 flex items-center justify-between">
+                              <h4 className="text-sm font-black text-slate-900">Reseau propre</h4>
+                              {presentationEditing && (
+                                <button
+                                  type="button"
                                   onClick={() =>
-                                    removePerimetreNestedArrayItem('reseau', 'propre', item.id)
+                                    addPerimetreNestedArrayItem('reseau', 'propre', {
+                                      text: 'Nouveau site',
+                                      lieu: 'Lieu',
+                                    })
                                   }
-                                />
-                              </div>
-                            ) : (
-                                <span>{item.text}</span>
+                                  className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                                >
+                                  + Ajouter un site
+                                </button>
                               )}
                             </div>
-                          ))}
+                            <div className="space-y-3">
+                              {perimetre.reseau.propre.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm"
+                                >
+                                  {presentationEditing ? (
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                      <input
+                                        type="text"
+                                        value={item.text}
+                                        onChange={(event) =>
+                                          updatePerimetreNestedArrayItem(
+                                            'reseau',
+                                            'propre',
+                                            item.id,
+                                            'text',
+                                            event.target.value
+                                          )
+                                        }
+                                        className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={item.lieu ?? ''}
+                                        onChange={(event) =>
+                                          updatePerimetreNestedArrayItem(
+                                            'reseau',
+                                            'propre',
+                                            item.id,
+                                            'lieu',
+                                            event.target.value
+                                          )
+                                        }
+                                        placeholder="Lieu"
+                                        className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:w-44"
+                                      />
+                                      <ItemDeleteButton
+                                        alwaysVisible
+                                        onClick={() =>
+                                          removePerimetreNestedArrayItem('reseau', 'propre', item.id)
+                                        }
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="flex items-start gap-2">
+                                        <span className="mt-1 text-[#233876]">•</span>
+                                        <span className="font-medium text-slate-800">{item.text}</span>
+                                      </div>
+                                      <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">
+                                        {item.lieu || inferReseauPropreLieu(item.text) || 'Lieu a renseigner'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="border-t border-slate-200 pt-5">
+                            <div className="mb-3 flex items-center justify-between">
+                              <h4 className="flex items-center gap-2 text-sm font-black text-slate-900">
+                                <Users className="h-4 w-4 text-[#233876]" />
+                                Sous-concessionnaires
+                              </h4>
+                              {presentationEditing && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    addPerimetreNestedArrayItem('reseau', 'sousConcessionnaires', {
+                                      nom: 'Nouveau concessionnaire',
+                                      ville: 'Ville',
+                                    })
+                                  }
+                                  className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                                >
+                                  + Ajouter un concessionnaire
+                                </button>
+                              )}
+                            </div>
+                            <div className="space-y-3">
+                              {perimetre.reseau.sousConcessionnaires.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm"
+                                >
+                                  {presentationEditing ? (
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                      <input
+                                        type="text"
+                                        value={item.nom}
+                                        onChange={(event) =>
+                                          updatePerimetreNestedArrayItem(
+                                            'reseau',
+                                            'sousConcessionnaires',
+                                            item.id,
+                                            'nom',
+                                            event.target.value
+                                          )
+                                        }
+                                        className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm font-semibold"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={item.ville}
+                                        onChange={(event) =>
+                                          updatePerimetreNestedArrayItem(
+                                            'reseau',
+                                            'sousConcessionnaires',
+                                            item.id,
+                                            'ville',
+                                            event.target.value
+                                          )
+                                        }
+                                        className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:w-40"
+                                      />
+                                      <ItemDeleteButton
+                                        alwaysVisible
+                                        onClick={() =>
+                                          removePerimetreNestedArrayItem(
+                                            'reseau',
+                                            'sousConcessionnaires',
+                                            item.id
+                                          )
+                                        }
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="font-semibold text-slate-800">{item.nom}</span>
+                                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
+                                        {item.ville}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                        {presentationEditing && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              addPerimetreNestedArrayItem('reseau', 'propre', { text: 'Nouveau site' })
-                            }
-                            className="mt-4 rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
-                          >
-                            + Ajouter un site
-                          </button>
-                        )}
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h4 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          <Users className="h-3.5 w-3.5" />
-                          Sous-concessionnaires
-                        </h4>
-                        <div className="space-y-3">
-                          {perimetre.reseau.sousConcessionnaires.map((item) => (
-                            <div
-                              key={item.id}
-                              className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
-                            >
-                              {presentationEditing ? (
-                                <div className="flex w-full items-center gap-2">
-                                  <input
-                                    type="text"
-                                    value={item.nom}
-                                    onChange={(event) =>
-                                      updatePerimetreNestedArrayItem(
-                                        'reseau',
-                                        'sousConcessionnaires',
-                                        item.id,
-                                        'nom',
-                                        event.target.value
-                                      )
-                                    }
-                                    className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm font-semibold"
-                                  />
-                                  <input
-                                    type="text"
-                                    value={item.ville}
-                                    onChange={(event) =>
-                                      updatePerimetreNestedArrayItem(
-                                        'reseau',
-                                        'sousConcessionnaires',
-                                        item.id,
-                                        'ville',
-                                        event.target.value
-                                      )
-                                    }
-                                    className="w-32 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                  />
-                                  <ItemDeleteButton
-                                    alwaysVisible
-                                    onClick={() =>
-                                      removePerimetreNestedArrayItem(
-                                        'reseau',
-                                        'sousConcessionnaires',
-                                        item.id
-                                      )
-                                    }
-                                  />
-                                </div>
-                              ) : (
-                                <>
-                                  <span className="font-semibold text-slate-800">{item.nom}</span>
-                                  <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
-                                    {item.ville}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        {presentationEditing && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              addPerimetreNestedArrayItem('reseau', 'sousConcessionnaires', {
-                                nom: 'Nouveau concessionnaire',
-                                ville: 'Ville',
-                              })
-                            }
-                            className="mt-4 rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
-                          >
-                            + Ajouter un concessionnaire
-                          </button>
-                        )}
-                      </div>
+                      <TunisiaNetworkMapCard
+                        propre={perimetre.reseau.propre}
+                        sousConcessionnaires={perimetre.reseau.sousConcessionnaires}
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
