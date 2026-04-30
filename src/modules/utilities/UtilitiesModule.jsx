@@ -574,11 +574,14 @@ function TabCard({ tab, active, onClick }) {
   );
 }
 
-function ItemDeleteButton({ onClick }) {
+function ItemDeleteButton({ onClick, alwaysVisible = false, className = '' }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="text-red-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-600"
+      className={`text-red-400 transition-opacity hover:text-red-600 ${
+        alwaysVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+      } ${className}`}
       title="Supprimer"
     >
       <Trash2 className="h-3.5 w-3.5" />
@@ -2229,7 +2232,12 @@ export default function UtilitiesModule({ onBack, user }) {
                             ) : (
                               item.text
                             )}
-                            <ItemDeleteButton onClick={() => deleteGenericItem('ues', null, item.id)} />
+                            {presentationEditing && (
+                              <ItemDeleteButton
+                                alwaysVisible
+                                onClick={() => removePerimetreArrayItem('ues', item.id)}
+                              />
+                            )}
                           </div>
                         ))}
                       </div>
@@ -2260,7 +2268,10 @@ export default function UtilitiesModule({ onBack, user }) {
                                   }
                                   className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
                                 />
-                                <ItemDeleteButton onClick={() => removePerimetreArrayItem('abreviations', item.id)} />
+                                <ItemDeleteButton
+                                  alwaysVisible
+                                  onClick={() => removePerimetreArrayItem('abreviations', item.id)}
+                                />
                               </>
                             ) : (
                               <>
@@ -2363,13 +2374,14 @@ export default function UtilitiesModule({ onBack, user }) {
                                     }
                                     className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
                                   />
-                                  <ItemDeleteButton
-                                    onClick={() =>
-                                      removePerimetreNestedArrayItem('reseau', 'propre', item.id)
-                                    }
-                                  />
-                                </div>
-                              ) : (
+                                <ItemDeleteButton
+                                  alwaysVisible
+                                  onClick={() =>
+                                    removePerimetreNestedArrayItem('reseau', 'propre', item.id)
+                                  }
+                                />
+                              </div>
+                            ) : (
                                 <span>{item.text}</span>
                               )}
                             </div>
@@ -2430,6 +2442,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                     className="w-32 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
                                   />
                                   <ItemDeleteButton
+                                    alwaysVisible
                                     onClick={() =>
                                       removePerimetreNestedArrayItem(
                                         'reseau',
@@ -2486,7 +2499,10 @@ export default function UtilitiesModule({ onBack, user }) {
                                     }
                                     className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
                                   />
-                                  <ItemDeleteButton onClick={() => removePerimetreArrayItem('contexte', item.id)} />
+                                  <ItemDeleteButton
+                                    alwaysVisible
+                                    onClick={() => removePerimetreArrayItem('contexte', item.id)}
+                                  />
                                 </div>
                               ) : (
                                 <span>{item.text}</span>
@@ -2529,6 +2545,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                     className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
                                   />
                                   <ItemDeleteButton
+                                    alwaysVisible
                                     onClick={() => removePerimetreArrayItem('environnement', item.id)}
                                   />
                                 </div>
@@ -2601,7 +2618,12 @@ export default function UtilitiesModule({ onBack, user }) {
                                   <span>{item.text}</span>
                                 )}
                               </div>
-                              <ItemDeleteButton onClick={() => deleteGenericItem('activites', null, item.id)} />
+                              {presentationEditing && (
+                                <ItemDeleteButton
+                                  alwaysVisible
+                                  onClick={() => removePerimetreArrayItem('activites', item.id)}
+                                />
+                              )}
                             </div>
                           ))}
                         </div>
@@ -2662,7 +2684,12 @@ export default function UtilitiesModule({ onBack, user }) {
                                   <span>{item.text}</span>
                                 )}
                               </div>
-                              <ItemDeleteButton onClick={() => deleteGenericItem('sites', null, item.id)} />
+                              {presentationEditing && (
+                                <ItemDeleteButton
+                                  alwaysVisible
+                                  onClick={() => removePerimetreArrayItem('sites', item.id)}
+                                />
+                              )}
                             </div>
                           ))}
                         </div>
