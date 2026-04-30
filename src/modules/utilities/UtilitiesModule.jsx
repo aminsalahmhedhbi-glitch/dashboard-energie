@@ -346,12 +346,12 @@ const INITIAL_MODULE_STATE = {
 
 const TABS = [
   {
-    id: 'pestel',
-    title: 'Analyse Strategique',
-    subtitle: 'PESTEL, SWOT et Enjeux',
-    chapter: 'Ch 4.1',
-    icon: Globe,
-    color: 'blue',
+    id: 'perimetre',
+    title: "Presentation d'ITALCAR",
+    subtitle: 'Identite, reseau et domaine',
+    chapter: 'Ch 4.3',
+    icon: ScanLine,
+    color: 'red',
   },
   {
     id: 'parties',
@@ -362,12 +362,12 @@ const TABS = [
     color: 'sky',
   },
   {
-    id: 'perimetre',
-    title: "Presentation d'ITALCAR",
-    subtitle: 'Identite, reseau et domaine',
-    chapter: 'Ch 4.3',
-    icon: ScanLine,
-    color: 'red',
+    id: 'pestel',
+    title: 'Analyse Strategique',
+    subtitle: 'PESTEL, SWOT et Enjeux',
+    chapter: 'Ch 4.1',
+    icon: Globe,
+    color: 'blue',
   },
   {
     id: 'cartographie',
@@ -549,7 +549,7 @@ function TabCard({ tab, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex h-24 min-w-[240px] flex-col justify-between rounded-2xl border p-4 text-left transition-all ${
+      className={`relative flex h-[88px] w-full min-w-0 flex-col justify-between rounded-2xl border px-3 py-3 text-left transition-all ${
         active
           ? 'border-transparent bg-[#233876] text-white shadow-md'
           : 'border-slate-200 bg-white text-slate-800 shadow-sm hover:border-slate-300'
@@ -557,16 +557,16 @@ function TabCard({ tab, active, onClick }) {
     >
       <div className="flex items-start justify-between">
         <div
-          className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
+          className={`flex h-7 w-7 items-center justify-center rounded-lg border ${
             active ? 'border-white/10 bg-white/15 text-white' : inactiveByColor[tab.color]
           }`}
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-3.5 w-3.5" />
         </div>
       </div>
       <div>
-        <div className="text-sm font-bold tracking-wide">{tab.title}</div>
-        <div className={`mt-0.5 text-[11px] font-medium ${active ? 'text-white/75' : 'text-slate-400'}`}>
+        <div className="line-clamp-2 text-[13px] font-bold tracking-wide">{tab.title}</div>
+        <div className={`mt-0.5 line-clamp-2 text-[10px] font-medium ${active ? 'text-white/75' : 'text-slate-400'}`}>
           {tab.subtitle}
         </div>
       </div>
@@ -1670,8 +1670,8 @@ export default function UtilitiesModule({ onBack, user }) {
       </header>
       )}
 
-      <nav className="overflow-x-auto px-4 pb-2 pt-6 lg:px-6">
-        <div className="flex min-w-max items-center gap-4 pb-2">
+      <nav className="px-4 pb-2 pt-6 lg:px-6">
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {TABS.map((tab) => (
             <TabCard
               key={tab.id}
