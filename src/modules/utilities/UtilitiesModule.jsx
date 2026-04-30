@@ -3,10 +3,13 @@ import React, { useMemo, useState } from 'react';
 import {
   ArrowLeft,
   BookOpen,
+  Briefcase,
   Building2,
+  CheckCircle2,
   Cpu,
   Download,
   Edit2,
+  Factory,
   FileText,
   FolderOpen,
   Globe,
@@ -140,6 +143,41 @@ const INITIAL_STAKEHOLDERS = [
 ];
 
 const INITIAL_PERIMETRE = {
+  identiteJuridique: {
+    entreprise: 'ITALCAR',
+    formeJuridique: 'SA (3 000 000 DT)',
+    effectif: '99 employes',
+  },
+  domainePrincipal: 'Representation materiel de transport',
+  domainesActivite: [
+    { id: 101, text: 'Representation materiel de transport' },
+    { id: 102, text: 'Commercialisation de vehicules neufs et pieces de rechange' },
+    { id: 103, text: 'Reparation des vehicules de marques representees' },
+  ],
+  marques: [
+    { id: 201, text: 'FIAT' },
+    { id: 202, text: 'FIAT PRO' },
+    { id: 203, text: 'IVECO' },
+    { id: 204, text: 'ALFA ROMEO' },
+    { id: 205, text: 'JEEP' },
+    { id: 206, text: 'CHANGAN' },
+    { id: 207, text: 'JMC' },
+    { id: 208, text: 'DEEPAL' },
+  ],
+  reseau: {
+    propre: [
+      { id: 301, text: 'Siege / Showroom Megrine' },
+      { id: 302, text: 'Showroom les Berges du Lac' },
+      { id: 303, text: 'Concept Store Italcar Azur City' },
+      { id: 304, text: 'Service apres-vente sites Megrine & Cite el Khadhra' },
+      { id: 305, text: 'Parc Naassen' },
+    ],
+    sousConcessionnaires: [
+      { id: 401, nom: 'Auto Service', ville: 'Sousse' },
+      { id: 402, nom: 'Sud Auto', ville: 'Sfax' },
+      { id: 403, nom: 'Cap Bon Motors', ville: 'Nabeul' },
+    ],
+  },
   activites: [
     { id: 1, text: 'Commercialisation des vehicules neufs et des pieces de rechange' },
     { id: 2, text: 'Reparation des vehicules de marques representees' },
@@ -154,6 +192,69 @@ const INITIAL_PERIMETRE = {
     { id: 1, text: 'Eclairage', energy: true },
     { id: 2, text: 'Climatisation / Chauffage', energy: true },
     { id: 3, text: 'Air comprime', energy: true },
+  ],
+  abreviations: [
+    { id: 501, court: 'QSE', long: 'Qualite, Securite, Environnement' },
+    { id: 502, court: 'VN', long: 'Vehicules Neufs' },
+    { id: 503, court: 'PDR', long: 'Pieces De Rechange' },
+    { id: 504, court: 'SAV', long: 'Service Apres-Vente' },
+    { id: 505, court: 'PI', long: 'Parties Interessees' },
+  ],
+  contexte: [
+    { id: 601, text: 'Croissance du marche automobile en Tunisie.' },
+    { id: 602, text: 'Transition vers des vehicules plus ecologiques.' },
+    { id: 603, text: 'Renforcement des partenariats avec les marques internationales.' },
+  ],
+  environnement: [
+    { id: 701, text: 'Reglementations douanieres et fiscales strictes.' },
+    { id: 702, text: 'Concurrence accrue sur le segment des vehicules utilitaires.' },
+    { id: 703, text: 'Opportunites de digitalisation du parcours client.' },
+  ],
+  qualiteScope: {
+    activites: [
+      'La vente & le Service Apres-Vente des vehicules particuliers et industriels.',
+      'La Vente des PDR et des lubrifiants',
+    ],
+    exclusions:
+      'La conception des amenagements ou de montage de superstructures (carrosserie) sur les vehicules vendus par ITALCAR est externalisee chez nos carrossiers.',
+  },
+  energieScope: {
+    activites: ["Le systeme de gestion de l'energie couvre les utilites et equipements energetiques."],
+  },
+};
+
+const INITIAL_CARTOGRAPHIE = {
+  processus: [
+    { id: 1, nom: 'PILOTAGE ENTREPRISE', type: 'pilotage', x: 560, y: 70, w: 640 },
+    { id: 2, nom: 'MARKETING', type: 'pilotage', x: 560, y: 155, w: 280 },
+    { id: 3, nom: 'COMMANDE VN', type: 'realisation', x: 300, y: 255, w: 180 },
+    { id: 4, nom: 'VENTE VN', type: 'realisation', x: 560, y: 255, w: 180 },
+    { id: 5, nom: 'LIVRAISON', type: 'realisation', x: 820, y: 255, w: 180 },
+    { id: 6, nom: 'ANIMATION RESEAU', type: 'realisation', x: 560, y: 350, w: 320 },
+    { id: 7, nom: 'ACHAT PDR', type: 'realisation', x: 350, y: 445, w: 180 },
+    { id: 8, nom: 'VENTE PDR', type: 'realisation', x: 560, y: 445, w: 180 },
+    { id: 9, nom: 'SERVICE APRES VENTE', type: 'realisation', x: 710, y: 540, w: 360 },
+    { id: 10, nom: 'Gestion des competences', type: 'support', x: 220, y: 635, w: 180 },
+    { id: 11, nom: 'Achats locaux', type: 'support', x: 430, y: 635, w: 170 },
+    { id: 12, nom: 'Maintenance et nouveaux projets', type: 'support', x: 665, y: 635, w: 240 },
+    { id: 13, nom: "Systeme d'information", type: 'support', x: 920, y: 635, w: 180 },
+  ],
+  connexions: [
+    { id: 'c1', from: 'exigences', to: 3 },
+    { id: 'c2', from: 'exigences', to: 9 },
+    { id: 'c3', from: 2, to: 4 },
+    { id: 'c4', from: 3, to: 4 },
+    { id: 'c5', from: 4, to: 5 },
+    { id: 'c6', from: 3, to: 7 },
+    { id: 'c7', from: 6, to: 3 },
+    { id: 'c8', from: 6, to: 4 },
+    { id: 'c9', from: 6, to: 5 },
+    { id: 'c10', from: 7, to: 8 },
+    { id: 'c11', from: 8, to: 9 },
+    { id: 'c12', from: 6, to: 8 },
+    { id: 'c13', from: 9, to: 5 },
+    { id: 'c14', from: 5, to: 'satisfaction' },
+    { id: 'c15', from: 9, to: 'satisfaction' },
   ],
 };
 
@@ -225,6 +326,7 @@ const INITIAL_SECTION_META = {
   enjeux: { date: '2026-04-29', reference: 'CH 4.1' },
   parties: { date: '2026-04-29', reference: 'CH 4.2' },
   perimetre: { date: '2026-04-29', reference: 'CH 4.3' },
+  cartographie: { date: '2026-04-29', reference: 'CH 4.4' },
   politique: { date: '2026-04-29', reference: 'CH 5.2' },
   documents: { date: '2026-04-29', reference: 'CH 7.5' },
 };
@@ -235,6 +337,7 @@ const INITIAL_MODULE_STATE = {
   enjeux: INITIAL_ENJEUX,
   stakeholders: INITIAL_STAKEHOLDERS,
   perimetre: INITIAL_PERIMETRE,
+  cartographie: INITIAL_CARTOGRAPHIE,
   axes: INITIAL_AXES,
   documents: INITIAL_DOCUMENTS,
   politiqueIntro: INITIAL_POLITIQUE_INTRO,
@@ -260,11 +363,19 @@ const TABS = [
   },
   {
     id: 'perimetre',
-    title: 'Perimetre',
-    subtitle: "Domaine d'application",
+    title: "Presentation d'ITALCAR",
+    subtitle: 'Identite, reseau et domaine',
     chapter: 'Ch 4.3',
     icon: ScanLine,
     color: 'red',
+  },
+  {
+    id: 'cartographie',
+    title: 'Cartographie des processus',
+    subtitle: "Matrice d'interactions",
+    chapter: 'Ch 4.4',
+    icon: Factory,
+    color: 'green',
   },
   {
     id: 'politique',
@@ -552,6 +663,146 @@ function SectionHeader({ icon: Icon, title, subtitle, meta, isAdmin, onMetaChang
   );
 }
 
+const PROCESS_CANVAS_WIDTH = 1160;
+const PROCESS_CANVAS_HEIGHT = 720;
+
+const PROCESS_TYPE_STYLES = {
+  pilotage: 'border-[#233876] bg-white text-[#233876]',
+  realisation: 'border-[#16a34a] bg-white text-[#166534]',
+  support: 'border-[#c2410c] bg-amber-50 text-amber-900',
+};
+
+function getStaticProcessNode(processes, id) {
+  if (id === 'exigences') {
+    return { x: 90, y: 330, w: 96, h: 250, type: 'side', side: 'left' };
+  }
+  if (id === 'satisfaction') {
+    return { x: PROCESS_CANVAS_WIDTH - 90, y: 330, w: 96, h: 250, type: 'side', side: 'right' };
+  }
+  const item = processes.find((process) => process.id === id);
+  if (!item) return null;
+  return {
+    ...item,
+    h: item.type === 'support' ? 78 : 58,
+  };
+}
+
+function getProcessAnchor(node, directionHint) {
+  if (!node) return { x: 0, y: 0 };
+  if (node.side === 'left') return { x: node.x + node.w / 2, y: node.y };
+  if (node.side === 'right') return { x: node.x - node.w / 2, y: node.y };
+
+  const horizontal = directionHint === 'left' || directionHint === 'right';
+  if (horizontal) {
+    return directionHint === 'left'
+      ? { x: node.x - node.w / 2, y: node.y }
+      : { x: node.x + node.w / 2, y: node.y };
+  }
+
+  return directionHint === 'top'
+    ? { x: node.x, y: node.y - node.h / 2 }
+    : { x: node.x, y: node.y + node.h / 2 };
+}
+
+function buildConnectionPath(processes, connection) {
+  const fromNode = getStaticProcessNode(processes, connection.from);
+  const toNode = getStaticProcessNode(processes, connection.to);
+  if (!fromNode || !toNode) return '';
+
+  const dx = toNode.x - fromNode.x;
+  const dy = toNode.y - fromNode.y;
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const fromAnchor = getProcessAnchor(
+    fromNode,
+    horizontal ? (dx >= 0 ? 'right' : 'left') : dy >= 0 ? 'bottom' : 'top'
+  );
+  const toAnchor = getProcessAnchor(
+    toNode,
+    horizontal ? (dx >= 0 ? 'left' : 'right') : dy >= 0 ? 'top' : 'bottom'
+  );
+  const curve = horizontal
+    ? Math.max(60, Math.abs(dx) * 0.35)
+    : Math.max(40, Math.abs(dy) * 0.35);
+
+  const cp1 = horizontal
+    ? { x: fromAnchor.x + (dx >= 0 ? curve : -curve), y: fromAnchor.y }
+    : { x: fromAnchor.x, y: fromAnchor.y + (dy >= 0 ? curve : -curve) };
+  const cp2 = horizontal
+    ? { x: toAnchor.x - (dx >= 0 ? curve : -curve), y: toAnchor.y }
+    : { x: toAnchor.x, y: toAnchor.y - (dy >= 0 ? curve : -curve) };
+
+  return `M ${fromAnchor.x} ${fromAnchor.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${toAnchor.x} ${toAnchor.y}`;
+}
+
+function ProcessNode({ process }) {
+  const baseClass = PROCESS_TYPE_STYLES[process.type] || PROCESS_TYPE_STYLES.realisation;
+  return (
+    <div
+      className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl border-2 px-4 text-center text-xs font-black uppercase tracking-wide shadow-sm ${baseClass}`}
+      style={{
+        left: `${process.x}px`,
+        top: `${process.y}px`,
+        width: `${process.w}px`,
+        minHeight: `${process.h}px`,
+      }}
+    >
+      {process.nom}
+    </div>
+  );
+}
+
+function CartographieCanvas({ data }) {
+  const processes = data?.processus || [];
+  const connections = data?.connexions || [];
+
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-inner">
+      <div
+        className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white"
+        style={{ width: `${PROCESS_CANVAS_WIDTH}px`, height: `${PROCESS_CANVAS_HEIGHT}px` }}
+      >
+        <div
+          className="absolute inset-0 opacity-25"
+          style={{
+            backgroundImage: 'radial-gradient(#cbd5e1 1.5px, transparent 1.5px)',
+            backgroundSize: '34px 34px',
+          }}
+        />
+
+        <svg className="absolute inset-0 h-full w-full">
+          <polygon
+            points="160,120 845,120 940,360 845,600 160,600"
+            fill="#f8fafc"
+            stroke="#cbd5e1"
+            strokeWidth="2"
+          />
+          {connections.map((connection) => (
+            <path
+              key={connection.id}
+              d={buildConnectionPath(processes, connection)}
+              fill="none"
+              stroke="#94a3b8"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          ))}
+        </svg>
+
+        <div className="absolute left-4 top-10 flex h-[500px] w-[96px] items-center justify-center rounded-2xl border-2 border-sky-200 bg-sky-50 px-3 text-center text-xs font-black uppercase tracking-wide text-sky-900 shadow-sm">
+          Exigences des PI
+        </div>
+        <div className="absolute right-4 top-10 flex h-[500px] w-[96px] items-center justify-center rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-3 text-center text-xs font-black uppercase tracking-wide text-emerald-900 shadow-sm">
+          Satisfaction des PI
+        </div>
+
+        {processes.map((process) => (
+          <ProcessNode key={process.id} process={process} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function UtilitiesModule({ onBack, user }) {
   const [activeTab, setActiveTab] = useState('pestel');
   const [strategicView, setStrategicView] = useState('pestel');
@@ -583,7 +834,50 @@ export default function UtilitiesModule({ onBack, user }) {
   );
   const enjeux = moduleData.enjeux || INITIAL_ENJEUX;
   const stakeholders = moduleData.stakeholders || INITIAL_STAKEHOLDERS;
-  const perimetre = moduleData.perimetre || INITIAL_PERIMETRE;
+  const perimetre = useMemo(
+    () => ({
+      ...INITIAL_PERIMETRE,
+      ...(moduleData.perimetre || {}),
+      identiteJuridique: {
+        ...INITIAL_PERIMETRE.identiteJuridique,
+        ...(moduleData.perimetre?.identiteJuridique || {}),
+      },
+      domainesActivite: moduleData.perimetre?.domainesActivite || INITIAL_PERIMETRE.domainesActivite,
+      marques: moduleData.perimetre?.marques || INITIAL_PERIMETRE.marques,
+      reseau: {
+        ...INITIAL_PERIMETRE.reseau,
+        ...(moduleData.perimetre?.reseau || {}),
+        propre: moduleData.perimetre?.reseau?.propre || INITIAL_PERIMETRE.reseau.propre,
+        sousConcessionnaires:
+          moduleData.perimetre?.reseau?.sousConcessionnaires ||
+          INITIAL_PERIMETRE.reseau.sousConcessionnaires,
+      },
+      activites: moduleData.perimetre?.activites || INITIAL_PERIMETRE.activites,
+      sites: moduleData.perimetre?.sites || INITIAL_PERIMETRE.sites,
+      ues: moduleData.perimetre?.ues || INITIAL_PERIMETRE.ues,
+      abreviations: moduleData.perimetre?.abreviations || INITIAL_PERIMETRE.abreviations,
+      contexte: moduleData.perimetre?.contexte || INITIAL_PERIMETRE.contexte,
+      environnement: moduleData.perimetre?.environnement || INITIAL_PERIMETRE.environnement,
+      qualiteScope: {
+        ...INITIAL_PERIMETRE.qualiteScope,
+        ...(moduleData.perimetre?.qualiteScope || {}),
+      },
+      energieScope: {
+        ...INITIAL_PERIMETRE.energieScope,
+        ...(moduleData.perimetre?.energieScope || {}),
+      },
+    }),
+    [moduleData.perimetre]
+  );
+  const cartographie = useMemo(
+    () => ({
+      ...INITIAL_CARTOGRAPHIE,
+      ...(moduleData.cartographie || {}),
+      processus: moduleData.cartographie?.processus || INITIAL_CARTOGRAPHIE.processus,
+      connexions: moduleData.cartographie?.connexions || INITIAL_CARTOGRAPHIE.connexions,
+    }),
+    [moduleData.cartographie]
+  );
   const axes = moduleData.axes || INITIAL_AXES;
   const documents = moduleData.documents || INITIAL_DOCUMENTS;
   const politiqueIntro = useMemo(
@@ -1440,140 +1734,322 @@ export default function UtilitiesModule({ onBack, user }) {
             <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
               <SectionHeader
                 icon={ScanLine}
-                title="Perimetre du Systeme de Management"
-                subtitle="Domaine d'application"
+                title="Presentation d'ITALCAR"
+                subtitle="Identite, reseau et domaine d'application"
                 meta={sectionMeta.perimetre}
                 isAdmin={isAdmin}
                 onMetaChange={(field, value) => updateSectionMeta('perimetre', field, value)}
               />
 
-              <div className="grid grid-cols-1 gap-8 text-slate-700 md:grid-cols-2">
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                      <Building2 className="h-3.5 w-3.5" />
-                      1. Identite Juridique
-                    </h4>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+              <div className="space-y-8 text-slate-700">
+                <div className="grid grid-cols-1 gap-8 xl:grid-cols-12">
+                  <div className="space-y-6 xl:col-span-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                      <h4 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        <Building2 className="h-3.5 w-3.5" />
+                        Identite Juridique
+                      </h4>
                       <ul className="space-y-3 text-sm">
                         <li>
                           <strong className="inline-block w-36 font-semibold text-slate-900">
                             Entreprise:
                           </strong>
-                          ITALCAR
+                          {perimetre.identiteJuridique.entreprise}
                         </li>
                         <li>
                           <strong className="inline-block w-36 font-semibold text-slate-900">
                             Forme Juridique:
                           </strong>
-                          SA (3 000 000 DT)
+                          {perimetre.identiteJuridique.formeJuridique}
                         </li>
                         <li>
                           <strong className="inline-block w-36 font-semibold text-slate-900">
                             Effectif:
                           </strong>
-                          99 employes
+                          {perimetre.identiteJuridique.effectif}
                         </li>
-                        <li className="mt-2 border-t border-slate-200 pt-2">
+                        <li className="border-t border-slate-200 pt-3">
                           <strong className="mb-1 block font-semibold text-slate-900">
-                            Domaine d'activite:
+                            Domaine principal:
                           </strong>
-                          Representation materiel de transport
+                          {perimetre.domainePrincipal}
                         </li>
                       </ul>
                     </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <h4 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        <Briefcase className="h-3.5 w-3.5" />
+                        Marques representees
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {perimetre.marques.map((item) => (
+                          <span
+                            key={item.id}
+                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700"
+                          >
+                            {item.text}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-yellow-200 bg-yellow-50/70 p-5 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-yellow-700">
+                          <Zap className="h-3.5 w-3.5" />
+                          Usages Energetiques Significatifs
+                        </h4>
+                        <button
+                          onClick={() => openGenericModal('ues')}
+                          className="text-yellow-700 transition hover:text-yellow-900"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {perimetre.ues.map((item) => (
+                          <div
+                            key={item.id}
+                            className="group flex items-center gap-2 rounded-lg border border-yellow-200 bg-white px-3 py-1.5 text-xs font-semibold text-yellow-900 shadow-sm"
+                          >
+                            <Zap className="h-3.5 w-3.5 text-yellow-500" />
+                            {item.text}
+                            <ItemDeleteButton onClick={() => deleteGenericItem('ues', null, item.id)} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        Abreviations
+                      </h4>
+                      <div className="space-y-3">
+                        {perimetre.abreviations.map((item) => (
+                          <div key={item.id} className="flex items-start gap-3 text-sm">
+                            <span className="min-w-[48px] font-bold text-[#233876]">{item.court}</span>
+                            <span className="text-slate-600">{item.long}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <div className="mb-3 flex items-center justify-between">
-                      <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-yellow-500">
-                        <Zap className="h-3.5 w-3.5" />
-                        Usages Energetiques Significatifs
+                  <div className="space-y-6 xl:col-span-8">
+                    <div className="overflow-hidden rounded-2xl border border-transparent bg-gradient-to-br from-[#233876] to-[#3653a6] p-7 text-white shadow-lg">
+                      <h4 className="mb-5 flex items-center gap-2 text-sm font-black uppercase tracking-wider">
+                        <Target className="h-4 w-4" />
+                        Domaines d'activite
                       </h4>
-                      <button
-                        onClick={() => openGenericModal('ues')}
-                        className="text-xs font-bold text-yellow-600 transition hover:text-yellow-800"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="space-y-3">
+                        {perimetre.domainesActivite.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-start gap-3 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm"
+                          >
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-200" />
+                            <span className="text-sm font-medium leading-relaxed">{item.text}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {perimetre.ues.map((item) => (
-                        <div
-                          key={item.id}
-                          className="group flex items-center gap-2 rounded-lg border border-yellow-200 bg-white px-3 py-1.5 text-xs font-semibold text-yellow-900 shadow-sm"
-                        >
-                          <Zap className="h-3.5 w-3.5 text-yellow-500" />
-                          {item.text}
-                          <ItemDeleteButton
-                            onClick={() => deleteGenericItem('ues', null, item.id)}
-                          />
+
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <h4 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                          <MapPin className="h-3.5 w-3.5" />
+                          Reseau propre
+                        </h4>
+                        <div className="space-y-3">
+                          {perimetre.reseau.propre.map((item) => (
+                            <div key={item.id} className="flex items-start gap-3 text-sm">
+                              <span className="mt-1 text-[#233876]">•</span>
+                              <span>{item.text}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <h4 className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                          <Users className="h-3.5 w-3.5" />
+                          Sous-concessionnaires
+                        </h4>
+                        <div className="space-y-3">
+                          {perimetre.reseau.sousConcessionnaires.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
+                            >
+                              <span className="font-semibold text-slate-800">{item.nom}</span>
+                              <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
+                                {item.ville}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                          Contexte
+                        </h4>
+                        <div className="space-y-3 text-sm leading-6">
+                          {perimetre.contexte.map((item) => (
+                            <div key={item.id} className="flex gap-2">
+                              <span className="mt-1 text-[#233876]">•</span>
+                              <span>{item.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                          Environnement
+                        </h4>
+                        <div className="space-y-3 text-sm leading-6">
+                          {perimetre.environnement.map((item) => (
+                            <div key={item.id} className="flex gap-2">
+                              <span className="mt-1 text-[#233876]">•</span>
+                              <span>{item.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <div>
-                    <div className="mb-3 flex items-center justify-between">
-                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                        2. Activites
-                      </h4>
-                      <button
-                        onClick={() => openGenericModal('activites')}
-                        className="text-slate-400 transition hover:text-[#233876]"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                      <ul className="space-y-3 text-sm">
-                        {perimetre.activites.map((item) => (
-                          <li key={item.id} className="group flex items-start justify-between gap-3">
-                            <div className="flex gap-2">
-                              <span className="mt-1 text-[#233876]">•</span>
-                              <span>{item.text}</span>
-                            </div>
-                            <ItemDeleteButton
-                              onClick={() => deleteGenericItem('activites', null, item.id)}
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                    <h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-900">
+                      <ScanLine className="h-4 w-4 text-[#233876]" />
+                      Domaine d'application du Systeme de Management
+                    </h4>
                   </div>
-
-                  <div>
-                    <div className="mb-3 flex items-center justify-between">
-                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                        3. Sites Couverts
-                      </h4>
-                      <button
-                        onClick={() => openGenericModal('sites')}
-                        className="text-slate-400 transition hover:text-[#233876]"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                      <ul className="space-y-3 text-sm">
-                        {perimetre.sites.map((item) => (
-                          <li key={item.id} className="group flex items-start justify-between gap-3">
-                            <div className="flex gap-2">
-                              <span className="mt-1 text-[#233876]">•</span>
-                              <span>{item.text}</span>
+                  <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-[#233876]">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </div>
+                        <h5 className="font-bold text-slate-900">Qualite</h5>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            Activites couvertes
+                          </span>
+                          <button
+                            onClick={() => openGenericModal('activites')}
+                            className="text-slate-400 transition hover:text-[#233876]"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="space-y-3 text-sm">
+                          {perimetre.activites.map((item) => (
+                            <div key={item.id} className="group flex items-start justify-between gap-3">
+                              <div className="flex gap-2">
+                                <span className="mt-1 text-[#233876]">•</span>
+                                <span>{item.text}</span>
+                              </div>
+                              <ItemDeleteButton onClick={() => deleteGenericItem('activites', null, item.id)} />
                             </div>
-                            <ItemDeleteButton
-                              onClick={() => deleteGenericItem('sites', null, item.id)}
-                            />
-                          </li>
-                        ))}
-                      </ul>
+                          ))}
+                        </div>
+                        <div className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
+                          <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            Exclusions
+                          </div>
+                          <p>{perimetre.qualiteScope.exclusions}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                          <Zap className="h-4 w-4" />
+                        </div>
+                        <h5 className="font-bold text-slate-900">Energie</h5>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            Sites couverts
+                          </span>
+                          <button
+                            onClick={() => openGenericModal('sites')}
+                            className="text-slate-400 transition hover:text-[#233876]"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="space-y-3 text-sm">
+                          {perimetre.sites.map((item) => (
+                            <div key={item.id} className="group flex items-start justify-between gap-3">
+                              <div className="flex gap-2">
+                                <span className="mt-1 text-[#233876]">•</span>
+                                <span>{item.text}</span>
+                              </div>
+                              <ItemDeleteButton onClick={() => deleteGenericItem('sites', null, item.id)} />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
+                          <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            Portee energie
+                          </div>
+                          <p>{perimetre.energieScope.activites[0]}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'cartographie' && (
+          <section className="w-full">
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+              <SectionHeader
+                icon={Factory}
+                title="Cartographie des processus"
+                subtitle="Matrice d'interactions"
+                meta={sectionMeta.cartographie}
+                isAdmin={isAdmin}
+                onMetaChange={(field, value) => updateSectionMeta('cartographie', field, value)}
+              />
+
+              <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-slate-600">
+                Cette matrice presente les interactions entre les processus de pilotage, de
+                realisation et de support, ainsi que les liens avec les exigences et la
+                satisfaction des parties interessees.
+              </div>
+
+              <div className="mb-5 flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#233876]/20 bg-[#233876]/5 px-3 py-1">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#233876]" />
+                  Pilotage
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                  Realisation
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-600" />
+                  Support
+                </span>
+              </div>
+
+              <CartographieCanvas data={cartographie} />
             </div>
           </section>
         )}
