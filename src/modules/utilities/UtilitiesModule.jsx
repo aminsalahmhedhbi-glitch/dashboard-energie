@@ -213,6 +213,11 @@ const INITIAL_DOCUMENTS = [
   },
 ];
 
+const INITIAL_POLITIQUE_INTRO = {
+  lead: "ITALCAR s'engage a etablir et a maintenir un systeme de management de la Qualite & Energie conforme aux exigences ISO 9001 et ISO 50001.",
+  body: "ITALCAR aspire a etre parmi les leaders du marche, et s'engage a ameliorer son efficacite energetique pour favoriser le developpement durable. Afin de developper en continu nos performances, notre politique qualite & energie repose sur les axes strategiques suivants :",
+};
+
 const INITIAL_SECTION_META = {
   pestel: { date: '2026-04-29', reference: 'CH 4.1' },
   swot: { date: '2026-04-29', reference: 'CH 4.1' },
@@ -231,6 +236,7 @@ const INITIAL_MODULE_STATE = {
   perimetre: INITIAL_PERIMETRE,
   axes: INITIAL_AXES,
   documents: INITIAL_DOCUMENTS,
+  politiqueIntro: INITIAL_POLITIQUE_INTRO,
   sectionMeta: INITIAL_SECTION_META,
 };
 
@@ -579,6 +585,13 @@ export default function UtilitiesModule({ onBack, user }) {
   const perimetre = moduleData.perimetre || INITIAL_PERIMETRE;
   const axes = moduleData.axes || INITIAL_AXES;
   const documents = moduleData.documents || INITIAL_DOCUMENTS;
+  const politiqueIntro = useMemo(
+    () => ({
+      ...INITIAL_POLITIQUE_INTRO,
+      ...(moduleData.politiqueIntro || {}),
+    }),
+    [moduleData.politiqueIntro]
+  );
   const sectionMeta = useMemo(
     () => ({
       ...INITIAL_SECTION_META,
@@ -606,6 +619,7 @@ export default function UtilitiesModule({ onBack, user }) {
   const setPerimetre = createSliceSetter('perimetre');
   const setAxes = createSliceSetter('axes');
   const setDocuments = createSliceSetter('documents');
+  const setPolitiqueIntro = createSliceSetter('politiqueIntro');
   const setSectionMeta = createSliceSetter('sectionMeta');
 
   const updateSectionMeta = (sectionKey, field, value) => {
@@ -1565,7 +1579,10 @@ export default function UtilitiesModule({ onBack, user }) {
 
         {activeTab === 'politique' && (
           <section className="w-full">
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <div
+              className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+              style={{ fontFamily: '"Times New Roman", Times, serif' }}
+            >
               <SectionHeader
                 icon={FileText}
                 title="Politique Qualite & Energie"
@@ -1575,17 +1592,34 @@ export default function UtilitiesModule({ onBack, user }) {
                 onMetaChange={(field, value) => updateSectionMeta('politique', field, value)}
               />
 
-              <div className="mb-8 space-y-4 text-sm leading-7 text-slate-600">
-                <p className="text-[15px] font-semibold text-slate-900">
-                  ITALCAR s'engage a etablir et a maintenir un systeme de management de la
-                  Qualite & Energie conforme aux exigences ISO 9001 et ISO 50001.
-                </p>
-                <p>
-                  ITALCAR aspire a etre parmi les leaders du marche, et s'engage a ameliorer
-                  son efficacite energetique pour favoriser le developpement durable. Afin de
-                  developper en continu nos performances, notre politique qualite & energie
-                  repose sur les axes strategiques suivants :
-                </p>
+              <div className="mb-8 space-y-4 text-[15px] leading-7 text-slate-700">
+                {isAdmin ? (
+                  <>
+                    <textarea
+                      rows="3"
+                      value={politiqueIntro.lead}
+                      onChange={(event) =>
+                        setPolitiqueIntro((prev) => ({ ...prev, lead: event.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] leading-7 text-slate-700 outline-none transition focus:border-[#233876]"
+                      style={{ fontFamily: '"Times New Roman", Times, serif' }}
+                    />
+                    <textarea
+                      rows="4"
+                      value={politiqueIntro.body}
+                      onChange={(event) =>
+                        setPolitiqueIntro((prev) => ({ ...prev, body: event.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] leading-7 text-slate-700 outline-none transition focus:border-[#233876]"
+                      style={{ fontFamily: '"Times New Roman", Times, serif' }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <p>{politiqueIntro.lead}</p>
+                    <p>{politiqueIntro.body}</p>
+                  </>
+                )}
               </div>
 
               <div className="mb-8">
