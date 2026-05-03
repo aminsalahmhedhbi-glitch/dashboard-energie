@@ -334,14 +334,14 @@ const INITIAL_SECTION_META = {
 };
 
 const RESEAU_MAP_POSITIONS = {
-  MEGRINE: { top: '73%', left: '58%' },
-  'LES BERGES DU LAC': { top: '49%', left: '61%' },
-  'AZUR CITY': { top: '67%', left: '65%' },
-  'CITE EL KHADHRA': { top: '44%', left: '57%' },
-  NAASSEN: { top: '80%', left: '50%' },
-  SOUSSE: { top: '47%', left: '75%' },
-  SFAX: { top: '67%', left: '78%' },
-  NABEUL: { top: '39%', left: '71%' },
+  MEGRINE: { x: 770, y: 315 },
+  'LES BERGES DU LAC': { x: 808, y: 255 },
+  'AZUR CITY': { x: 835, y: 335 },
+  'CITE EL KHADHRA': { x: 735, y: 245 },
+  NAASSEN: { x: 775, y: 390 },
+  SOUSSE: { x: 900, y: 540 },
+  SFAX: { x: 875, y: 760 },
+  NABEUL: { x: 955, y: 335 },
 };
 
 const INITIAL_MODULE_STATE = {
@@ -664,29 +664,27 @@ function TunisiaNetworkMapCard({ propre, sousConcessionnaires }) {
         Carte du reseau en Tunisie
       </div>
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
-        <div className="relative mx-auto w-full max-w-[420px]">
-          <img
-            src={tunisiaGovernoratesMap}
-            alt="Carte de la Tunisie"
-            className="h-auto w-full rounded-xl object-contain"
-          />
-          {markers.map((marker) => (
-            <div
-              key={marker.id}
-              className="absolute -translate-x-1/2 -translate-y-1/2"
-              style={{ top: marker.top, left: marker.left }}
-            >
-              <div
-                className={`flex h-9 w-9 items-center justify-center rounded-full border-4 shadow-lg ${
-                  marker.type === 'propre'
-                    ? 'border-red-200 bg-red-500 text-white'
-                    : 'border-slate-200 bg-[#233876] text-white'
-                }`}
-              >
-                <MapPin className="h-4 w-4" />
-              </div>
-            </div>
-          ))}
+        <div className="mx-auto w-full max-w-[480px]">
+          <svg viewBox="0 0 1320 1580" className="h-auto w-full rounded-xl">
+            <image href={tunisiaGovernoratesMap} x="0" y="0" width="1320" height="1580" preserveAspectRatio="xMidYMid meet" />
+            {markers.map((marker) => (
+              <g key={marker.id} transform={`translate(${marker.x} ${marker.y})`}>
+                <circle
+                  r="22"
+                  fill={marker.type === 'propre' ? '#ef4444' : '#233876'}
+                  stroke={marker.type === 'propre' ? '#fecaca' : '#e2e8f0'}
+                  strokeWidth="8"
+                  opacity="0.96"
+                />
+                <path
+                  d="M0 -42c-12.5 0-22.5 10-22.5 22.3C-22.5 -4.8 0 26 0 26s22.5-30.8 22.5-45.7C22.5-32 12.5-42 0-42zm0 31.2c-5.1 0-9.2-4.1-9.2-9.2s4.1-9.2 9.2-9.2 9.2 4.1 9.2 9.2-4.1 9.2-9.2 9.2z"
+                  fill={marker.type === 'propre' ? '#dc2626' : '#1d4ed8'}
+                  stroke="white"
+                  strokeWidth="3"
+                />
+              </g>
+            ))}
+          </svg>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
