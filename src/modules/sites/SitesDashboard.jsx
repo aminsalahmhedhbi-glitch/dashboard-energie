@@ -19,7 +19,10 @@ import {
   Legend,
   ResponsiveContainer,
   BarChart,
-  Bar
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell
 } from 'recharts';
 import { BrandLogo, FallbackLogo } from '../../components/branding/BrandLogo';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
@@ -292,6 +295,127 @@ const ensureSiteHistoryYears = (siteKey, siteHistory = {}, defaultYears = []) =>
     return accumulator;
   }, {});
 };
+
+const FULL_MONTH_NAMES = [
+  'janvier',
+  'fevrier',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'aout',
+  'septembre',
+  'octobre',
+  'novembre',
+  'decembre',
+];
+
+const SHORT_MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const toNumberOrZero = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatCompactNumber = (value, digits = 0) =>
+  toNumberOrZero(value).toLocaleString('fr-FR', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+
+const getUsageShareByKeywords = (usages = [], keywords = []) => {
+  const loweredKeywords = keywords.map((keyword) => keyword.toLowerCase());
+  const total = usages.reduce((sum, usage) => {
+    const name = String(usage?.name || '').toLowerCase();
+    return loweredKeywords.some((keyword) => name.includes(keyword))
+      ? sum + toNumberOrZero(usage?.value)
+      : sum;
+  }, 0);
+
+  return total / 100;
+};
+
+const ReviewSectionHeader = ({ icon: Icon, title, subtitle }) => (
+  <div className="flex items-start justify-between gap-4">
+    <div>
+      <div className="flex items-center gap-3">
+        <div className="rounded-2xl bg-blue-900/5 p-2.5 text-blue-900">
+          <Icon size={18} />
+        </div>
+        <h2 className="text-lg font-black tracking-tight text-slate-900">{title}</h2>
+      </div>
+      {subtitle ? <p className="mt-2 text-sm text-slate-500">{subtitle}</p> : null}
+    </div>
+  </div>
+);
+
+const ReviewMetricCard = ({
+  title,
+  value,
+  unit = '',
+  accent = 'slate',
+  subtitle = null,
+  badge = null,
+}) => {
+  const accents = {
+    slate: 'border-slate-200 bg-white text-slate-900',
+    blue: 'border-blue-100 bg-blue-50/60 text-blue-900',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+    amber: 'border-amber-200 bg-amber-50 text-amber-800',
+    indigo: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+  };
+
+  return (
+    <div className={`rounded-3xl border p-5 shadow-sm ${accents[accent] || accents.slate}`}>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">{title}</p>
+        {badge ? <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{badge}</span> : null}
+      </div>
+      <div className="mt-3 flex items-end gap-2">
+        <span className="text-3xl font-black leading-none">{value}</span>
+        {unit ? <span className="pb-1 text-sm font-bold text-slate-400">{unit}</span> : null}
+      </div>
+      {subtitle ? <p className="mt-2 text-xs text-slate-500">{subtitle}</p> : null}
+    </div>
+  );
+};
+
+const ReviewTrendChart = ({ title, data, color, unit, emptyText }) => (
+  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="mb-4 flex items-center justify-between gap-3">
+      <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">{title}</h3>
+      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{unit}</span>
+    </div>
+    {data.length === 0 ? (
+      <div className="flex h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">
+        {emptyText}
+      </div>
+    ) : (
+      <div className="h-[260px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip
+              formatter={(value) => [`${formatCompactNumber(value, 3)} ${unit}`, title]}
+              labelFormatter={(label) => `Periode : ${label}`}
+            />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke={color}
+              strokeWidth={3}
+              dot={{ r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    )}
+  </div>
+);
 
 const SitesDashboard = ({ onBack, userRole, user }) => {
   const [activeSiteTab, setActiveSiteTab] = useState('MEGRINE');
@@ -993,6 +1117,201 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     </div>
   );
 
+  const currentSiteName = getSiteDisplayName(activeSiteTab) || currentData.name;
+  const historySeriesType = getHistorySeriesType(activeSiteTab);
+  const analysisMonthIndex = factureInsights.analysisMonthIndex ?? Math.max(currentMonthIdx, 0);
+  const analysisYear = factureInsights.analysisYear ?? currentYear;
+  const analysisMonthName = FULL_MONTH_NAMES[analysisMonthIndex] || FULL_MONTH_NAMES[0];
+  const analysisMonthShortName = SHORT_MONTH_NAMES[analysisMonthIndex] || SHORT_MONTH_NAMES[0];
+
+  const referenceHistoryValues = getSiteData(activeSiteTab, 'REF', historySeriesType);
+  const currentHistoryValues = getFactureBackedHistoryValues(currentYear, historySeriesType);
+
+  const fallbackCurrentMonthValue = toNumberOrZero(currentHistoryValues[analysisMonthIndex]);
+  const fallbackReferenceMonthValue = toNumberOrZero(referenceHistoryValues[analysisMonthIndex]);
+  const fallbackCurrentYtdValue = currentHistoryValues
+    .slice(0, analysisMonthIndex + 1)
+    .reduce((sum, value) => sum + toNumberOrZero(value), 0);
+  const fallbackReferenceYtdValue = referenceHistoryValues
+    .slice(0, analysisMonthIndex + 1)
+    .reduce((sum, value) => sum + toNumberOrZero(value), 0);
+
+  const displayedCurrentMonthValue = factureInsights.hasData
+    ? factureInsights.currentMonthValue
+    : fallbackCurrentMonthValue;
+  const displayedReferenceMonthValue = factureInsights.hasData
+    ? factureInsights.referenceMonthValue
+    : fallbackReferenceMonthValue;
+  const displayedCurrentYtdValue = factureInsights.hasData
+    ? factureInsights.currentYtdValue
+    : fallbackCurrentYtdValue;
+  const displayedReferenceYtdValue = factureInsights.hasData
+    ? factureInsights.referenceYtdValue
+    : fallbackReferenceYtdValue;
+
+  const diffMonthPercent = displayedReferenceMonthValue > 0
+    ? ((displayedCurrentMonthValue - displayedReferenceMonthValue) / displayedReferenceMonthValue) * 100
+    : 0;
+  const diffYtdPercent = displayedReferenceYtdValue > 0
+    ? ((displayedCurrentYtdValue - displayedReferenceYtdValue) / displayedReferenceYtdValue) * 100
+    : 0;
+
+  const currentMonthTemp = toNumberOrZero(getSiteData(activeSiteTab, currentYear, 'temperature')[analysisMonthIndex]);
+  const previousMonthTemp = toNumberOrZero(getSiteData(activeSiteTab, currentYear - 1, 'temperature')[analysisMonthIndex]);
+  const climateDelta = currentMonthTemp - previousMonthTemp;
+  const coveredArea = toNumberOrZero(currentData.covered || currentData.area);
+
+  const usagePieData = useMemo(() => {
+    const palette = ['#1d4ed8', '#0ea5e9', '#8b5cf6', '#f59e0b', '#16a34a', '#ef4444', '#64748b'];
+    return (currentData.elecUsage || [])
+      .filter((usage) => toNumberOrZero(usage?.value) > 0)
+      .map((usage, index) => ({
+        name: usage.name,
+        value: toNumberOrZero(usage.value),
+        significant: Boolean(usage.significant),
+        subUsages: usage.subUsages || [],
+        color: palette[index % palette.length],
+      }));
+  }, [currentData.elecUsage]);
+
+  const energySources = useMemo(() => {
+    const latestFacture = recentSiteFactures[0] || null;
+    if (activeSiteTab === 'LAC' && latestFacture) {
+      const consommationReseau = toNumberOrZero(
+        latestFacture?.consommationReseau ??
+        latestFacture?.consommation_reseau ??
+        latestFacture?.consumptionGrid
+      );
+      const productionPv = toNumberOrZero(
+        latestFacture?.productionPV ??
+        latestFacture?.productionPv ??
+        latestFacture?.production_pv
+      );
+      const total = consommationReseau + productionPv;
+      if (total > 0) {
+        return [
+          { name: 'STEG', value: (consommationReseau / total) * 100, color: '#1d4ed8' },
+          { name: 'Photovoltaique', value: (productionPv / total) * 100, color: '#10b981' },
+        ];
+      }
+    }
+
+    if (Array.isArray(currentData.energyMix) && currentData.energyMix.length > 0) {
+      const paletteMap = {
+        'bg-blue-900': '#1d4ed8',
+        'bg-orange-500': '#f97316',
+        'bg-emerald-500': '#10b981',
+      };
+      return currentData.energyMix.map((entry, index) => ({
+        name: entry.name,
+        value: toNumberOrZero(entry.value),
+        color: paletteMap[entry.color] || ['#1d4ed8', '#10b981', '#f97316'][index % 3],
+      }));
+    }
+
+    return [{ name: 'Electricite', value: 100, color: '#1d4ed8' }];
+  }, [activeSiteTab, currentData.energyMix, recentSiteFactures]);
+
+  const significanceRows = useMemo(() => {
+    const rows = [];
+    usagePieData.forEach((usage) => {
+      const consoScore =
+        usage.value >= 35 ? 5 :
+        usage.value >= 20 ? 4 :
+        usage.value >= 10 ? 3 :
+        usage.value >= 5 ? 2 : 1;
+      const gainScore =
+        usage.value >= 30 ? 4 :
+        usage.value >= 15 ? 3 :
+        usage.value >= 8 ? 2 : 1;
+      const finalScore = consoScore * gainScore;
+
+      rows.push({
+        type: 'usage',
+        usage: usage.name,
+        pct: usage.value,
+        consoScore,
+        gainScore,
+        finalScore,
+        significant: usage.significant || finalScore >= 12,
+      });
+
+      (usage.subUsages || []).forEach((subUsage) => {
+        rows.push({
+          type: 'sub',
+          usage: subUsage.name,
+          pct: toNumberOrZero(subUsage.value),
+        });
+      });
+    });
+    return rows;
+  }, [usagePieData]);
+
+  const usageShareLighting = getUsageShareByKeywords(currentData.elecUsage, ['eclairage']);
+  const usageShareCvc = getUsageShareByKeywords(currentData.elecUsage, ['clim', 'cvc', 'chauffage']);
+  const usageShareAir = getUsageShareByKeywords(currentData.elecUsage, ['air comprim']);
+
+  const kpiHistorySeries = useMemo(() => {
+    const factureSeries = (factureInsights.monthlyRows || []).map((row) => ({
+      year: row.year,
+      monthIndex: row.monthIndex,
+      consommation: toNumberOrZero(row.consommationKwh),
+    }));
+
+    const fallbackSeries = yearsRange
+      .filter((year) => year !== 'REF')
+      .flatMap((year) => {
+        const values = getFactureBackedHistoryValues(year, historySeriesType) || [];
+        return values.map((value, monthIndex) => ({
+          year: Number(year),
+          monthIndex,
+          consommation: toNumberOrZero(value),
+        }));
+      })
+      .filter((row) => row.consommation > 0);
+
+    const sourceRows = (factureSeries.length ? factureSeries : fallbackSeries)
+      .sort((left, right) => {
+        const leftKey = `${left.year}-${String(left.monthIndex).padStart(2, '0')}`;
+        const rightKey = `${right.year}-${String(right.monthIndex).padStart(2, '0')}`;
+        return leftKey.localeCompare(rightKey);
+      })
+      .slice(-6);
+
+    return sourceRows.map((row) => {
+      const totalRatio = coveredArea > 0 ? row.consommation / coveredArea : 0;
+      return {
+        label: `${SHORT_MONTH_NAMES[row.monthIndex]} ${String(row.year).slice(-2)}`,
+        total: Number(totalRatio.toFixed(3)),
+        lighting: Number((totalRatio * usageShareLighting).toFixed(3)),
+        cvc: Number((totalRatio * usageShareCvc).toFixed(3)),
+        air: Number((totalRatio * usageShareAir).toFixed(3)),
+      };
+    });
+  }, [
+    coveredArea,
+    factureInsights.monthlyRows,
+    getFactureBackedHistoryValues,
+    historySeriesType,
+    usageShareAir,
+    usageShareCvc,
+    usageShareLighting,
+    yearsRange,
+  ]);
+
+  const latestKpiSnapshot = kpiHistorySeries[kpiHistorySeries.length - 1] || {
+    total: coveredArea > 0 ? displayedCurrentMonthValue / coveredArea : 0,
+    lighting: coveredArea > 0 ? (displayedCurrentMonthValue / coveredArea) * usageShareLighting : 0,
+    cvc: coveredArea > 0 ? (displayedCurrentMonthValue / coveredArea) * usageShareCvc : 0,
+    air: coveredArea > 0 ? (displayedCurrentMonthValue / coveredArea) * usageShareAir : 0,
+  };
+
+  const visionReductionTarget = toNumberOrZero(currentData.targets?.reduction2030 || 10);
+  const visionRenewableTarget = toNumberOrZero(currentData.targets?.renewable2030 || 20);
+  const referenceBase = displayedReferenceYtdValue > 0 ? displayedReferenceYtdValue : displayedCurrentYtdValue;
+  const targetConso2030 = referenceBase * (1 - visionReductionTarget / 100);
+  const hasAirComprime = ['MEGRINE', 'ELKHADHRA', 'NAASSEN'].includes(activeSiteTab);
+
   return (
     <div className="bg-slate-50 min-h-screen pb-20 relative font-sans text-slate-600">
         <PrintStyles />
@@ -1030,6 +1349,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         </header>
         )}
 
+        {false && (
         <main className="max-w-7xl mx-auto p-6 animate-in fade-in duration-500">
             <SiteTabs />
             <PerformanceWidget />
@@ -1173,6 +1493,317 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             </div>
 
             <VisionWidget />
+        </main>
+        )}
+
+        <main className="mx-auto max-w-[1600px] animate-in space-y-10 px-4 pb-20 fade-in duration-500 sm:px-6 lg:px-8">
+            <SiteTabs />
+
+            <section className="space-y-6">
+                <ReviewSectionHeader
+                  icon={LayoutGrid}
+                  title="Contexte & Bilan Energetique"
+                  subtitle={`Vue consolidee du site ${currentSiteName}, alimentee par les factures, l'historique energetique et les objectifs 2030 deja enregistres.`}
+                />
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Factory size={16} className="text-slate-500" />
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Fiche technique</h3>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentData.area)}</span>
+                      <span className="pb-1 text-sm font-bold text-slate-400">m² total</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Dont <span className="font-bold text-blue-900">{formatCompactNumber(currentData.covered)} m²</span> couverts et <span className="font-bold text-slate-700">{formatCompactNumber(currentData.open)} m²</span> ouverts.
+                    </p>
+                    <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                      {(currentData.coveredBreakdown || []).map((zone, index) => (
+                        <div key={index} className="flex items-center justify-between gap-3 text-xs">
+                          <span className="text-slate-500">{zone.label}</span>
+                          <span className="font-bold text-slate-700">{formatCompactNumber(zone.value)} m²</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-2">
+                      <TrendingUp size={16} className="text-slate-500" />
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Gains consommation</h3>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Mois analyse ({analysisMonthShortName} {analysisYear})</div>
+                            <div className="mt-1 text-2xl font-black text-slate-900">
+                              {formatCompactNumber(displayedCurrentMonthValue, 0)} <span className="text-xs font-bold text-slate-400">kWh</span>
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">Ref. {formatCompactNumber(displayedReferenceMonthValue, 0)} kWh</div>
+                          </div>
+                          <span className={`rounded-xl px-3 py-2 text-xs font-black ${diffMonthPercent <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                            {diffMonthPercent > 0 ? '+' : ''}{diffMonthPercent.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cumul YTD</div>
+                            <div className="mt-1 text-2xl font-black text-slate-900">
+                              {formatCompactNumber(displayedCurrentYtdValue, 0)} <span className="text-xs font-bold text-slate-400">kWh</span>
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">Ref. {formatCompactNumber(displayedReferenceYtdValue, 0)} kWh</div>
+                          </div>
+                          <span className={`rounded-xl px-3 py-2 text-xs font-black ${diffYtdPercent <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                            {diffYtdPercent > 0 ? '+' : ''}{diffYtdPercent.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-2">
+                      <ThermometerSun size={16} className="text-slate-500" />
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Climat & saisonnalite</h3>
+                    </div>
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Temperature {analysisMonthName}</div>
+                      <div className="mt-2 flex items-end gap-3">
+                        <span className="text-3xl font-black text-slate-900">{currentMonthTemp > 0 ? currentMonthTemp.toFixed(1) : '--'}</span>
+                        <span className="pb-1 text-sm font-bold text-slate-400">°C</span>
+                        <span className="pb-1 text-xs text-slate-500">vs N-1 {previousMonthTemp > 0 ? previousMonthTemp.toFixed(1) : '--'} °C</span>
+                      </div>
+                      <div className="mt-3 rounded-xl bg-white/70 px-3 py-2 text-xs text-slate-600">
+                        {Math.abs(climateDelta) < 0.1
+                          ? 'Aucune variation climatique significative detectee pour la periode analysee.'
+                          : climateDelta > 0
+                            ? `Mois plus chaud de ${climateDelta.toFixed(1)} °C, avec impact probable sur les usages CVC.`
+                            : `Mois plus froid de ${Math.abs(climateDelta).toFixed(1)} °C, avec influence probable sur le chauffage.`}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Leaf size={16} className="text-slate-500" />
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Vecteurs energetiques</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {energySources.map((source) => (
+                        <div key={source.name} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                          <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                            <span className="font-bold text-slate-700">{source.name}</span>
+                            <span className="font-black text-slate-900">{formatCompactNumber(source.value, 0)}%</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                            <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, source.value))}%`, backgroundColor: source.color }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-4 text-xs text-slate-500">
+                      {activeSiteTab === 'LAC'
+                        ? 'La part PV est reconstituee a partir de la derniere facture basse tension du site.'
+                        : 'Les vecteurs energetiques affichent la structure energetique du site telle qu’elle est configuree dans le module.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+                  <ReviewMetricCard title="Performance globale" value={formatCompactNumber(latestKpiSnapshot.total, 3)} unit="kWh/m²" accent="blue" subtitle="Consommation globale rapportee a l'espace couvert" />
+                  <ReviewMetricCard title="IPE eclairage" value={formatCompactNumber(latestKpiSnapshot.lighting, 3)} unit="kWh/m²" accent="amber" subtitle="Part eclairage issue de la repartition des usages" />
+                  <ReviewMetricCard title="IPE CVC" value={formatCompactNumber(latestKpiSnapshot.cvc, 3)} unit="kWh/m²" accent="indigo" subtitle="Part CVC issue de la repartition des usages" />
+                  <ReviewMetricCard
+                    title={hasAirComprime ? 'IPE air comprime' : 'Air comprime'}
+                    value={hasAirComprime ? formatCompactNumber(latestKpiSnapshot.air, 3) : 'N/A'}
+                    unit={hasAirComprime ? 'indice' : ''}
+                    accent="slate"
+                    subtitle={hasAirComprime ? 'Part air comprime issue de la repartition des usages' : 'Non applicable pour ce site'}
+                  />
+                </div>
+            </section>
+
+            <section className="space-y-6">
+              <ReviewSectionHeader icon={Settings} title="Matrice des Usages Energetiques Significatifs (UES)" subtitle="La repartition et la significativite restent alimentees par la configuration UES du site actif." />
+
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr,2fr]">
+                <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Repartition globale</h3>
+                    {userRole === 'ADMIN' && (
+                      <button onClick={() => setShowUsageConfig(true)} className="rounded-full bg-slate-50 p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-blue-900">
+                        <Settings size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  {usagePieData.length === 0 ? (
+                    <div className="flex h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">
+                      Donnees de repartition non disponibles pour ce site.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart>
+                            <Pie data={usagePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={65} outerRadius={96} paddingAngle={2} stroke="none">
+                              {usagePieData.map((entry) => (
+                                <Cell key={entry.name} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value) => `${formatCompactNumber(value, 1)} %`} />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {usagePieData.map((usage) => (
+                          <div key={usage.name} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs">
+                            <span className="flex items-center gap-2 font-medium text-slate-600">
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: usage.color }} />
+                              {usage.name}
+                            </span>
+                            <span className="font-black text-slate-800">{formatCompactNumber(usage.value, 1)}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Evaluation & niveau de significativite</h3>
+                  </div>
+                  <div className="overflow-x-auto p-4">
+                    <table className="min-w-full border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                          <th className="px-3 py-3">Usage</th>
+                          <th className="px-3 py-3 text-center">Part</th>
+                          <th className="px-3 py-3 text-center">Note conso</th>
+                          <th className="px-3 py-3 text-center">Note gain</th>
+                          <th className="px-3 py-3 text-center">Produit</th>
+                          <th className="px-3 py-3 text-right">Etat</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {significanceRows.length === 0 ? (
+                          <tr>
+                            <td colSpan="6" className="px-3 py-10 text-center text-sm text-slate-400">Aucun usage configure pour ce site.</td>
+                          </tr>
+                        ) : (
+                          significanceRows.map((row, index) =>
+                            row.type === 'sub' ? (
+                              <tr key={`${row.usage}-${index}`} className="bg-slate-50/70">
+                                <td className="px-3 py-2 pl-8 text-xs text-slate-500">• {row.usage}</td>
+                                <td className="px-3 py-2 text-center text-xs font-bold text-slate-500">{formatCompactNumber(row.pct, 0)}%</td>
+                                <td className="px-3 py-2 text-center text-xs text-slate-300">-</td>
+                                <td className="px-3 py-2 text-center text-xs text-slate-300">-</td>
+                                <td className="px-3 py-2 text-center text-xs text-slate-300">-</td>
+                                <td className="px-3 py-2 text-right text-xs text-slate-300">Sous-usage</td>
+                              </tr>
+                            ) : (
+                              <tr key={`${row.usage}-${index}`} className="hover:bg-slate-50">
+                                <td className="px-3 py-3 font-semibold text-slate-700">{row.usage}</td>
+                                <td className="px-3 py-3 text-center font-bold text-slate-600">{formatCompactNumber(row.pct, 0)}%</td>
+                                <td className="px-3 py-3 text-center">{row.consoScore}</td>
+                                <td className="px-3 py-3 text-center">{row.gainScore}</td>
+                                <td className="px-3 py-3 text-center font-black text-slate-800">{row.finalScore}</td>
+                                <td className="px-3 py-3 text-right">
+                                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${row.significant ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                                    {row.significant ? 'UES' : 'Suivi'}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
+                          )
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-6">
+              <ReviewSectionHeader icon={BarChart3} title="Suivi des Indicateurs (IPE) - Historique" subtitle="Les historiques ci-dessous sont derives des factures enregistrees et de l'historique de site deja sauvegarde." />
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <ReviewTrendChart title="Performance globale site" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.total }))} color="#0f172a" unit="kWh/m²" emptyText="Aucune serie exploitable pour afficher l'historique global." />
+                <ReviewTrendChart title="IPE eclairage" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.lighting }))} color="#f59e0b" unit="kWh/m²" emptyText="Aucun historique eclairage disponible." />
+                <ReviewTrendChart title="IPE climatisation / CVC" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.cvc }))} color="#2563eb" unit="kWh/m²" emptyText="Aucun historique CVC disponible." />
+                {hasAirComprime ? (
+                  <ReviewTrendChart title="IPE air comprime" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.air }))} color="#7c3aed" unit="indice" emptyText="Aucun historique air comprime disponible." />
+                ) : (
+                  <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-slate-200 bg-slate-100/70 p-6 text-slate-400">
+                    <Wind size={34} className="mb-3 opacity-40" />
+                    <span className="text-sm font-semibold">Air comprime non applicable pour ce site</span>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {hasAirComprime && (
+              <section className="space-y-6">
+                <div className="overflow-hidden rounded-[32px] border border-slate-800 bg-[#0f172a] p-6 shadow-lg">
+                  <div className="mb-6 flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-2.5 text-blue-400">
+                        <Activity size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-white">Supervision TGBT Temps Reel</h3>
+                        <p className="text-sm text-slate-400">Analyseur reseau PAC2200 - Site {currentSiteName}</p>
+                      </div>
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs font-black uppercase tracking-wider text-emerald-400">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                      </span>
+                      Suivi en ligne
+                    </div>
+                  </div>
+                  <PacMonitoringPanel siteKey={activeSiteTab} />
+                </div>
+              </section>
+            )}
+
+            <section>
+              <div className="overflow-hidden rounded-[32px] bg-gradient-to-r from-emerald-900 to-emerald-700 p-8 text-white shadow-lg">
+                <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.7fr,1fr]">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-100">
+                      <Shield size={14} /> Vision 2030
+                    </div>
+                    <h3 className="mt-4 text-3xl font-black tracking-tight">Feuille de route Energie & ISO 50001</h3>
+                    <p className="mt-3 max-w-3xl text-sm leading-relaxed text-emerald-100/85">
+                      Les objectifs strategiques du site restent pilotes depuis la base de donnees existante. Cette vue reprend les cibles d'efficacite energetique et la part d'energie renouvelable configurees dans l'historique du site.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
+                    <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-100">Reference YTD</div>
+                      <div className="mt-2 text-3xl font-black">{formatCompactNumber(referenceBase, 0)} <span className="text-sm font-bold text-emerald-100/70">kWh</span></div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-100">Objectif reduction</div>
+                      <div className="mt-2 text-3xl font-black text-emerald-100">-{visionReductionTarget}%</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-100">Cible 2030</div>
+                      <div className="mt-2 text-3xl font-black">{formatCompactNumber(targetConso2030, 0)} <span className="text-sm font-bold text-emerald-100/70">kWh</span></div>
+                      <div className="mt-2 text-xs text-emerald-100/75">Part renouvelable visee : {visionRenewableTarget}%</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
         </main>
 
         {/* MODAL CONFIGURATION USAGES AVEC SOUS-USAGES */}
