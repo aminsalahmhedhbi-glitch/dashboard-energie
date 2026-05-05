@@ -2881,95 +2881,64 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:col-span-12">
-                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          Contexte
-                        </h4>
-                        <div className="space-y-3 text-sm leading-6">
-                          {perimetre.contexte.map((item) => (
-                            <div key={item.id} className="flex gap-2">
-                              <span className="mt-1 text-[#233876]">•</span>
-                              {presentationEditing ? (
-                                <div className="flex flex-1 items-start gap-2">
-                                  <textarea
-                                    rows="2"
-                                    value={item.text}
-                                    onChange={(event) =>
-                                      updatePerimetreArrayItem('contexte', item.id, 'text', event.target.value)
-                                    }
-                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                  />
-                                  <ItemDeleteButton
-                                    alwaysVisible
-                                    onClick={() => removePerimetreArrayItem('contexte', item.id)}
-                                  />
-                                </div>
-                              ) : (
-                                <span>{item.text}</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        {presentationEditing && (
-                          <button
-                            type="button"
-                            onClick={() => addPerimetreArrayItem('contexte', { text: 'Nouvel element de contexte' })}
-                            className="mt-4 rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
-                          >
-                            + Ajouter
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          Environnement
-                        </h4>
-                        <div className="space-y-3 text-sm leading-6">
-                          {perimetre.environnement.map((item) => (
-                            <div key={item.id} className="flex gap-2">
-                              <span className="mt-1 text-[#233876]">•</span>
-                              {presentationEditing ? (
-                                <div className="flex flex-1 items-start gap-2">
-                                  <textarea
-                                    rows="2"
-                                    value={item.text}
-                                    onChange={(event) =>
-                                      updatePerimetreArrayItem(
-                                        'environnement',
-                                        item.id,
-                                        'text',
-                                        event.target.value
-                                      )
-                                    }
-                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                  />
-                                  <ItemDeleteButton
-                                    alwaysVisible
-                                    onClick={() => removePerimetreArrayItem('environnement', item.id)}
-                                  />
-                                </div>
-                              ) : (
-                                <span>{item.text}</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        {presentationEditing && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              addPerimetreArrayItem('environnement', {
-                                text: "Nouvel element d'environnement",
-                              })
+                  <div className="grid grid-cols-1 gap-6 xl:col-span-12">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <h4 className="mb-4 text-4xl font-black tracking-tight text-slate-950">
+                        Contexte de L'entreprise
+                      </h4>
+                      <div className="space-y-4">
+                        <div className="text-2xl font-black text-slate-950">&bull; Orientation Strategique :</div>
+                        {presentationEditing ? (
+                          <textarea
+                            rows="8"
+                            value={perimetre.contexte.map((item) => item.text).join('\n\n')}
+                            onChange={(event) =>
+                              updatePerimetreValue(
+                                'contexte',
+                                event.target.value
+                                  .split(/\n{2,}/)
+                                  .map((entry, index) => ({
+                                    id: perimetre.contexte[index]?.id ?? Date.now() + index,
+                                    text: entry.trim(),
+                                  }))
+                                  .filter((entry) => entry.text)
+                              )
                             }
-                            className="mt-4 rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
-                          >
-                            + Ajouter
-                          </button>
+                            className="min-h-[220px] w-full rounded-none border-2 border-slate-900 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none"
+                          />
+                        ) : (
+                          <div className="min-h-[220px] whitespace-pre-wrap border-2 border-slate-900 px-4 py-4 text-base leading-7 text-slate-800">
+                            {perimetre.contexte.map((item) => item.text).join('\n\n') || 'Aucun contexte renseigne.'}
+                          </div>
                         )}
                       </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="mb-4 text-2xl font-black text-slate-950">&bull; Environnement :</div>
+                      {presentationEditing ? (
+                        <textarea
+                          rows="8"
+                          value={perimetre.environnement.map((item) => item.text).join('\n\n')}
+                          onChange={(event) =>
+                            updatePerimetreValue(
+                              'environnement',
+                              event.target.value
+                                .split(/\n{2,}/)
+                                .map((entry, index) => ({
+                                  id: perimetre.environnement[index]?.id ?? Date.now() + index,
+                                  text: entry.trim(),
+                                }))
+                                .filter((entry) => entry.text)
+                            )
+                          }
+                          className="min-h-[220px] w-full rounded-none border-2 border-slate-900 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none"
+                        />
+                      ) : (
+                        <div className="min-h-[220px] whitespace-pre-wrap border-2 border-slate-900 px-4 py-4 text-base leading-7 text-slate-800">
+                          {perimetre.environnement.map((item) => item.text).join('\n\n') || 'Aucun environnement renseigne.'}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3115,6 +3084,7 @@ export default function UtilitiesModule({ onBack, user }) {
                     </div>
                   </div>
                 </div>
+              </div>
             </div>
           </section>
         )}
