@@ -313,6 +313,19 @@ const FULL_MONTH_NAMES = [
 
 const SHORT_MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+const SITE_CLIMATE_COORDINATES = {
+  MEGRINE: { latitude: 36.7699, longitude: 10.2294 },
+  ELKHADHRA: { latitude: 36.8399, longitude: 10.1947 },
+  NAASSEN: { latitude: 36.6466, longitude: 10.1012 },
+  LAC: { latitude: 36.8421, longitude: 10.2723 },
+  AZUR: { latitude: 36.8664, longitude: 10.3321 },
+  CARTHAGE: { latitude: 36.8531, longitude: 10.3235 },
+  CHARGUEYAA: { latitude: 36.8531, longitude: 10.3235 },
+};
+
+const buildMonthlyClimateArchiveUrl = ({ latitude, longitude, startDate, endDate }) =>
+  `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${startDate}&end_date=${endDate}&daily=temperature_2m_max,temperature_2m_min&timezone=Africa%2FTunis`;
+
 const toNumberOrZero = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -528,6 +541,7 @@ const ReviewTrendChart = ({ title, data, color, unit, emptyText }) => (
 const SitesDashboard = ({ onBack, userRole, user }) => {
   const [activeSiteTab, setActiveSiteTab] = useState('MEGRINE');
   const [historyData, setHistoryData] = useState({});
+  const [autoTemperatureData, setAutoTemperatureData] = useState({});
   const [showHistoryInput, setShowHistoryInput] = useState(false);
   const [showUsageConfig, setShowUsageConfig] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -764,6 +778,12 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       return yData[type] || Array(12).fill('');
   };
 
+  const getTemperatureValues = (site, year) =>
+    mergeHistoryArrays(
+      autoTemperatureData[`${site}_${year}`] || Array(12).fill(''),
+      getSiteData(site, year, 'temperature')
+    );
+
   const handleHistoryChange = (year, monthIdx, val, type = 'months') => {
       setHistoryData(prev => {
           const siteData = prev[activeSiteTab] || {};
@@ -796,6 +816,84 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
           console.error('Erreur sauvegarde brouillon objectifs:', error);
       }
   }, [sitesDataState]);
+
+  useEffect(() => {
+    const coordinates = SITE_CLIMATE_COORDINATES[activeSiteTab];
+    if (!coordinates) return undefined;
+
+    const yearsToLoad = [currentYear - 1, currentYear];
+    const today = new Date();
+    let cancelled = false;
+
+    const fetchYearTemperatures = async (year) => {
+      const cacheKey = `${activeSiteTab}_${year}`;
+      if (autoTemperatureData[cacheKey]) return;
+
+      const isCurrentYear = year === today.getFullYear();
+      const endDate = isCurrentYear
+        ? today.toISOString().slice(0, 10)
+        : `${year}-12-31`;
+      const startDate = `${year}-01-01`;
+
+      try {
+        const response = await fetch(
+          buildMonthlyClimateArchiveUrl({
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+            startDate,
+            endDate,
+          })
+        );
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        const daily = payload?.daily;
+        if (!daily?.time?.length) return;
+
+        const monthlyBuckets = Array.from({ length: 12 }, () => []);
+        const days = Math.min(
+          daily.time.length,
+          daily.temperature_2m_max?.length || 0,
+          daily.temperature_2m_min?.length || 0
+        );
+
+        for (let index = 0; index < days; index += 1) {
+          const isoDate = daily.time[index];
+          const monthIndex = Number(String(isoDate).slice(5, 7)) - 1;
+          if (monthIndex < 0 || monthIndex > 11) continue;
+
+          const maxTemp = Number(daily.temperature_2m_max[index]);
+          const minTemp = Number(daily.temperature_2m_min[index]);
+          if (!Number.isFinite(maxTemp) || !Number.isFinite(minTemp)) continue;
+
+          monthlyBuckets[monthIndex].push((maxTemp + minTemp) / 2);
+        }
+
+        const monthlyAverages = monthlyBuckets.map((values) => {
+          if (!values.length) return '';
+          const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+          return average.toFixed(1);
+        });
+
+        if (!cancelled) {
+          setAutoTemperatureData((prev) => ({
+            ...prev,
+            [cacheKey]: monthlyAverages,
+          }));
+        }
+      } catch (error) {
+        console.error('Erreur chargement temperatures automatiques:', error);
+      }
+    };
+
+    yearsToLoad.forEach((year) => {
+      fetchYearTemperatures(year);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSiteTab, autoTemperatureData, currentYear]);
 
   const saveHistory = async () => {
       const site = activeSiteTab;
@@ -1061,8 +1159,8 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   // --- WIDGET SAISONNALITÉ MODIFIÉ (Temp N vs N-1) ---
   const ClimateInfoWidget = () => {
-    const tempsCurrent = getSiteData(activeSiteTab, currentYear, 'temperature');
-    const tempsPrev = getSiteData(activeSiteTab, currentYear - 1, 'temperature');
+    const tempsCurrent = getTemperatureValues(activeSiteTab, currentYear);
+    const tempsPrev = getTemperatureValues(activeSiteTab, currentYear - 1);
     
     // Mois actuel pour l'affichage (défaut Janvier si pas de données)
     const displayMonthIdx = currentMonthIdx >= 0 ? currentMonthIdx : 0;
@@ -1311,8 +1409,8 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     ? ((displayedCurrentYtdValue - displayedReferenceYtdValue) / displayedReferenceYtdValue) * 100
     : 0;
 
-  const currentMonthTemp = toNumberOrZero(getSiteData(activeSiteTab, currentYear, 'temperature')[analysisMonthIndex]);
-  const previousMonthTemp = toNumberOrZero(getSiteData(activeSiteTab, currentYear - 1, 'temperature')[analysisMonthIndex]);
+  const currentMonthTemp = toNumberOrZero(getTemperatureValues(activeSiteTab, currentYear)[analysisMonthIndex]);
+  const previousMonthTemp = toNumberOrZero(getTemperatureValues(activeSiteTab, currentYear - 1)[analysisMonthIndex]);
   const climateDelta = currentMonthTemp - previousMonthTemp;
   const totalSiteArea = toNumberOrZero(currentData.area || currentData.covered);
 
@@ -2151,10 +2249,10 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                          {/* LIGNE TEMPÉRATURE AJOUTÉE */}
                                          <div className="flex items-center gap-2 mt-2 border-t border-slate-50 pt-2">
                                              <div className="w-32 text-xs font-bold text-amber-500 uppercase flex items-center"><Thermometer size={12} className="mr-1"/> Temp. Moy (°C)</div>
-                                             {getSiteData(activeSiteTab, year, 'temperature').map((val, i) => (
-                                                 <input key={i} type="number" className="w-20 p-2 text-center text-xs border border-amber-100 bg-amber-50/30 rounded focus:border-amber-500 outline-none" placeholder="°C"
-                                                     value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'temperature')} />
-                                             ))}
+                                            {getTemperatureValues(activeSiteTab, year).map((val, i) => (
+                                                <input key={i} type="number" className="w-20 p-2 text-center text-xs border border-amber-100 bg-amber-50/30 rounded focus:border-amber-500 outline-none" placeholder="°C"
+                                                    value={val} onChange={e => handleHistoryChange(year, i, e.target.value, 'temperature')} />
+                                            ))}
                                          </div>
                                      </div>
                                  </div>
