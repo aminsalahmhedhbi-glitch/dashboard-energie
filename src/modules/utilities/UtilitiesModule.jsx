@@ -175,9 +175,9 @@ const INITIAL_PERIMETRE = {
       { id: 305, text: 'Parc Nassen', lieu: 'Nassen' },
     ],
     sousConcessionnaires: [
-      { id: 401, nom: 'Auto Service', ville: 'Sousse', services: '', marques: '' },
-      { id: 402, nom: 'Sud Auto', ville: 'Sfax', services: '', marques: '' },
-      { id: 403, nom: 'Cap Bon Motors', ville: 'Nabeul', services: '', marques: '' },
+      { id: 401, nom: 'Auto Service', ville: 'Sousse', services: '', marques: [] },
+      { id: 402, nom: 'Sud Auto', ville: 'Sfax', services: '', marques: [] },
+      { id: 403, nom: 'Cap Bon Motors', ville: 'Nabeul', services: '', marques: [] },
     ],
   },
   activites: [
@@ -615,10 +615,25 @@ function inferReseauPropreLieu(text = '') {
   if (normalized.includes('NAASSEN')) return 'Nassen';
   if (normalized.includes('AZUR')) return 'Concept store Azur City';
   if (normalized.includes('LAC')) return 'Les Berges du Lac';
-  if (normalized.includes('KHADHRA') && normalized.includes('MEGRINE')) return 'Siège Megrine / SAV El Khadhra';
+  if (normalized.includes('KHADHRA') && normalized.includes('MEGRINE')) return 'Si?ge Megrine / SAV El Khadhra';
   if (normalized.includes('KHADHRA')) return 'SAV El Khadhra';
-  if (normalized.includes('MEGRINE')) return 'Siège Megrine';
+  if (normalized.includes('MEGRINE')) return 'Si?ge Megrine';
   return '';
+}
+
+function normalizeConcessionnaireMarques(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (!value) return [];
+  return String(value)
+    .split(/\s*-\s*|\s*,\s*|\s*;\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatConcessionnaireMarques(value) {
+  return normalizeConcessionnaireMarques(value).join(' - ');
 }
 
 function buildReseauMarkers(propre = [], sousConcessionnaires = []) {
@@ -1209,7 +1224,7 @@ export default function UtilitiesModule({ onBack, user }) {
           moduleData.perimetre?.reseau?.sousConcessionnaires?.map((item) => ({
             ...item,
             services: item.services ?? '',
-            marques: item.marques ?? '',
+            marques: normalizeConcessionnaireMarques(item.marques),
           })) || INITIAL_PERIMETRE.reseau.sousConcessionnaires,
       },
       activites: moduleData.perimetre?.activites || INITIAL_PERIMETRE.activites,
@@ -1358,6 +1373,23 @@ export default function UtilitiesModule({ onBack, user }) {
       [parentKey]: {
         ...(prev?.[parentKey] || {}),
         [arrayKey]: (prev?.[parentKey]?.[arrayKey] || []).filter((item) => item.id !== itemId),
+      },
+    }));
+  };
+
+  const toggleConcessionnaireMarque = (itemId, marqueLabel) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      reseau: {
+        ...(prev?.reseau || {}),
+        sousConcessionnaires: (prev?.reseau?.sousConcessionnaires || []).map((item) => {
+          if (item.id !== itemId) return item;
+          const currentMarques = normalizeConcessionnaireMarques(item.marques);
+          const nextMarques = currentMarques.includes(marqueLabel)
+            ? currentMarques.filter((label) => label !== marqueLabel)
+            : [...currentMarques, marqueLabel];
+          return { ...item, marques: nextMarques };
+        }),
       },
     }));
   };
@@ -2576,7 +2608,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                       nom: 'Nouveau concessionnaire',
                                       ville: 'Ville',
                                       services: '',
-                                      marques: '',
+                                      marques: [],
                                     })
                                   }
                                   className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
@@ -2637,21 +2669,32 @@ export default function UtilitiesModule({ onBack, user }) {
                                         placeholder="Services"
                                         className="rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:col-span-2"
                                       />
-                                      <input
-                                        type="text"
-                                        value={item.marques ?? ''}
-                                        onChange={(event) =>
-                                          updatePerimetreNestedArrayItem(
-                                            'reseau',
-                                            'sousConcessionnaires',
-                                            item.id,
-                                            'marques',
-                                            event.target.value
-                                          )
-                                        }
-                                        placeholder="Marques representees (separees par -)"
-                                        className="rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:col-span-2"
-                                      />
+                                      <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-white p-3">
+                                        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                          Marques representees
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                          {perimetre.marques.map((marque) => {
+                                            const label = marque.text?.trim();
+                                            if (!label) return null;
+                                            const selected = normalizeConcessionnaireMarques(item.marques).includes(label);
+                                            return (
+                                              <button
+                                                key={`${item.id}-${marque.id}`}
+                                                type="button"
+                                                onClick={() => toggleConcessionnaireMarque(item.id, label)}
+                                                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                                                  selected
+                                                    ? 'border-[#233876] bg-[#233876] text-white'
+                                                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-[#233876] hover:text-[#233876]'
+                                                }`}
+                                              >
+                                                {label}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
                                       <div className="sm:col-span-2 flex justify-end">
                                         <ItemDeleteButton
                                           alwaysVisible
@@ -2669,17 +2712,21 @@ export default function UtilitiesModule({ onBack, user }) {
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                       <div className="min-w-0">
                                         <div className="font-semibold text-slate-800">{item.nom}</div>
-                                        {item.marques ? (
-                                          <div className="mt-1 text-[11px] font-medium text-slate-500">{item.marques}</div>
+                                        {formatConcessionnaireMarques(item.marques) ? (
+                                          <div className="mt-1 text-[11px] font-medium text-slate-500">
+                                            {formatConcessionnaireMarques(item.marques)}
+                                          </div>
                                         ) : null}
                                       </div>
                                       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                                        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
+                                        {item.services ? (
+                                          <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-bold text-orange-700">
+                                            {item.services}
+                                          </span>
+                                        ) : null}
+                                        <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-bold text-orange-700">
                                           {item.ville}
                                         </span>
-                                        {item.services ? (
-                                          <span className="text-xs font-medium text-slate-500">{item.services}</span>
-                                        ) : null}
                                       </div>
                                     </div>
                                   )}
