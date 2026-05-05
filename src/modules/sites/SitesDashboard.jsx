@@ -821,8 +821,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     const coordinates = SITE_CLIMATE_COORDINATES[activeSiteTab];
     if (!coordinates) return undefined;
 
-    const yearsToLoad = [currentYear - 1, currentYear];
     const today = new Date();
+    const currentAutoClimateYear = today.getFullYear();
+    const yearsToLoad = [currentAutoClimateYear - 1, currentAutoClimateYear];
     let cancelled = false;
 
     const fetchYearTemperatures = async (year) => {
@@ -893,7 +894,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     return () => {
       cancelled = true;
     };
-  }, [activeSiteTab, autoTemperatureData, currentYear]);
+  }, [activeSiteTab, autoTemperatureData]);
 
   const saveHistory = async () => {
       const site = activeSiteTab;
