@@ -2461,6 +2461,58 @@ export default function UtilitiesModule({ onBack, user }) {
                       )}
                     </div>
 
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        Abreviations
+                      </h4>
+                      <div className="space-y-3">
+                        {perimetre.abreviations.map((item) => (
+                          <div key={item.id} className="flex items-start gap-3 text-sm">
+                            {presentationEditing ? (
+                              <>
+                                <input
+                                  type="text"
+                                  value={item.court}
+                                  onChange={(event) =>
+                                    updatePerimetreArrayItem('abreviations', item.id, 'court', event.target.value)
+                                  }
+                                  className="w-16 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-[#233876]"
+                                />
+                                <input
+                                  type="text"
+                                  value={item.long}
+                                  onChange={(event) =>
+                                    updatePerimetreArrayItem('abreviations', item.id, 'long', event.target.value)
+                                  }
+                                  className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                />
+                                <ItemDeleteButton
+                                  alwaysVisible
+                                  onClick={() => removePerimetreArrayItem('abreviations', item.id)}
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <span className="min-w-[48px] font-bold text-[#233876]">{item.court}</span>
+                                <span className="text-slate-600">{item.long}</span>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                        {presentationEditing && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addPerimetreArrayItem('abreviations', { court: 'NEW', long: 'Nouvelle abreviation' })
+                            }
+                            className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                          >
+                            + Ajouter
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="rounded-2xl border border-yellow-200 bg-yellow-50/70 p-5 shadow-sm">
                       <div className="mb-4 flex items-center justify-between">
                         <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-yellow-700">
@@ -2504,7 +2556,7 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
 
-                                      </div>
+                  </div>
 
                   <div className="space-y-6 xl:col-span-8">
                     <div className="overflow-hidden rounded-2xl border border-transparent bg-gradient-to-br from-[#233876] to-[#3653a6] p-7 text-white shadow-lg">
@@ -2558,65 +2610,10 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.8fr)]">
-                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                            <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                        Abreviations
-                      </h4>
-                      <div className="space-y-3">
-                        {perimetre.abreviations.map((item) => (
-                          <div key={item.id} className="flex items-start gap-3 text-sm">
-                            {presentationEditing ? (
-                              <>
-                                <input
-                                  type="text"
-                                  value={item.court}
-                                  onChange={(event) =>
-                                    updatePerimetreArrayItem('abreviations', item.id, 'court', event.target.value)
-                                  }
-                                  className="w-16 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-[#233876]"
-                                />
-                                <input
-                                  type="text"
-                                  value={item.long}
-                                  onChange={(event) =>
-                                    updatePerimetreArrayItem('abreviations', item.id, 'long', event.target.value)
-                                  }
-                                  className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                />
-                                <ItemDeleteButton
-                                  alwaysVisible
-                                  onClick={() => removePerimetreArrayItem('abreviations', item.id)}
-                                />
-                              </>
-                            ) : (
-                              <>
-                                <span className="min-w-[48px] font-bold text-[#233876]">{item.court}</span>
-                                <span className="text-slate-600">{item.long}</span>
-                              </>
-                            )}
-                          </div>
-                        ))}
-                        {presentationEditing && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              addPerimetreArrayItem('abreviations', { court: 'NEW', long: 'Nouvelle abreviation' })
-                            }
-                            className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
-                          >
-                            + Ajouter
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-
-                      <TunisiaNetworkMapCard
-                        propre={perimetre.reseau.propre}
-                        sousConcessionnaires={perimetre.reseau.sousConcessionnaires}
-                      />
-                    </div>
+                    <TunisiaNetworkMapCard
+                      propre={perimetre.reseau.propre}
+                      sousConcessionnaires={perimetre.reseau.sousConcessionnaires}
+                    />
                   </div>
 
                   <div className="xl:col-span-12">
