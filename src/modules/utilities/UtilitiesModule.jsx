@@ -333,15 +333,60 @@ const INITIAL_SECTION_META = {
   documents: { date: '2026-04-29', reference: 'CH 7.5' },
 };
 
+const TUNISIA_GOVERNORATE_OPTIONS = [
+  'Ariana',
+  'Beja',
+  'Ben Arous',
+  'Bizerte',
+  'Gabes',
+  'Gafsa',
+  'Jendouba',
+  'Kairouan',
+  'Kasserine',
+  'Kebili',
+  'Le Kef',
+  'Mahdia',
+  'La Manouba',
+  'Medenine',
+  'Monastir',
+  'Nabeul',
+  'Sfax',
+  'Sidi Bouzid',
+  'Siliana',
+  'Sousse',
+  'Tataouine',
+  'Tozeur',
+  'Tunis',
+  'Zaghouan',
+];
+
+const CONCESSIONNAIRE_SERVICE_OPTIONS = ['1S', '2S', '3S'];
+
 const RESEAU_MAP_POSITIONS = {
-  MEGRINE: { x: 12250, y: 5600 },
-  'LES BERGES DU LAC': { x: 12850, y: 4500 },
-  'AZUR CITY': { x: 13280, y: 5940 },
-  'CITE EL KHADHRA': { x: 11700, y: 4320 },
-  NAASSEN: { x: 12330, y: 6900 },
-  SOUSSE: { x: 14320, y: 9570 },
-  SFAX: { x: 13920, y: 13480 },
-  NABEUL: { x: 15190, y: 5940 },
+  ARIANA: { x: 12680, y: 4050 },
+  BEJA: { x: 10450, y: 5850 },
+  'BEN AROUS': { x: 12780, y: 5200 },
+  BIZERTE: { x: 12640, y: 2550 },
+  GABES: { x: 13550, y: 17250 },
+  GAFSA: { x: 11150, y: 15450 },
+  JENDOUBA: { x: 9150, y: 5000 },
+  KAIROUAN: { x: 12550, y: 9300 },
+  KASSERINE: { x: 9800, y: 10850 },
+  KEBILI: { x: 10850, y: 18250 },
+  'LE KEF': { x: 9300, y: 7000 },
+  MAHDIA: { x: 15050, y: 11250 },
+  'LA MANOUBA': { x: 11850, y: 4700 },
+  MEDENINE: { x: 14450, y: 20850 },
+  MONASTIR: { x: 14920, y: 9800 },
+  NABEUL: { x: 15120, y: 5800 },
+  SFAX: { x: 14050, y: 13350 },
+  'SIDI BOUZID': { x: 12150, y: 11900 },
+  SILIANA: { x: 10850, y: 7700 },
+  SOUSSE: { x: 14220, y: 9200 },
+  TATAOUINE: { x: 14150, y: 25150 },
+  TOZEUR: { x: 9800, y: 16550 },
+  TUNIS: { x: 12230, y: 4450 },
+  ZAGHOUAN: { x: 12850, y: 7050 },
 };
 
 const INITIAL_MODULE_STATE = {
@@ -610,15 +655,31 @@ function normalizeReseauLieu(value = '') {
     .trim();
 }
 
+function normalizeGovernorateChoice(value = '') {
+  const normalized = normalizeReseauLieu(value);
+  return (
+    TUNISIA_GOVERNORATE_OPTIONS.find(
+      (option) => normalizeReseauLieu(option) === normalized
+    ) || ''
+  );
+}
+
 function inferReseauPropreLieu(text = '') {
   const normalized = normalizeReseauLieu(text);
-  if (normalized.includes('NAASSEN')) return 'Nassen';
-  if (normalized.includes('AZUR')) return 'Concept store Azur City';
-  if (normalized.includes('LAC')) return 'Les Berges du Lac';
-  if (normalized.includes('KHADHRA') && normalized.includes('MEGRINE')) return 'Si?ge Megrine / SAV El Khadhra';
-  if (normalized.includes('KHADHRA')) return 'SAV El Khadhra';
-  if (normalized.includes('MEGRINE')) return 'Si?ge Megrine';
-  return '';
+  if (normalized.includes('LAC')) return 'Tunis';
+  if (normalized.includes('KHADHRA')) return 'Tunis';
+  if (normalized.includes('MEGRINE')) return 'Ben Arous';
+  if (normalized.includes('NAASSEN')) return 'Ben Arous';
+  if (normalized.includes('AZUR')) return 'Ben Arous';
+  if (normalized.includes('SOUSSE')) return 'Sousse';
+  if (normalized.includes('SFAX')) return 'Sfax';
+  if (normalized.includes('NABEUL') || normalized.includes('CAP BON')) return 'Nabeul';
+  return normalizeGovernorateChoice(text);
+}
+
+function normalizeConcessionnaireService(value = '') {
+  const normalized = String(value || '').trim().toUpperCase();
+  return CONCESSIONNAIRE_SERVICE_OPTIONS.includes(normalized) ? normalized : '';
 }
 
 function normalizeConcessionnaireMarques(value) {
@@ -1218,12 +1279,13 @@ export default function UtilitiesModule({ onBack, user }) {
         propre:
           moduleData.perimetre?.reseau?.propre?.map((item) => ({
             ...item,
-            lieu: item.lieu ?? inferReseauPropreLieu(item.text),
+            lieu: normalizeGovernorateChoice(item.lieu) || inferReseauPropreLieu(item.lieu ?? item.text),
           })) || INITIAL_PERIMETRE.reseau.propre,
         sousConcessionnaires:
           moduleData.perimetre?.reseau?.sousConcessionnaires?.map((item) => ({
             ...item,
-            services: item.services ?? '',
+            ville: normalizeGovernorateChoice(item.ville) || inferReseauPropreLieu(item.ville),
+            services: normalizeConcessionnaireService(item.services),
             marques: normalizeConcessionnaireMarques(item.marques),
           })) || INITIAL_PERIMETRE.reseau.sousConcessionnaires,
       },
@@ -2525,7 +2587,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                   onClick={() =>
                                     addPerimetreNestedArrayItem('reseau', 'propre', {
                                       text: 'Nouveau site',
-                                      lieu: 'Lieu',
+                                      lieu: 'Tunis',
                                     })
                                   }
                                   className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
@@ -2556,8 +2618,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                         }
                                         className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
                                       />
-                                      <input
-                                        type="text"
+                                      <select
                                         value={item.lieu ?? ''}
                                         onChange={(event) =>
                                           updatePerimetreNestedArrayItem(
@@ -2568,9 +2629,14 @@ export default function UtilitiesModule({ onBack, user }) {
                                             event.target.value
                                           )
                                         }
-                                        placeholder="Lieu"
                                         className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:w-44"
-                                      />
+                                      >
+                                        {TUNISIA_GOVERNORATE_OPTIONS.map((option) => (
+                                          <option key={option} value={option}>
+                                            {option}
+                                          </option>
+                                        ))}
+                                      </select>
                                       <ItemDeleteButton
                                         alwaysVisible
                                         onClick={() =>
@@ -2606,7 +2672,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                   onClick={() =>
                                     addPerimetreNestedArrayItem('reseau', 'sousConcessionnaires', {
                                       nom: 'Nouveau concessionnaire',
-                                      ville: 'Ville',
+                                      ville: 'Tunis',
                                       services: '',
                                       marques: [],
                                     })
@@ -2639,8 +2705,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                         }
                                         className="rounded border border-slate-200 bg-white px-2 py-1 text-sm font-semibold"
                                       />
-                                      <input
-                                        type="text"
+                                      <select
                                         value={item.ville}
                                         onChange={(event) =>
                                           updatePerimetreNestedArrayItem(
@@ -2651,11 +2716,15 @@ export default function UtilitiesModule({ onBack, user }) {
                                             event.target.value
                                           )
                                         }
-                                        placeholder="Emplacement"
                                         className="rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                      />
-                                      <input
-                                        type="text"
+                                      >
+                                        {TUNISIA_GOVERNORATE_OPTIONS.map((option) => (
+                                          <option key={option} value={option}>
+                                            {option}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <select
                                         value={item.services ?? ''}
                                         onChange={(event) =>
                                           updatePerimetreNestedArrayItem(
@@ -2666,9 +2735,15 @@ export default function UtilitiesModule({ onBack, user }) {
                                             event.target.value
                                           )
                                         }
-                                        placeholder="Services"
                                         className="rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:col-span-2"
-                                      />
+                                      >
+                                        <option value="">Choisir le service</option>
+                                        {CONCESSIONNAIRE_SERVICE_OPTIONS.map((option) => (
+                                          <option key={option} value={option}>
+                                            {option}
+                                          </option>
+                                        ))}
+                                      </select>
                                       <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-white p-3">
                                         <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
                                           Marques representees
