@@ -1,4 +1,4 @@
-ï»¿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Settings, Calendar, PenTool, Plus, AlertTriangle, 
   CheckCircle, CheckCircle2, Clock, Search, Filter, X, ShieldAlert, 
@@ -10,51 +10,51 @@ import ModuleHeader from '../../components/layout/ModuleHeader';
 import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
 
 // ==========================================
-// 1. DONNÃ‰ES INITIALES & MOCKS
+// 1. DONNÉES INITIALES & MOCKS
 // ==========================================
 const INITIAL_GAMMES = [
   {
-    id: "gam-1", categorie: "Groupe Ã©lectrogÃ¨ne", designation: "Groupe Ã‰lectrogÃ¨ne Principal", marque: "SDMO", type: "J 130", puissance: "130 kVA",
+    id: "gam-1", categorie: "Groupe électrogène", designation: "Groupe Électrogène Principal", marque: "SDMO", type: "J 130", puissance: "130 kVA",
     operations: [
       { id: "op-1", element: "Groupe", operation: "Test fonctionnement vide/charge", moyens: "Visuel", executant: "Utilisateur", intervention: "En marche", qualification: "1 Polyvalent", duree: "00:15", periodicite: "Mensuelle", execution: "Interne", note: "" },
-      { id: "op-2", element: "Moteur", operation: "Niveaux huile/eau", moyens: "Visuel", executant: "Utilisateur", intervention: "Ã€ l'arrÃªt", qualification: "1 Polyvalent", duree: "00:05", periodicite: "Toutes les 50h", execution: "Interne", note: "" },
-      { id: "op-3", element: "Moteur", operation: "Vidange huile", moyens: "Bac, ClÃ©s", executant: "Tech. habilitÃ©", intervention: "Ã€ l'arrÃªt", qualification: "1 MÃ©canicien", duree: "00:45", periodicite: "Toutes les 300h ou 1 an", execution: "Interne", note: "RÃ©cupÃ©rer huiles" },
-      { id: "op-4", element: "Moteur", operation: "RÃ©glage soupapes", moyens: "Cales", executant: "Tech. habilitÃ©", intervention: "Ã€ l'arrÃªt", qualification: "1 MÃ©canicien", duree: "02:00", periodicite: "Toutes les 500h ou 1 an / 2", execution: "Externe", note: "Garantie" }
+      { id: "op-2", element: "Moteur", operation: "Niveaux huile/eau", moyens: "Visuel", executant: "Utilisateur", intervention: "À l'arrêt", qualification: "1 Polyvalent", duree: "00:05", periodicite: "Toutes les 50h", execution: "Interne", note: "" },
+      { id: "op-3", element: "Moteur", operation: "Vidange huile", moyens: "Bac, Clés", executant: "Tech. habilité", intervention: "À l'arrêt", qualification: "1 Mécanicien", duree: "00:45", periodicite: "Toutes les 300h ou 1 an", execution: "Interne", note: "Récupérer huiles" },
+      { id: "op-4", element: "Moteur", operation: "Réglage soupapes", moyens: "Cales", executant: "Tech. habilité", intervention: "À l'arrêt", qualification: "1 Mécanicien", duree: "02:00", periodicite: "Toutes les 500h ou 1 an / 2", execution: "Externe", note: "Garantie" }
     ]
   },
   {
-    id: "gam-2", categorie: "Compresseur d'air comprimÃ©", designation: "Compresseur Vis Principal", marque: "Atlas Copco", type: "GA 30", puissance: "30 kW",
+    id: "gam-2", categorie: "Compresseur d'air comprimé", designation: "Compresseur Vis Principal", marque: "Atlas Copco", type: "GA 30", puissance: "30 kW",
     operations: [
-      { id: "op-21", element: "RÃ©servoir", operation: "Purge condensats", moyens: "RÃ©cipient", executant: "Utilisateur", intervention: "En marche", qualification: "1 Polyvalent", duree: "00:05", periodicite: "Mensuelle", execution: "Interne", note: "" },
-      { id: "op-22", element: "Bloc", operation: "Remplacement huile/filtre", moyens: "Outils std", executant: "Tech. habilitÃ©", intervention: "Ã€ l'arrÃªt", qualification: "1 MÃ©canicien", duree: "01:30", periodicite: "Toutes les 500h ou 1 an / 2", execution: "Externe", note: "Kit 2000h" }
+      { id: "op-21", element: "Réservoir", operation: "Purge condensats", moyens: "Récipient", executant: "Utilisateur", intervention: "En marche", qualification: "1 Polyvalent", duree: "00:05", periodicite: "Mensuelle", execution: "Interne", note: "" },
+      { id: "op-22", element: "Bloc", operation: "Remplacement huile/filtre", moyens: "Outils std", executant: "Tech. habilité", intervention: "À l'arrêt", qualification: "1 Mécanicien", duree: "01:30", periodicite: "Toutes les 500h ou 1 an / 2", execution: "Externe", note: "Kit 2000h" }
     ]
   },
-  { id: "gam-3", categorie: "SÃ©cheur d'air", designation: "SÃ©cheur Frigo", marque: "-", type: "-", puissance: "-", operations: [] },
+  { id: "gam-3", categorie: "Sécheur d'air", designation: "Sécheur Frigo", marque: "-", type: "-", puissance: "-", operations: [] },
   { id: "gam-4", categorie: "Climatisation", designation: "Split / Central", marque: "-", type: "-", puissance: "-", operations: [] },
-  { id: "gam-5", categorie: "Pont Ã©levateur", designation: "Pont 2 Colonnes", marque: "-", type: "-", puissance: "-", operations: [] }
+  { id: "gam-5", categorie: "Pont élevateur", designation: "Pont 2 Colonnes", marque: "-", type: "-", puissance: "-", operations: [] }
 ];
 
-const INITIAL_TYPES_UTILITES = ["Ã‰clairage", "Climatisation", "Air comprimÃ©", "Extraction d'air", "Cuisine", "Groupe lavage", "Porte industrielle", "Levage & manutention", "Outillage", "Groupe Ã©lectrogÃ¨ne", "Parc Info"];
+const INITIAL_TYPES_UTILITES = ["Éclairage", "Climatisation", "Air comprimé", "Extraction d'air", "Cuisine", "Groupe lavage", "Porte industrielle", "Levage & manutention", "Outillage", "Groupe électrogène", "Parc Info"];
 
 const INITIAL_SITES = [
-  { id: 1, codeSite: "MEG-001", typeReseau: "MT", nom: "Atelier Central MÃ©grine", surfaceTotale: 32500, espaceCouvert: 30100, activite: "Maintenance & Magasin", detailsSurface: [] },
+  { id: 1, codeSite: "MEG-001", typeReseau: "MT", nom: "Siège Megrine", surfaceTotale: 32500, espaceCouvert: 30100, activite: "Maintenance & Magasin", detailsSurface: [] },
   { id: 2, codeSite: "LAC-001", typeReseau: "BT", nom: "Showroom Lac", surfaceTotale: 1200, espaceCouvert: 1200, activite: "Administration & Vente", detailsSurface: [] }
 ];
 
 const INITIAL_EQUIPEMENTS_UTILITES = [
-  { id: 1, siteId: 1, type: "Ã‰clairage", designation: "Spots LED Hall", ref: "LED-50W", quantite: 40, puissanceUnitaire: 50, emplacement: "Hall d'exposition" },
+  { id: 1, siteId: 1, type: "Éclairage", designation: "Spots LED Hall", ref: "LED-50W", quantite: 40, puissanceUnitaire: 50, emplacement: "Hall d'exposition" },
   { id: 2, siteId: 1, type: "Climatisation", designation: "Split Central", ref: "CLIM-10K", quantite: 4, puissanceUnitaire: 2500, emplacement: "Bureaux Admin" }
 ];
 
 const INITIAL_METROLOGIE = [
-  { id: "MET-001", designation: "Distributeur d'huile (compteur)", ref: "Huile NÂ°2", marque: "RAASM", type: "MÃ©canique", serie: "22042003A465-0095", refCertificat: "CERT-25-089", dernierEtalonnage: "2025-04-01", frequence: 12 },
-  { id: "MET-002", designation: "ManomÃ¨tre pression air", ref: "P-AIR-01", marque: "WIKA", type: "Analogique", serie: "98765432", refCertificat: "CERT-24-112", dernierEtalonnage: "2024-01-10", frequence: 12 }
+  { id: "MET-001", designation: "Distributeur d'huile (compteur)", ref: "Huile N°2", marque: "RAASM", type: "Mécanique", serie: "22042003A465-0095", refCertificat: "CERT-25-089", dernierEtalonnage: "2025-04-01", frequence: 12 },
+  { id: "MET-002", designation: "Manomètre pression air", ref: "P-AIR-01", marque: "WIKA", type: "Analogique", serie: "98765432", refCertificat: "CERT-24-112", dernierEtalonnage: "2024-01-10", frequence: 12 }
 ];
 
 const INITIAL_PLANNING = [
-  { id: 1, year: 2026, month: 3, equipement: "Compresseur Atlas Copco", operation: "Vidange 2000h", statut: "PlanifiÃ©", agent: "Ã‰quipe Interne", note: "", dateRealisation: "", rapport: "", causeAnnulation: "" },
-  { id: 2, year: 2026, month: 3, equipement: "Pont Ã©lÃ©vateur Zone B", operation: "ContrÃ´le cÃ¢bles", statut: "RÃ©alisÃ©", agent: "S. Martin", note: "Tension OK", dateRealisation: "2026-04-10", rapport: "CÃ¢bles retendus, graissage effectuÃ©. Tout est conforme.", causeAnnulation: "" },
-  { id: 3, year: 2026, month: 3, equipement: "Climatisation Showroom", operation: "Nettoyage filtres", statut: "ReportÃ©", agent: "Prestataire", note: "RepoussÃ© au 25/04", dateRealisation: "", rapport: "", causeAnnulation: "" }
+  { id: 1, year: 2026, month: 3, equipement: "Compresseur Atlas Copco", operation: "Vidange 2000h", statut: "Planifié", agent: "Équipe Interne", note: "", dateRealisation: "", rapport: "", causeAnnulation: "" },
+  { id: 2, year: 2026, month: 3, equipement: "Pont élévateur Zone B", operation: "Contrôle câbles", statut: "Réalisé", agent: "S. Martin", note: "Tension OK", dateRealisation: "2026-04-10", rapport: "Câbles retendus, graissage effectué. Tout est conforme.", causeAnnulation: "" },
+  { id: 3, year: 2026, month: 3, equipement: "Climatisation Showroom", operation: "Nettoyage filtres", statut: "Reporté", agent: "Prestataire", note: "Repoussé au 25/04", dateRealisation: "", rapport: "", causeAnnulation: "" }
 ];
 
 const INITIAL_MAINTENANCE_STATE = {
@@ -97,17 +97,17 @@ export default function MaintenanceDashboard({ onBack, user }) {
 
   const tabs = [
     { id: 'planning', title: 'Planning & Suivi', desc: 'Suivi Annuel', icon: CalendarDays, tag: 'PLN' },
-    { id: 'gamme', title: 'Gammes Maintenance', desc: 'ProcÃ©dures', icon: FileText, tag: 'GAM' },
-    { id: 'metrologie', title: 'MÃ©trologie', desc: 'Ã‰talonnage', icon: Activity, tag: 'MET' },
-    { id: 'utilites', title: 'Parc UtilitÃ©s', desc: 'Inventaire technique', icon: Factory, tag: 'UTL' }
+    { id: 'gamme', title: 'Gammes Maintenance', desc: 'Procédures', icon: FileText, tag: 'GAM' },
+    { id: 'metrologie', title: 'Métrologie', desc: 'Étalonnage', icon: Activity, tag: 'MET' },
+    { id: 'utilites', title: 'Parc Utilités', desc: 'Inventaire technique', icon: Factory, tag: 'UTL' }
   ];
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F4F7FB] font-sans text-slate-800 pb-12">
       <div className="sticky top-0 z-40 px-3 py-3 sm:px-4 lg:px-5">
         <ModuleHeader
-          title="Gestion des Actifs Ã‰nergÃ©tiques"
-          subtitle="Planning, gammes, mÃ©trologie et parc utilitÃ©s multi-sites"
+          title="Gestion des Actifs Énergétiques"
+          subtitle="Planning, gammes, métrologie et parc utilités multi-sites"
           icon={Wrench}
           user={user}
           onHomeClick={onBack}
@@ -144,7 +144,7 @@ export default function MaintenanceDashboard({ onBack, user }) {
         <div className="flex items-center gap-8">
           <div className="hidden md:flex items-center space-x-6 border-r border-slate-200 pr-6">
             <div className="flex items-center space-x-2 text-right">
-              <div className="flex flex-col"><span className="text-2xl font-extrabold text-slate-800 leading-none">14.9Â°</span><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Tunis</span></div>
+              <div className="flex flex-col"><span className="text-2xl font-extrabold text-slate-800 leading-none">14.9°</span><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Tunis</span></div>
               <Thermometer className="h-6 w-6 text-orange-400" />
             </div>
             <div className="flex items-center space-x-2 text-right">
@@ -191,7 +191,7 @@ export default function MaintenanceDashboard({ onBack, user }) {
 }
 
 // ==========================================
-// VUE 1 : GAMMES DÃ‰TAILLÃ‰ES (OptimisÃ©e sans scroll horizontal)
+// VUE 1 : GAMMES DÉTAILLÉES (Optimisée sans scroll horizontal)
 // ==========================================
 function GammeView({ gammes, setGammes }) {
   const [selectedGammeId, setSelectedGammeId] = useState(gammes[0]?.id || null);
@@ -201,7 +201,7 @@ function GammeView({ gammes, setGammes }) {
   const currentGamme = gammes.find(g => g.id === selectedGammeId) || gammes[0];
 
   const handleDeleteEquipment = (id) => {
-    if(window.confirm("ÃŠtes-vous sÃ»r de vouloir supprimer cet Ã©quipement et toute sa gamme ?")) {
+    if(window.confirm("Êtes-vous sûr de vouloir supprimer cet équipement et toute sa gamme ?")) {
       const newGammes = gammes.filter(g => g.id !== id);
       setGammes(newGammes);
       if(selectedGammeId === id) setSelectedGammeId(newGammes[0]?.id);
@@ -209,7 +209,7 @@ function GammeView({ gammes, setGammes }) {
   };
 
   const handleDeleteOperation = (opId) => {
-    if(window.confirm("Supprimer cette opÃ©ration de la gamme ?")) {
+    if(window.confirm("Supprimer cette opération de la gamme ?")) {
       setGammes(gammes.map(g => {
         if(g.id === currentGamme.id) return { ...g, operations: g.operations.filter(op => op.id !== opId) };
         return g;
@@ -231,7 +231,7 @@ function GammeView({ gammes, setGammes }) {
           </button>
         ))}
         <button onClick={() => setIsEquipModalOpen(true)} className="px-3 py-2 rounded-xl text-xs font-bold bg-blue-50 text-[#1e3a8a] border border-blue-100 hover:bg-blue-100 transition-colors flex items-center">
-          <Plus className="w-3.5 h-3.5 mr-1" /> Ã‰quipement
+          <Plus className="w-3.5 h-3.5 mr-1" /> Équipement
         </button>
       </div>
 
@@ -244,7 +244,7 @@ function GammeView({ gammes, setGammes }) {
                 <div>
                   <h3 className="text-lg font-extrabold text-[#1e3a8a] leading-tight">{currentGamme.categorie}</h3>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
-                    <span className="text-xs font-semibold text-slate-600"><span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">DÃ©signation</span> {currentGamme.designation}</span>
+                    <span className="text-xs font-semibold text-slate-600"><span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">Désignation</span> {currentGamme.designation}</span>
                     <span className="text-xs font-semibold text-slate-600"><span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">Marque</span> {currentGamme.marque}</span>
                     <span className="text-xs font-semibold text-slate-600"><span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">Type</span> {currentGamme.type}</span>
                     <span className="text-xs font-semibold text-slate-600"><span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">Puissance</span> {currentGamme.puissance}</span>
@@ -252,8 +252,8 @@ function GammeView({ gammes, setGammes }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsOpModalOpen(true)} className="bg-[#1e3a8a] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center shadow-sm hover:bg-blue-800 transition-colors"><Plus className="w-3.5 h-3.5 mr-1" /> OpÃ©ration</button>
-                <button onClick={() => handleDeleteEquipment(currentGamme.id)} className="bg-white border border-red-200 text-red-500 p-1.5 rounded-lg flex items-center hover:bg-red-50 transition-colors" title="Supprimer cet Ã©quipement"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => setIsOpModalOpen(true)} className="bg-[#1e3a8a] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center shadow-sm hover:bg-blue-800 transition-colors"><Plus className="w-3.5 h-3.5 mr-1" /> Opération</button>
+                <button onClick={() => handleDeleteEquipment(currentGamme.id)} className="bg-white border border-red-200 text-red-500 p-1.5 rounded-lg flex items-center hover:bg-red-50 transition-colors" title="Supprimer cet équipement"><Trash2 className="w-4 h-4" /></button>
               </div>
             </div>
           </div>
@@ -263,21 +263,21 @@ function GammeView({ gammes, setGammes }) {
             <table className="w-full text-left text-[10px] whitespace-normal table-fixed">
               <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
                 <tr>
-                  <th className="px-2 py-3 font-bold uppercase tracking-wider w-[10%]">Ã‰lÃ©ment</th>
-                  <th className="px-2 py-3 font-bold uppercase tracking-wider w-[18%]">OpÃ©ration</th>
+                  <th className="px-2 py-3 font-bold uppercase tracking-wider w-[10%]">Élément</th>
+                  <th className="px-2 py-3 font-bold uppercase tracking-wider w-[18%]">Opération</th>
                   <th className="px-2 py-3 font-bold uppercase tracking-wider w-[12%]">Outillage</th>
-                  <th className="px-2 py-3 font-bold uppercase tracking-wider w-[10%]">ExÃ©cutant</th>
-                  <th className="px-2 py-3 font-bold uppercase tracking-wider text-center w-[10%]">Ã‰tat</th>
+                  <th className="px-2 py-3 font-bold uppercase tracking-wider w-[10%]">Exécutant</th>
+                  <th className="px-2 py-3 font-bold uppercase tracking-wider text-center w-[10%]">État</th>
                   <th className="px-2 py-3 font-bold uppercase tracking-wider w-[10%]">Qualif.</th>
-                  <th className="px-2 py-3 font-bold uppercase tracking-wider text-center w-[6%]">DurÃ©e</th>
-                  <th className="px-2 py-3 font-bold uppercase tracking-wider text-[#1e3a8a] w-[12%]">PÃ©riodicitÃ©</th>
-                  <th className="px-2 py-3 font-bold uppercase tracking-wider text-center w-[7%]">ExÃ©c.</th>
+                  <th className="px-2 py-3 font-bold uppercase tracking-wider text-center w-[6%]">Durée</th>
+                  <th className="px-2 py-3 font-bold uppercase tracking-wider text-[#1e3a8a] w-[12%]">Périodicité</th>
+                  <th className="px-2 py-3 font-bold uppercase tracking-wider text-center w-[7%]">Exéc.</th>
                   <th className="px-2 py-3 font-bold uppercase tracking-wider text-center w-[5%]"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {currentGamme.operations.length === 0 ? (
-                  <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400 font-medium italic">Aucune opÃ©ration dÃ©finie.</td></tr>
+                  <tr><td colSpan="10" className="px-4 py-8 text-center text-slate-400 font-medium italic">Aucune opération définie.</td></tr>
                 ) : (
                   currentGamme.operations.map((row) => (
                     <tr key={row.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -289,7 +289,7 @@ function GammeView({ gammes, setGammes }) {
                         {row.intervention.includes('marche') ? (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100"><PlayCircle className="w-2.5 h-2.5 mr-0.5"/> Marche</span>
                         ) : (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200"><PauseCircle className="w-2.5 h-2.5 mr-0.5"/> ArrÃªt</span>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200"><PauseCircle className="w-2.5 h-2.5 mr-0.5"/> Arrêt</span>
                         )}
                       </td>
                       <td className="px-2 py-2.5 text-slate-600 font-semibold leading-tight break-words">{row.qualification}</td>
@@ -317,7 +317,7 @@ function GammeView({ gammes, setGammes }) {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col border border-slate-200">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="text-lg font-extrabold text-[#1e3a8a] uppercase tracking-wider">Ajouter un Ã‰quipement</h3>
+              <h3 className="text-lg font-extrabold text-[#1e3a8a] uppercase tracking-wider">Ajouter un Équipement</h3>
               <button onClick={() => setIsEquipModalOpen(false)} className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-100"><X className="h-5 w-5"/></button>
             </div>
             <form 
@@ -328,8 +328,8 @@ function GammeView({ gammes, setGammes }) {
               }} 
               className="p-6 space-y-4"
             >
-              <div><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">CatÃ©gorie / Famille *</label><input required name="categorie" className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:border-[#1e3a8a]" /></div>
-              <div><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">DÃ©signation technique</label><input name="designation" className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:border-[#1e3a8a]" /></div>
+              <div><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Catégorie / Famille *</label><input required name="categorie" className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:border-[#1e3a8a]" /></div>
+              <div><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Désignation technique</label><input name="designation" className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:border-[#1e3a8a]" /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Marque</label><input name="marque" className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:border-[#1e3a8a]" /></div>
                 <div><label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Type</label><input name="type" className="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:border-[#1e3a8a]" /></div>
@@ -345,7 +345,7 @@ function GammeView({ gammes, setGammes }) {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col border border-slate-200">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <div><h3 className="text-lg font-extrabold text-[#1e3a8a] uppercase tracking-wider">Nouvelle OpÃ©ration</h3></div>
+              <div><h3 className="text-lg font-extrabold text-[#1e3a8a] uppercase tracking-wider">Nouvelle Opération</h3></div>
               <button onClick={() => setIsOpModalOpen(false)} className="p-2 bg-white rounded-lg text-slate-400"><X className="h-5 w-5"/></button>
             </div>
             <form 
@@ -357,20 +357,20 @@ function GammeView({ gammes, setGammes }) {
               className="p-5 overflow-y-auto max-h-[75vh]"
             >
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                <div><label className="block text-[11px] font-bold text-slate-400 mb-1">Ã‰lÃ©ment *</label><input required name="element" className="w-full border rounded-lg p-2 text-sm" /></div>
-                <div><label className="block text-[11px] font-bold text-slate-400 mb-1">DurÃ©e (HH:MM) *</label><input required name="duree" placeholder="00:30" className="w-full border rounded-lg p-2 text-sm" /></div>
-                <div className="col-span-2"><label className="block text-[11px] font-bold text-slate-400 mb-1">OpÃ©ration *</label><input required name="operation" className="w-full border rounded-lg p-2 text-sm" /></div>
+                <div><label className="block text-[11px] font-bold text-slate-400 mb-1">Élément *</label><input required name="element" className="w-full border rounded-lg p-2 text-sm" /></div>
+                <div><label className="block text-[11px] font-bold text-slate-400 mb-1">Durée (HH:MM) *</label><input required name="duree" placeholder="00:30" className="w-full border rounded-lg p-2 text-sm" /></div>
+                <div className="col-span-2"><label className="block text-[11px] font-bold text-slate-400 mb-1">Opération *</label><input required name="operation" className="w-full border rounded-lg p-2 text-sm" /></div>
                 <div className="col-span-2"><label className="block text-[11px] font-bold text-slate-400 mb-1">Moyens / Outillage *</label><input required name="moyens" className="w-full border rounded-lg p-2 text-sm" /></div>
                 <div className="col-span-2 bg-slate-50 border p-3 rounded-xl grid grid-cols-2 gap-3">
-                  <div><label className="block text-[11px] font-bold text-slate-400 mb-1">ExÃ©cutant *</label><select name="executant" className="w-full border rounded-lg p-2 text-sm bg-white"><option>Technicien habilitÃ©</option><option>Utilisateur</option></select></div>
-                  <div><label className="block text-[11px] font-bold text-slate-400 mb-1">ExÃ©cution *</label><select name="execution" className="w-full border rounded-lg p-2 text-sm bg-white"><option>Interne</option><option>Externe</option></select></div>
+                  <div><label className="block text-[11px] font-bold text-slate-400 mb-1">Exécutant *</label><select name="executant" className="w-full border rounded-lg p-2 text-sm bg-white"><option>Technicien habilité</option><option>Utilisateur</option></select></div>
+                  <div><label className="block text-[11px] font-bold text-slate-400 mb-1">Exécution *</label><select name="execution" className="w-full border rounded-lg p-2 text-sm bg-white"><option>Interne</option><option>Externe</option></select></div>
                   <div className="col-span-2 flex gap-2">
-                    <div className="flex-1"><label className="block text-[11px] font-bold text-slate-400 mb-1">QtÃ© *</label><input type="number" required defaultValue="1" name="qte" className="w-full border rounded-lg p-2 text-sm" /></div>
-                    <div className="flex-[2]"><label className="block text-[11px] font-bold text-slate-400 mb-1">Type Qualif. *</label><select name="qualifType" className="w-full border rounded-lg p-2 text-sm bg-white"><option>MÃ©canicien(s)</option><option>Ã‰lectricien(s)</option><option>Polyvalent(s)</option></select></div>
+                    <div className="flex-1"><label className="block text-[11px] font-bold text-slate-400 mb-1">Qté *</label><input type="number" required defaultValue="1" name="qte" className="w-full border rounded-lg p-2 text-sm" /></div>
+                    <div className="flex-[2]"><label className="block text-[11px] font-bold text-slate-400 mb-1">Type Qualif. *</label><select name="qualifType" className="w-full border rounded-lg p-2 text-sm bg-white"><option>Mécanicien(s)</option><option>Électricien(s)</option><option>Polyvalent(s)</option></select></div>
                   </div>
                 </div>
-                <div><label className="block text-[11px] font-bold text-slate-400 mb-1">Intervention *</label><select name="intervention" className="w-full border rounded-lg p-2 text-sm bg-white"><option>Ã€ l'arrÃªt</option><option>En marche</option></select></div>
-                <div><label className="block text-[11px] font-bold text-slate-400 mb-1">PÃ©riodicitÃ© *</label><input required name="periodicite" placeholder="Ex: Mensuelle" className="w-full border rounded-lg p-2 text-sm bg-white" /></div>
+                <div><label className="block text-[11px] font-bold text-slate-400 mb-1">Intervention *</label><select name="intervention" className="w-full border rounded-lg p-2 text-sm bg-white"><option>À l'arrêt</option><option>En marche</option></select></div>
+                <div><label className="block text-[11px] font-bold text-slate-400 mb-1">Périodicité *</label><input required name="periodicite" placeholder="Ex: Mensuelle" className="w-full border rounded-lg p-2 text-sm bg-white" /></div>
                 <div className="col-span-2"><label className="block text-[11px] font-bold text-slate-400 mb-1">Note (Optionnel)</label><input name="note" className="w-full border rounded-lg p-2 text-sm" /></div>
               </div>
               <div className="pt-4 mt-2 flex gap-3"><button type="button" onClick={() => setIsOpModalOpen(false)} className="flex-1 py-2 bg-slate-100 font-bold rounded-xl">Annuler</button><button type="submit" className="flex-[2] py-2 bg-[#1e3a8a] text-white font-bold rounded-xl">Ajouter</button></div>
@@ -383,10 +383,10 @@ function GammeView({ gammes, setGammes }) {
 }
 
 // ==========================================
-// VUE 2 : PLANNING & TRAÃ‡ABILITÃ‰
+// VUE 2 : PLANNING & TRAÇABILITÉ
 // ==========================================
 function PlanningView({ tasks, setTasks }) {
-  const months = ['Janvier', 'FÃ©vrier', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'AoÃ»t', 'Septembre', 'Octobre', 'Novembre', 'DÃ©cembre'];
+  const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
   const currentMonthIndex = new Date().getMonth(); 
   const currentYear = new Date().getFullYear() || 2026;
   
@@ -401,10 +401,10 @@ function PlanningView({ tasks, setTasks }) {
   const monthTasks = tasks.filter(t => t.month === selectedMonth && t.year === selectedYear);
 
   const handleStatusChangeRequest = (task, newStatus) => {
-    if (newStatus === 'RÃ©alisÃ©') {
+    if (newStatus === 'Réalisé') {
       setActionData({ dateRealisation: new Date().toISOString().split('T')[0], rapport: '', causeAnnulation: '' });
       setActionModal({ isOpen: true, type: 'realiser', task });
-    } else if (newStatus === 'AnnulÃ©') {
+    } else if (newStatus === 'Annulé') {
       setActionData({ dateRealisation: '', rapport: '', causeAnnulation: '' });
       setActionModal({ isOpen: true, type: 'annuler', task });
     } else {
@@ -414,23 +414,23 @@ function PlanningView({ tasks, setTasks }) {
 
   const confirmAction = (e) => {
     e.preventDefault();
-    const updatedTask = { ...actionModal.task, statut: actionModal.type === 'realiser' ? 'RÃ©alisÃ©' : 'AnnulÃ©', ...actionData };
+    const updatedTask = { ...actionModal.task, statut: actionModal.type === 'realiser' ? 'Réalisé' : 'Annulé', ...actionData };
     setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
     setActionModal({ isOpen: false, type: null, task: null });
   };
 
   const handleAddTask = (e) => {
     e.preventDefault();
-    setTasks([...tasks, { ...newTask, id: Date.now(), statut: 'PlanifiÃ©', dateRealisation: '', rapport: '', causeAnnulation: '', month: parseInt(newTask.month), year: parseInt(newTask.year) }]);
+    setTasks([...tasks, { ...newTask, id: Date.now(), statut: 'Planifié', dateRealisation: '', rapport: '', causeAnnulation: '', month: parseInt(newTask.month), year: parseInt(newTask.year) }]);
     setIsAddOpen(false);
     setNewTask({ equipement: '', operation: '', agent: '', note: '', month: selectedMonth, year: selectedYear });
   };
 
   const getStatusColor = (statut) => {
     switch(statut) {
-      case 'RÃ©alisÃ©': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'ReportÃ©': return 'bg-orange-50 text-orange-700 border-orange-200';
-      case 'AnnulÃ©': return 'bg-red-50 text-red-700 border-red-200';
+      case 'Réalisé': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'Reporté': return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'Annulé': return 'bg-red-50 text-red-700 border-red-200';
       default: return 'bg-blue-50 text-blue-700 border-blue-200'; 
     }
   };
@@ -454,10 +454,10 @@ function PlanningView({ tasks, setTasks }) {
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-4 lg:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <h3 className="text-sm lg:text-lg font-bold text-slate-800">Interventions pour {months[selectedMonth]} {selectedYear}</h3>
-          <span className="bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-bold border border-slate-200 shadow-sm">{monthTasks.length} TÃ¢che(s)</span>
+          <span className="bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-bold border border-slate-200 shadow-sm">{monthTasks.length} Tâche(s)</span>
         </div>
         {monthTasks.length === 0 ? (
-          <div className="p-12 text-center text-slate-400"><CheckCircle className="w-12 h-12 mx-auto text-slate-200 mb-3 stroke-[1]" /><p className="font-medium text-sm text-slate-500">Aucune intervention planifiÃ©e sur ce mois.</p></div>
+          <div className="p-12 text-center text-slate-400"><CheckCircle className="w-12 h-12 mx-auto text-slate-200 mb-3 stroke-[1]" /><p className="font-medium text-sm text-slate-500">Aucune intervention planifiée sur ce mois.</p></div>
         ) : (
           <div className="divide-y divide-slate-100">
             {monthTasks.map(task => (
@@ -465,32 +465,32 @@ function PlanningView({ tasks, setTasks }) {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1">
                     <div className={`p-2.5 rounded-xl border mt-1 ${getStatusColor(task.statut)}`}>
-                      {task.statut === 'RÃ©alisÃ©' ? <CheckCircle className="w-5 h-5" /> : task.statut === 'ReportÃ©' ? <Clock className="w-5 h-5" /> : task.statut === 'AnnulÃ©' ? <X className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
+                      {task.statut === 'Réalisé' ? <CheckCircle className="w-5 h-5" /> : task.statut === 'Reporté' ? <Clock className="w-5 h-5" /> : task.statut === 'Annulé' ? <X className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
                     </div>
                     <div className="flex-1 w-full">
                       <div className="flex flex-wrap items-center gap-2"><h4 className="text-sm lg:text-base font-bold text-slate-900">{task.operation}</h4><span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${getStatusColor(task.statut)}`}>{task.statut}</span></div>
                       <p className="text-xs lg:text-sm text-slate-500 mt-1 font-medium break-words">{task.equipement}</p>
                       {task.note && <p className="text-[10px] lg:text-xs text-slate-400 mt-1.5 font-medium flex items-center gap-1.5"><FileText className="w-3 h-3"/> Note : {task.note}</p>}
                       
-                      {task.statut === 'RÃ©alisÃ©' && task.rapport && (
+                      {task.statut === 'Réalisé' && task.rapport && (
                         <div className="mt-3 bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 flex flex-col md:flex-row gap-4 w-full">
                            <div className="md:w-1/4"><span className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 block mb-0.5">Date exacte</span><span className="text-xs font-semibold text-emerald-900">{new Date(task.dateRealisation).toLocaleDateString('fr-FR')}</span></div>
-                           <div className="flex-1"><span className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 block mb-0.5">Rapport de rÃ©alisation</span><span className="text-xs font-medium text-emerald-800 leading-relaxed break-words">{task.rapport}</span></div>
+                           <div className="flex-1"><span className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 block mb-0.5">Rapport de réalisation</span><span className="text-xs font-medium text-emerald-800 leading-relaxed break-words">{task.rapport}</span></div>
                         </div>
                       )}
-                      {task.statut === 'AnnulÃ©' && task.causeAnnulation && (
+                      {task.statut === 'Annulé' && task.causeAnnulation && (
                         <div className="mt-3 bg-red-50/50 border border-red-100 rounded-xl p-3 w-full"><span className="text-[9px] font-bold uppercase tracking-widest text-red-600 block mb-0.5">Justificatif d'annulation</span><span className="text-xs font-medium text-red-800 leading-relaxed break-words">{task.causeAnnulation}</span></div>
                       )}
                     </div>
                   </div>
                   <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-3 w-full md:w-auto md:min-w-[150px] border-t md:border-t-0 pt-3 md:pt-0">
                     <div className="text-left md:text-right">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">ExÃ©cutant</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Exécutant</p>
                       <p className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded inline-block">{task.agent}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <select value={task.statut} onChange={(e) => handleStatusChangeRequest(task, e.target.value)} className="text-xs font-bold rounded-lg px-2 py-1.5 border border-slate-200 outline-none cursor-pointer bg-white hover:bg-slate-50 transition-colors shadow-sm"><option value="PlanifiÃ©">Planifier</option><option value="RÃ©alisÃ©">ClÃ´turer (RÃ©alisÃ©)</option><option value="ReportÃ©">Reporter</option><option value="AnnulÃ©">Annuler</option></select>
-                      {task.statut !== 'AnnulÃ©' && <button onClick={() => handleStatusChangeRequest(task, 'AnnulÃ©')} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Supprimer / Annuler"><Trash2 className="w-4 h-4" /></button>}
+                      <select value={task.statut} onChange={(e) => handleStatusChangeRequest(task, e.target.value)} className="text-xs font-bold rounded-lg px-2 py-1.5 border border-slate-200 outline-none cursor-pointer bg-white hover:bg-slate-50 transition-colors shadow-sm"><option value="Planifié">Planifier</option><option value="Réalisé">Clôturer (Réalisé)</option><option value="Reporté">Reporter</option><option value="Annulé">Annuler</option></select>
+                      {task.statut !== 'Annulé' && <button onClick={() => handleStatusChangeRequest(task, 'Annulé')} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Supprimer / Annuler"><Trash2 className="w-4 h-4" /></button>}
                     </div>
                   </div>
                 </div>
@@ -507,10 +507,10 @@ function PlanningView({ tasks, setTasks }) {
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50"><div><h3 className="text-base font-extrabold text-[#1e3a8a] uppercase tracking-wider">Planification</h3></div><button onClick={() => setIsAddOpen(false)} className="p-1.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-slate-400"><X className="w-4 h-4"/></button></div>
             <form onSubmit={handleAddTask} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2"><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ã‰quipement concernÃ© *</label><input type="text" required value={newTask.equipement} onChange={e => setNewTask({...newTask, equipement: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
-                <div className="col-span-2"><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">OpÃ©ration *</label><input type="text" required value={newTask.operation} onChange={e => setNewTask({...newTask, operation: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">PÃ©riode *</label><div className="flex bg-slate-50 rounded-lg border p-1"><select value={newTask.month} onChange={(e) => setNewTask({...newTask, month: e.target.value})} className="w-full bg-transparent text-xs font-bold px-1 py-1 border-r">{months.map((m, i) => <option key={i} value={i}>{m.substring(0,3)}</option>)}</select><select value={newTask.year} onChange={(e) => setNewTask({...newTask, year: e.target.value})} className="w-full bg-transparent text-xs font-bold px-1 py-1">{[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}</select></div></div>
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ExÃ©cutant *</label><input type="text" required value={newTask.agent} onChange={e => setNewTask({...newTask, agent: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
+                <div className="col-span-2"><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Équipement concerné *</label><input type="text" required value={newTask.equipement} onChange={e => setNewTask({...newTask, equipement: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
+                <div className="col-span-2"><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Opération *</label><input type="text" required value={newTask.operation} onChange={e => setNewTask({...newTask, operation: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
+                <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Période *</label><div className="flex bg-slate-50 rounded-lg border p-1"><select value={newTask.month} onChange={(e) => setNewTask({...newTask, month: e.target.value})} className="w-full bg-transparent text-xs font-bold px-1 py-1 border-r">{months.map((m, i) => <option key={i} value={i}>{m.substring(0,3)}</option>)}</select><select value={newTask.year} onChange={(e) => setNewTask({...newTask, year: e.target.value})} className="w-full bg-transparent text-xs font-bold px-1 py-1">{[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}</select></div></div>
+                <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Exécutant *</label><input type="text" required value={newTask.agent} onChange={e => setNewTask({...newTask, agent: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
               </div>
               <div className="pt-4 border-t flex gap-2"><button type="button" onClick={() => setIsAddOpen(false)} className="flex-1 py-2.5 bg-slate-50 border text-slate-600 font-bold rounded-lg text-sm">Annuler</button><button type="submit" className="flex-[2] py-2.5 bg-[#1e3a8a] text-white font-bold rounded-lg text-sm">Planifier</button></div>
             </form>
@@ -523,12 +523,12 @@ function PlanningView({ tasks, setTasks }) {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col border border-slate-200">
             <div className={`p-5 border-b flex justify-between items-center ${actionModal.type === 'realiser' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-red-50/50 border-red-100'}`}>
-              <div><h3 className={`text-base font-extrabold uppercase tracking-wider ${actionModal.type === 'realiser' ? 'text-emerald-800' : 'text-red-800'}`}>{actionModal.type === 'realiser' ? 'ClÃ´turer' : 'Annuler'}</h3></div>
+              <div><h3 className={`text-base font-extrabold uppercase tracking-wider ${actionModal.type === 'realiser' ? 'text-emerald-800' : 'text-red-800'}`}>{actionModal.type === 'realiser' ? 'Clôturer' : 'Annuler'}</h3></div>
               <button onClick={() => setActionModal({isOpen: false, type: null, task: null})} className="p-1.5 bg-white rounded-lg"><X className="h-4 w-4 text-slate-400"/></button>
             </div>
             <form onSubmit={confirmAction} className="p-5 space-y-4">
               {actionModal.type === 'realiser' ? (
-                <><div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date exÃ©cution *</label><input type="date" required value={actionData.dateRealisation} onChange={e => setActionData({...actionData, dateRealisation: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div><div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rapport *</label><textarea required rows="3" value={actionData.rapport} onChange={e => setActionData({...actionData, rapport: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm resize-none"></textarea></div></>
+                <><div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date exécution *</label><input type="date" required value={actionData.dateRealisation} onChange={e => setActionData({...actionData, dateRealisation: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div><div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rapport *</label><textarea required rows="3" value={actionData.rapport} onChange={e => setActionData({...actionData, rapport: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm resize-none"></textarea></div></>
               ) : (
                 <div><div className="flex gap-2 bg-red-50 p-3 rounded-lg mb-3 border border-red-100"><AlertCircle className="w-4 h-4 text-red-500 shrink-0" /><p className="text-[11px] text-red-800 font-medium">Justificatif obligatoire.</p></div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cause *</label><textarea required rows="3" value={actionData.causeAnnulation} onChange={e => setActionData({...actionData, causeAnnulation: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm resize-none"></textarea></div>
               )}
@@ -542,7 +542,7 @@ function PlanningView({ tasks, setTasks }) {
 }
 
 // ==========================================
-// VUE 3 : MÃ‰TROLOGIE (Tableau fluide sans scroll)
+// VUE 3 : MÉTROLOGIE (Tableau fluide sans scroll)
 // ==========================================
 function MetrologyView({ equipments, setEquipements }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -558,7 +558,7 @@ function MetrologyView({ equipments, setEquipements }) {
     const diffTime = next - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return { status: 'danger', text: 'DÃ©passÃ©', date: next.toLocaleDateString('fr-FR') };
+    if (diffDays < 0) return { status: 'danger', text: 'Dépassé', date: next.toLocaleDateString('fr-FR') };
     if (diffDays <= 30) return { status: 'warning', text: `Dans ${diffDays} j`, date: next.toLocaleDateString('fr-FR') };
     return { status: 'success', text: 'Conforme', date: next.toLocaleDateString('fr-FR') };
   };
@@ -572,7 +572,7 @@ function MetrologyView({ equipments, setEquipements }) {
   };
 
   const handleDeleteEquipment = (id) => {
-    if(window.confirm("ÃŠtes-vous sÃ»r de vouloir supprimer cet Ã©quipement de mÃ©trologie ?")) {
+    if(window.confirm("Êtes-vous sûr de vouloir supprimer cet équipement de métrologie ?")) {
       setEquipements(equipements.filter(e => e.id !== id));
     }
   };
@@ -612,21 +612,21 @@ function MetrologyView({ equipments, setEquipements }) {
         </div>
         <div className="bg-white p-3 lg:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden">
           <div className="absolute top-0 right-0 w-1.5 h-full bg-orange-400"></div>
-          <div><p className="text-slate-400 text-[9px] lg:text-[10px] font-bold uppercase tracking-widest mb-1">BientÃ´t</p><p className="text-xl lg:text-3xl font-black text-slate-800">{stats.warn}</p></div>
+          <div><p className="text-slate-400 text-[9px] lg:text-[10px] font-bold uppercase tracking-widest mb-1">Bientôt</p><p className="text-xl lg:text-3xl font-black text-slate-800">{stats.warn}</p></div>
           <div className="bg-orange-50 border border-orange-100 p-2.5 lg:p-3.5 rounded-xl"><AlertTriangle className="text-orange-500 w-5 h-5" /></div>
         </div>
         <div className="bg-white p-3 lg:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden">
           <div className="absolute top-0 right-0 w-1.5 h-full bg-red-500"></div>
-          <div><p className="text-slate-400 text-[9px] lg:text-[10px] font-bold uppercase tracking-widest mb-1">Hors DÃ©lai</p><p className="text-xl lg:text-3xl font-black text-slate-800">{stats.danger}</p></div>
+          <div><p className="text-slate-400 text-[9px] lg:text-[10px] font-bold uppercase tracking-widest mb-1">Hors Délai</p><p className="text-xl lg:text-3xl font-black text-slate-800">{stats.danger}</p></div>
           <div className="bg-red-50 border border-red-100 p-2.5 lg:p-3.5 rounded-xl"><ShieldAlert className="text-red-600 w-5 h-5" /></div>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
         <div className="p-4 lg:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-          <div><h3 className="text-base lg:text-lg font-bold text-slate-800">Registre MÃ©trologique</h3></div>
+          <div><h3 className="text-base lg:text-lg font-bold text-slate-800">Registre Métrologique</h3></div>
           <button onClick={() => setIsAddModalOpen(true)} className="bg-[#1e3a8a] hover:bg-blue-900 text-white px-3 py-2 rounded-xl text-xs lg:text-sm font-bold flex items-center gap-1 shadow-sm transition-all">
-            <Plus className="w-4 h-4" /> Nouvel Ã©quip.
+            <Plus className="w-4 h-4" /> Nouvel équip.
           </button>
         </div>
         
@@ -635,13 +635,13 @@ function MetrologyView({ equipments, setEquipements }) {
           <table className="w-full text-left text-[10px] lg:text-xs whitespace-normal table-fixed break-words">
             <thead className="bg-white text-slate-500 border-b border-slate-200">
               <tr>
-                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[8%]">NÂ° Id.</th>
-                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[16%]">Ã‰quipement & Marque</th>
+                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[8%]">N° Id.</th>
+                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[16%]">Équipement & Marque</th>
                 <th className="px-2 py-3 font-bold uppercase tracking-wider w-[10%]">Type</th>
-                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[12%]">NÂ° SÃ©rie</th>
-                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[12%]">RÃ©f. Certificat</th>
+                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[12%]">N° Série</th>
+                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[12%]">Réf. Certificat</th>
                 <th className="px-2 py-3 font-bold uppercase tracking-wider w-[14%]">Dernier Cert. & Freq.</th>
-                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[10%]">Ã‰chÃ©ance</th>
+                <th className="px-2 py-3 font-bold uppercase tracking-wider w-[10%]">Échéance</th>
                 <th className="px-2 py-3 font-bold uppercase tracking-wider text-center w-[10%]">Statut</th>
                 <th className="px-2 py-3 font-bold uppercase tracking-wider text-center w-[8%]">Actions</th>
               </tr>
@@ -664,8 +664,8 @@ function MetrologyView({ equipments, setEquipements }) {
                       {result.status === 'danger' && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-100"><AlertCircle className="w-2.5 h-2.5 mr-0.5" /> {result.text}</span>}
                     </td>
                     <td className="px-2 py-2.5 text-center flex items-center justify-center gap-1 flex-wrap">
-                      <button onClick={() => { setUpdateData({ id: eq.id, refCertificat: eq.refCertificat || '', dernierEtalonnage: eq.dernierEtalonnage }); setIsUpdateModalOpen(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Mettre Ã  jour le certificat"><PenTool className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => handleDeleteEquipment(eq.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Supprimer l'Ã©quipement"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => { setUpdateData({ id: eq.id, refCertificat: eq.refCertificat || '', dernierEtalonnage: eq.dernierEtalonnage }); setIsUpdateModalOpen(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Mettre à jour le certificat"><PenTool className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDeleteEquipment(eq.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Supprimer l'équipement"><Trash2 className="w-3.5 h-3.5" /></button>
                     </td>
                   </tr>
                 );
@@ -679,20 +679,20 @@ function MetrologyView({ equipments, setEquipements }) {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col border border-slate-200">
             <div className="bg-slate-50 p-5 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><div className="bg-blue-100 p-1.5 rounded-lg text-[#1e3a8a]"><Plus className="w-4 h-4"/></div> Nouvel Ã©quipement</h3>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><div className="bg-blue-100 p-1.5 rounded-lg text-[#1e3a8a]"><Plus className="w-4 h-4"/></div> Nouvel équipement</h3>
               <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:bg-slate-100 p-1.5 rounded-lg"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleAddEquipment} className="p-6 space-y-4 overflow-y-auto max-h-[75vh]">
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2"><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">DÃ©signation</label><input required type="text" value={formData.designation} onChange={e => setFormData({...formData, designation: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm" /></div>
-                <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">NÂ° Id. (RÃ©f.)</label><input required type="text" value={formData.ref} onChange={e => setFormData({...formData, ref: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm" /></div>
+                <div className="col-span-2"><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Désignation</label><input required type="text" value={formData.designation} onChange={e => setFormData({...formData, designation: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm" /></div>
+                <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">N° Id. (Réf.)</label><input required type="text" value={formData.ref} onChange={e => setFormData({...formData, ref: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm" /></div>
                 <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Marque</label><input required type="text" value={formData.marque} onChange={e => setFormData({...formData, marque: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm" /></div>
                 <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Type</label><input type="text" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm" /></div>
-                <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">NÂ° de sÃ©rie</label><input required type="text" value={formData.serie} onChange={e => setFormData({...formData, serie: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm font-mono" /></div>
-                <div className="col-span-2 pt-2 pb-1"><h4 className="text-xs font-bold text-[#1e3a8a] uppercase border-b pb-1">Ã‰talonnage Initial</h4></div>
-                <div className="col-span-2"><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">RÃ©f. Certificat</label><input type="text" value={formData.refCertificat} onChange={e => setFormData({...formData, refCertificat: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm" /></div>
+                <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">N° de série</label><input required type="text" value={formData.serie} onChange={e => setFormData({...formData, serie: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm font-mono" /></div>
+                <div className="col-span-2 pt-2 pb-1"><h4 className="text-xs font-bold text-[#1e3a8a] uppercase border-b pb-1">Étalonnage Initial</h4></div>
+                <div className="col-span-2"><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Réf. Certificat</label><input type="text" value={formData.refCertificat} onChange={e => setFormData({...formData, refCertificat: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm" /></div>
                 <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Date</label><input required type="date" value={formData.dernierEtalonnage} onChange={e => setFormData({...formData, dernierEtalonnage: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm" /></div>
-                <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">PÃ©riodicitÃ©</label><select required value={formData.frequence} onChange={e => setFormData({...formData, frequence: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white"><option value="6">6 Mois</option><option value="12">12 Mois (1 an)</option><option value="24">24 Mois (2 ans)</option></select></div>
+                <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Périodicité</label><select required value={formData.frequence} onChange={e => setFormData({...formData, frequence: e.target.value})} className="w-full border rounded-xl p-2.5 text-sm bg-white"><option value="6">6 Mois</option><option value="12">12 Mois (1 an)</option><option value="24">24 Mois (2 ans)</option></select></div>
               </div>
               <div className="pt-4 mt-2 flex gap-2"><button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-2.5 bg-slate-50 font-bold rounded-xl text-sm">Annuler</button><button type="submit" className="flex-[2] py-2.5 bg-[#1e3a8a] text-white font-bold rounded-xl text-sm">Sauvegarder</button></div>
             </form>
@@ -704,11 +704,11 @@ function MetrologyView({ equipments, setEquipements }) {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col border border-slate-200">
             <div className="bg-blue-50/50 p-4 border-b border-blue-100 flex justify-between items-center">
-              <h3 className="text-sm font-bold text-[#1e3a8a] flex items-center gap-2"><PenTool className="w-4 h-4"/> MAJ Ã‰talonnage</h3>
+              <h3 className="text-sm font-bold text-[#1e3a8a] flex items-center gap-2"><PenTool className="w-4 h-4"/> MAJ Étalonnage</h3>
               <button onClick={() => setIsUpdateModalOpen(false)} className="text-slate-400 p-1 bg-white rounded-md"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleUpdateCertificat} className="p-5 space-y-4">
-              <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nouvelle RÃ©f. Certificat</label><input required type="text" value={updateData.refCertificat} onChange={e => setUpdateData({...updateData, refCertificat: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
+              <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nouvelle Réf. Certificat</label><input required type="text" value={updateData.refCertificat} onChange={e => setUpdateData({...updateData, refCertificat: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
               <div><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Date du certificat</label><input required type="date" value={updateData.dernierEtalonnage} onChange={e => setUpdateData({...updateData, dernierEtalonnage: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
               <div className="pt-2 flex gap-2"><button type="button" onClick={() => setIsUpdateModalOpen(false)} className="flex-1 py-2 bg-slate-50 font-bold rounded-lg text-sm">Annuler</button><button type="submit" className="flex-[2] py-2 bg-[#1e3a8a] text-white font-bold rounded-lg text-sm">Valider</button></div>
             </form>
@@ -720,7 +720,7 @@ function MetrologyView({ equipments, setEquipements }) {
 }
 
 // ==========================================
-// VUE 4 : PARC UTILITÃ‰S
+// VUE 4 : PARC UTILITÉS
 // ==========================================
 function UtilitiesView({ sites, setSites, equipements, setEquipements, typesEquipement, setTypesEquipement }) {
   const [currentView, setCurrentView] = useState('global');
@@ -741,11 +741,11 @@ function UtilitiesView({ sites, setSites, equipements, setEquipements, typesEqui
   const siteEquipements = equipements.filter(e => e.siteId === selectedSiteId);
 
   const handleAddEquipement = (newEq) => setEquipements([...equipements, { ...newEq, id: Date.now() }]);
-  const handleDeleteEquipement = (id) => { if(window.confirm("Supprimer cet Ã©quipement ?")) setEquipements(equipements.filter(e => e.id !== id)); };
+  const handleDeleteEquipement = (id) => { if(window.confirm("Supprimer cet équipement ?")) setEquipements(equipements.filter(e => e.id !== id)); };
   
   const handleAddSite = (newSite) => setSites([...sites, { ...newSite, id: Date.now() }]);
   const handleDeleteSite = (id) => {
-    if(window.confirm("Attention : Supprimer ce site supprimera aussi TOUS ses Ã©quipements. Continuer ?")) {
+    if(window.confirm("Attention : Supprimer ce site supprimera aussi TOUS ses équipements. Continuer ?")) {
       setSites(sites.filter(s => s.id !== id));
       setEquipements(equipements.filter(e => e.siteId !== id));
       if(selectedSiteId === id) goGlobal();
@@ -811,18 +811,18 @@ function UtilitesGlobalView({ sites, onSelectSite, onAdd, typesEquipement, onOpe
           <div className="flex items-center space-x-2 text-slate-400 font-bold text-[10px] uppercase tracking-wider mb-1">
             <Activity className="h-3.5 w-3.5" /> Vue d'ensemble
           </div>
-          <h2 className="text-xl lg:text-3xl font-extrabold text-[#1e3a8a]">Tableau de Bord Ã‰nergÃ©tique</h2>
+          <h2 className="text-xl lg:text-3xl font-extrabold text-[#1e3a8a]">Tableau de Bord Énergétique</h2>
         </div>
         <div className="flex flex-wrap items-stretch gap-3">
           <div className="bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl flex flex-col justify-center text-right">
-            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Puissance InstallÃ©e</p>
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Puissance Installée</p>
             <p className="text-xl lg:text-2xl font-extrabold text-slate-800">{(totalPowerGlobal / 1000).toFixed(2)} <span className="text-sm text-slate-400">kW</span></p>
           </div>
-          <button onClick={onOpenSettings} className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-xl flex items-center text-xs lg:text-sm font-bold shadow-sm"><Settings className="w-4 h-4 lg:mr-2" /> <span className="hidden lg:inline">ParamÃ¨tres</span></button>
-          <button onClick={() => setIsModalOpen(true)} className="bg-[#1e3a8a] hover:bg-blue-800 text-white px-3 py-2 rounded-xl flex items-center text-xs lg:text-sm font-bold shadow-md"><Plus className="w-4 h-4 lg:mr-1" /> <span className="hidden lg:inline">Nouvel Ã‰quipement</span></button>
+          <button onClick={onOpenSettings} className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-xl flex items-center text-xs lg:text-sm font-bold shadow-sm"><Settings className="w-4 h-4 lg:mr-2" /> <span className="hidden lg:inline">Paramètres</span></button>
+          <button onClick={() => setIsModalOpen(true)} className="bg-[#1e3a8a] hover:bg-blue-800 text-white px-3 py-2 rounded-xl flex items-center text-xs lg:text-sm font-bold shadow-md"><Plus className="w-4 h-4 lg:mr-1" /> <span className="hidden lg:inline">Nouvel Équipement</span></button>
         </div>
       </div>
-      <div className="mb-2 flex items-center text-slate-400 font-bold text-[10px] uppercase tracking-wider"><MapPin className="h-3.5 w-3.5 mr-1" /> SÃ©lectionner un site</div>
+      <div className="mb-2 flex items-center text-slate-400 font-bold text-[10px] uppercase tracking-wider"><MapPin className="h-3.5 w-3.5 mr-1" /> Sélectionner un site</div>
       <SiteHorizontalList sites={sites} selectedId={null} onSelect={onSelectSite} />
       {isModalOpen && <AddEquipementModal sites={sites} defaultSiteId={sites[0]?.id} typesEquipement={typesEquipement} onClose={() => setIsModalOpen(false)} onSave={(data) => { onAdd(data); setIsModalOpen(false); }} />}
     </div>
@@ -847,7 +847,7 @@ function UtilitesSiteDetailView({ site, equipements, onSelectSite, onAdd, onDele
         <div className="xl:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
             <div className="p-4 lg:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <div className="flex items-center text-slate-500 font-extrabold tracking-widest text-[10px] lg:text-xs uppercase"><Zap className="h-4 w-4 text-[#1e3a8a] mr-1.5" /> Ã‰QUIPEMENTS & UTILITÃ‰S</div>
+              <div className="flex items-center text-slate-500 font-extrabold tracking-widest text-[10px] lg:text-xs uppercase"><Zap className="h-4 w-4 text-[#1e3a8a] mr-1.5" /> ÉQUIPEMENTS & UTILITÉS</div>
               <div className="flex items-center space-x-2">
                 <div className="relative hidden sm:block">
                   <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 transform -translate-y-1/2" />
@@ -861,9 +861,9 @@ function UtilitesSiteDetailView({ site, equipements, onSelectSite, onAdd, onDele
                 <thead className="bg-slate-50 text-slate-400 border-b border-slate-100">
                   <tr>
                     <th className="px-3 py-3 font-bold uppercase tracking-wider w-[15%]">Type</th>
-                    <th className="px-3 py-3 font-bold uppercase tracking-wider w-[25%]">DÃ©signation</th>
+                    <th className="px-3 py-3 font-bold uppercase tracking-wider w-[25%]">Désignation</th>
                     <th className="px-3 py-3 font-bold uppercase tracking-wider w-[15%]">Emplacement</th>
-                    <th className="px-3 py-3 font-bold uppercase tracking-wider text-center w-[10%]">QtÃ©</th>
+                    <th className="px-3 py-3 font-bold uppercase tracking-wider text-center w-[10%]">Qté</th>
                     <th className="px-3 py-3 font-bold uppercase tracking-wider text-right w-[12%]">Unit. (W)</th>
                     <th className="px-3 py-3 font-bold uppercase tracking-wider text-right text-[#1e3a8a] w-[15%]">Total (W)</th>
                     <th className="px-3 py-3 text-center w-[8%]"></th>
@@ -873,14 +873,14 @@ function UtilitesSiteDetailView({ site, equipements, onSelectSite, onAdd, onDele
                   {filteredEqs.length > 0 ? filteredEqs.map(eq => (
                     <tr key={eq.id} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-3 py-2.5"><span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[9px] border">{eq.type}</span></td>
-                      <td className="px-3 py-2.5 font-bold text-slate-800 leading-tight">{eq.designation}<div className="text-[9px] font-normal text-slate-400 mt-0.5">RÃ©f: {eq.ref || '-'}</div></td>
+                      <td className="px-3 py-2.5 font-bold text-slate-800 leading-tight">{eq.designation}<div className="text-[9px] font-normal text-slate-400 mt-0.5">Réf: {eq.ref || '-'}</div></td>
                       <td className="px-3 py-2.5 text-slate-500 font-medium leading-tight">{eq.emplacement}</td>
                       <td className="px-3 py-2.5 text-center font-bold text-slate-700 bg-slate-50/50">{eq.quantite}</td>
                       <td className="px-3 py-2.5 text-right text-slate-500">{eq.puissanceUnitaire.toLocaleString()}</td>
                       <td className="px-3 py-2.5 text-right font-extrabold text-[#1e3a8a] bg-blue-50/30">{(eq.quantite * eq.puissanceUnitaire).toLocaleString()}</td>
                       <td className="px-3 py-2.5 text-center"><button onClick={() => onDelete(eq.id)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="h-3.5 w-3.5" /></button></td>
                     </tr>
-                  )) : (<tr><td colSpan="7" className="px-3 py-8 text-center text-slate-400 italic">Aucun Ã©quipement trouvÃ©.</td></tr>)}
+                  )) : (<tr><td colSpan="7" className="px-3 py-8 text-center text-slate-400 italic">Aucun équipement trouvé.</td></tr>)}
                 </tbody>
               </table>
             </div>
@@ -896,11 +896,11 @@ function UtilitesSiteDetailView({ site, equipements, onSelectSite, onAdd, onDele
                 <div><div className="text-[#1e3a8a] font-extrabold text-xs tracking-wider uppercase mb-1">FICHE TECHNIQUE</div><div className="text-slate-400 text-[10px] font-semibold">{site.nom}</div></div>
                 <div className="text-slate-300 font-light text-xs">{site.codeSite}</div>
               </div>
-              <div className="flex justify-between items-baseline mb-4"><span className="text-slate-500 text-xs font-semibold">Surface Totale</span><div className="text-right"><span className="text-xl font-extrabold text-slate-800">{site.surfaceTotale.toLocaleString()}</span><span className="text-[10px] font-bold text-slate-400 ml-1">mÂ²</span></div></div>
+              <div className="flex justify-between items-baseline mb-4"><span className="text-slate-500 text-xs font-semibold">Surface Totale</span><div className="text-right"><span className="text-xl font-extrabold text-slate-800">{site.surfaceTotale.toLocaleString()}</span><span className="text-[10px] font-bold text-slate-400 ml-1">m²</span></div></div>
               <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100">
-                <div className="flex justify-between items-center mb-2"><span className="text-[10px] font-bold text-[#1e3a8a] uppercase">Espace Couvert</span><span className="font-extrabold text-sm text-slate-800">{site.espaceCouvert.toLocaleString()} mÂ²</span></div>
+                <div className="flex justify-between items-center mb-2"><span className="text-[10px] font-bold text-[#1e3a8a] uppercase">Espace Couvert</span><span className="font-extrabold text-sm text-slate-800">{site.espaceCouvert.toLocaleString()} m²</span></div>
                 {site.detailsSurface && site.detailsSurface.length > 0 && (
-                  <div className="space-y-1.5 pt-2 border-t border-dashed border-slate-200">{site.detailsSurface.map((zone) => (<div key={zone.id} className="flex justify-between items-center text-[10px] font-semibold text-slate-500"><span>â€¢ {zone.nom}</span><span>{zone.surface.toLocaleString()} mÂ²</span></div>))}</div>
+                  <div className="space-y-1.5 pt-2 border-t border-dashed border-slate-200">{site.detailsSurface.map((zone) => (<div key={zone.id} className="flex justify-between items-center text-[10px] font-semibold text-slate-500"><span>• {zone.nom}</span><span>{zone.surface.toLocaleString()} m²</span></div>))}</div>
                 )}
               </div>
               <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between items-end"><div className="text-[10px] font-bold text-slate-400 uppercase">Puissance Active</div><div className="text-2xl font-extrabold text-[#1e3a8a]">{(totalPower / 1000).toFixed(2)} <span className="text-[10px] text-[#1e3a8a] font-bold uppercase">kW</span></div></div>
@@ -927,12 +927,12 @@ function UtilitesSettingsView({ sites, typesEquipement, onAddSite, onDeleteSite,
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300 w-full">
       <div className="flex items-center gap-2 mb-2">
         <button onClick={onBack} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-500 shadow-sm"><ArrowLeft className="h-4 w-4"/></button>
-        <span className="flex items-center space-x-1.5 text-slate-400 font-bold text-xs uppercase tracking-wider"><Settings className="h-4 w-4" /> Configuration AvancÃ©e</span>
+        <span className="flex items-center space-x-1.5 text-slate-400 font-bold text-xs uppercase tracking-wider"><Settings className="h-4 w-4" /> Configuration Avancée</span>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
-          <div className="p-5 border-b border-slate-100 bg-slate-50/50"><h3 className="font-extrabold text-[#1e3a8a] text-sm">RÃ©fÃ©rentiel des Sites</h3></div>
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50"><h3 className="font-extrabold text-[#1e3a8a] text-sm">Référentiel des Sites</h3></div>
           <div className="p-5">
             <div className="space-y-2 mb-6 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
               {sites.map(s => (
@@ -950,11 +950,11 @@ function UtilitesSettingsView({ sites, typesEquipement, onAddSite, onDeleteSite,
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <input type="text" placeholder="Code *" required value={newSite.codeSite} onChange={e => setNewSite({...newSite, codeSite: e.target.value})} className="w-full border rounded-lg p-2 text-xs font-semibold" />
-                <input type="text" placeholder="ActivitÃ©" value={newSite.activite} onChange={e => setNewSite({...newSite, activite: e.target.value})} className="w-full border rounded-lg p-2 text-xs font-semibold" />
+                <input type="text" placeholder="Activité" value={newSite.activite} onChange={e => setNewSite({...newSite, activite: e.target.value})} className="w-full border rounded-lg p-2 text-xs font-semibold" />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input type="number" required placeholder="Surf. Totale (mÂ²)" value={newSite.surfaceTotale || ''} onChange={e => setNewSite({...newSite, surfaceTotale: Number(e.target.value)})} className="w-full border rounded-lg p-2 text-xs font-semibold" />
-                <input type="number" placeholder="Esp. Couvert (mÂ²)" value={newSite.espaceCouvert || ''} onChange={e => setNewSite({...newSite, espaceCouvert: Number(e.target.value)})} className="w-full border rounded-lg p-2 text-xs font-semibold" />
+                <input type="number" required placeholder="Surf. Totale (m²)" value={newSite.surfaceTotale || ''} onChange={e => setNewSite({...newSite, surfaceTotale: Number(e.target.value)})} className="w-full border rounded-lg p-2 text-xs font-semibold" />
+                <input type="number" placeholder="Esp. Couvert (m²)" value={newSite.espaceCouvert || ''} onChange={e => setNewSite({...newSite, espaceCouvert: Number(e.target.value)})} className="w-full border rounded-lg p-2 text-xs font-semibold" />
               </div>
               <button type="submit" className="w-full bg-[#1e3a8a] text-white py-2 rounded-lg text-xs font-bold mt-2">Enregistrer</button>
             </form>
@@ -962,7 +962,7 @@ function UtilitesSettingsView({ sites, typesEquipement, onAddSite, onDeleteSite,
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
-          <div className="p-5 border-b border-slate-100 bg-slate-50/50"><h3 className="font-extrabold text-[#1e3a8a] text-sm">Nomenclature UtilitÃ©s</h3></div>
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50"><h3 className="font-extrabold text-[#1e3a8a] text-sm">Nomenclature Utilités</h3></div>
           <div className="p-5">
             <div className="flex flex-wrap gap-2 mb-6 max-h-48 overflow-y-auto">
               {typesEquipement.map(type => (
@@ -974,7 +974,7 @@ function UtilitesSettingsView({ sites, typesEquipement, onAddSite, onDeleteSite,
             <form onSubmit={handleTypeSubmit} className="bg-slate-50 p-4 rounded-xl border">
                <div className="text-slate-500 font-bold text-[10px] uppercase mb-2">Nouvelle Famille</div>
               <div className="flex gap-2">
-                <input type="text" placeholder="Ex: Pompe Ã  chaleur" required value={newType} onChange={e => setNewType(e.target.value)} className="flex-1 border rounded-lg p-2 text-xs font-semibold" />
+                <input type="text" placeholder="Ex: Pompe à chaleur" required value={newType} onChange={e => setNewType(e.target.value)} className="flex-1 border rounded-lg p-2 text-xs font-semibold" />
                 <button type="submit" className="bg-[#1e3a8a] text-white px-4 py-2 rounded-lg text-xs font-bold">Ajouter</button>
               </div>
             </form>
@@ -994,17 +994,17 @@ function AddEquipementModal({ onClose, onSave, sites, defaultSiteId, typesEquipe
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <div><h3 className="text-sm font-extrabold text-[#1e3a8a] uppercase">Nouvel Ã‰quipement</h3></div>
+          <div><h3 className="text-sm font-extrabold text-[#1e3a8a] uppercase">Nouvel Équipement</h3></div>
           <button onClick={onClose} className="p-1.5 bg-white rounded-lg"><X className="h-4 w-4"/></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><label className="block text-[9px] font-bold uppercase mb-1">Site *</label><select name="siteId" required value={formData.siteId} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs bg-slate-50">{sites && sites.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}</select></div>
             <div className="col-span-2"><label className="block text-[9px] font-bold uppercase mb-1">Famille *</label><select name="type" required value={formData.type} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs bg-slate-50">{typesEquipement.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-            <div className="col-span-2"><label className="block text-[9px] font-bold uppercase mb-1">DÃ©signation *</label><input type="text" name="designation" required value={formData.designation} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs" /></div>
-            <div><label className="block text-[9px] font-bold uppercase mb-1">RÃ©fÃ©rence</label><input type="text" name="ref" value={formData.ref} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs" /></div>
+            <div className="col-span-2"><label className="block text-[9px] font-bold uppercase mb-1">Désignation *</label><input type="text" name="designation" required value={formData.designation} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs" /></div>
+            <div><label className="block text-[9px] font-bold uppercase mb-1">Référence</label><input type="text" name="ref" value={formData.ref} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs" /></div>
             <div><label className="block text-[9px] font-bold uppercase mb-1">Emplacement *</label><input type="text" name="emplacement" required value={formData.emplacement} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs" /></div>
-            <div><label className="block text-[9px] font-bold uppercase mb-1">QuantitÃ© *</label><input type="number" min="1" name="quantite" required value={formData.quantite} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs" /></div>
+            <div><label className="block text-[9px] font-bold uppercase mb-1">Quantité *</label><input type="number" min="1" name="quantite" required value={formData.quantite} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs" /></div>
             <div><label className="block text-[9px] font-bold uppercase mb-1">P. Unitaire (W) *</label><input type="number" min="0" name="puissanceUnitaire" required value={formData.puissanceUnitaire} onChange={handleChange} className="w-full border rounded-lg p-2 text-xs" /></div>
           </div>
           <div className="pt-3 flex gap-2"><button type="button" onClick={onClose} className="flex-1 py-2 bg-slate-50 font-bold rounded-lg text-xs">Annuler</button><button type="submit" className="flex-[2] py-2 bg-[#1e3a8a] text-white font-bold rounded-lg text-xs">Sauvegarder</button></div>
@@ -1013,3 +1013,4 @@ function AddEquipementModal({ onClose, onSave, sites, defaultSiteId, typesEquipe
     </div>
   );
 }
+

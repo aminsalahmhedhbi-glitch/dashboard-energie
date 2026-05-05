@@ -59,19 +59,19 @@ logger = logging.getLogger("energy-backend")
 FACTURE_SITE_REGISTRY = {
     "MEGRINE": {
         "siteId": "1",
-        "siteName": "MT 1 - Mégrine",
+        "siteName": "Si�ge Megrine",
         "siteType": "MT",
         "aliases": ["MEGRINE", "Mégrine", "Megrine", "MEG-001", "MT 1 - Megrine"],
     },
     "ELKHADHRA": {
         "siteId": "2",
-        "siteName": "MT 2 - El Khadhra",
+        "siteName": "SAV El Khadhra",
         "siteType": "MT",
         "aliases": ["ELKHADHRA", "EL KHADHRA", "ELK-002", "MT 2 - El Khadhra"],
     },
     "NAASSEN": {
         "siteId": "3",
-        "siteName": "MT 3 - Naassen",
+        "siteName": "Parc Nassen",
         "siteType": "MT",
         "aliases": ["NAASSEN", "NAS-003", "MT 3 - Naassen"],
     },
@@ -83,13 +83,13 @@ FACTURE_SITE_REGISTRY = {
     },
     "AZUR": {
         "siteId": "5",
-        "siteName": "BT 2 - Azur City",
+        "siteName": "Concept store Azur City",
         "siteType": "BT",
         "aliases": ["AZUR", "AZUR CITY", "AZU-002", "BT 2 - Azur City"],
     },
     "CARTHAGE": {
         "siteId": "6",
-        "siteName": "BT 3 - Avenue de Carthage",
+        "siteName": "Showroom Av. de Carthage",
         "siteType": "BT",
         "aliases": [
             "CARTHAGE",
@@ -101,7 +101,7 @@ FACTURE_SITE_REGISTRY = {
     },
     "CHARGUEYAA": {
         "siteId": "7",
-        "siteName": "Showroom Chargueia",
+        "siteName": "Showroom Charguia",
         "siteType": "BT",
         "aliases": [
             "CHARGUEYAA",
@@ -1715,3 +1715,4 @@ def create_app() -> Flask:
         return json_response({"error": "Erreur interne du serveur"}, 500)
 
     return app
+

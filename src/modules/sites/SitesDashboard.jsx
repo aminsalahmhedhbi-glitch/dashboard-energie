@@ -549,7 +549,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   const [sitesDataState, setSitesDataState] = useState({
     MEGRINE: { 
-        name: "Mégrine", 
+        name: getSiteDisplayName('MEGRINE'), 
         area: 32500, covered: 30100, open: 2400, glazed: 365,
         coveredBreakdown: [
             { label: "Zone A (Atelier FIAT)", value: 10100 },
@@ -569,7 +569,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         targets: { reduction2030: 10, renewable2030: 40 }
     },
     ELKHADHRA: { 
-        name: "El Khadhra", area: 9500, covered: 7000, open: 2500, glazed: 40,
+        name: getSiteDisplayName('ELKHADHRA'), area: 9500, covered: 7000, open: 2500, glazed: 40,
         coveredBreakdown: [{ label: "Atelier FIAT", value: 3000 }, { label: "ITALCAR Gros", value: 3000 }, { label: "Réception", value: 1000 }],
         energyMix: [{ name: "Électricité", value: 100, color: "bg-blue-900" }], 
         elecUsage: [
@@ -592,13 +592,13 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         targets: { reduction2030: 30, renewable2030: 50 }
     },
     NAASSEN: { 
-        name: "Naassen", area: 32500, covered: 1850, open: 30680, glazed: 0, 
+        name: getSiteDisplayName('NAASSEN'), area: 32500, covered: 1850, open: 30680, glazed: 0, 
         coveredBreakdown: [{label:"Réception", value: 920}, {label:"Atelier FIAT", value: 900}], 
         energyMix: [{ name: "Élec", value: 100, color: "bg-blue-900" }], elecUsage: [],
         targets: { reduction2030: 10, renewable2030: 10 }
     },
     CARTHAGE: { 
-        name: "Rue de Carthage", area: 320, covered: 320, open: 0, glazed: 70, 
+        name: getSiteDisplayName('CARTHAGE'), area: 320, covered: 320, open: 0, glazed: 70, 
         coveredBreakdown: [{label:"Showroom", value: 320}], 
         energyMix: [{ name: "Élec", value: 100, color: "bg-blue-900" }], elecUsage: [],
         targets: { reduction2030: 5, renewable2030: 0 }
@@ -610,7 +610,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         targets: { reduction2030: 5, renewable2030: 0 }
     },
     AZUR: { 
-        name: "Azur City", area: 130, covered: 130, open: 0, glazed: 0, 
+        name: getSiteDisplayName('AZUR'), area: 130, covered: 130, open: 0, glazed: 0, 
         coveredBreakdown: [{label:"Showroom", value: 130}], 
         energyMix: [{ name: "Élec", value: 100, color: "bg-blue-900" }], elecUsage: [],
         targets: { reduction2030: 5, renewable2030: 0 }

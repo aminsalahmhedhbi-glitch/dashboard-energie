@@ -232,12 +232,12 @@ const StegModule = ({ onBack, userRole, user }) => {
   };
   
   const SITES = [
-    { id: 1, name: "MT 1 - Mégrine", code: "MEG-001", type: "MT", icon: Factory },
-    { id: 2, name: "MT 2 - El Khadhra", code: "ELK-002", type: "MT", icon: Factory },
-    { id: 3, name: "MT 3 - Naassen", code: "NAS-003", type: "MT", icon: Factory },
+    { id: 1, name: getSiteDisplayName('MEGRINE'), code: "MEG-001", type: "MT", icon: Factory },
+    { id: 2, name: getSiteDisplayName('ELKHADHRA'), code: "ELK-002", type: "MT", icon: Factory },
+    { id: 3, name: getSiteDisplayName('NAASSEN'), code: "NAS-003", type: "MT", icon: Factory },
     { id: 4, name: getSiteDisplayName('LAC'), code: "LAC-001", type: "BT_PV", icon: Store }, 
-    { id: 5, name: "BT 2 - Azur City", code: "AZU-002", type: "BT", icon: Store },
-    { id: 6, name: "BT 3 - Avenue de Carthage", code: "CAR-003", type: "BT", icon: Store },
+    { id: 5, name: getSiteDisplayName('AZUR'), code: "AZU-002", type: "BT", icon: Store },
+    { id: 6, name: getSiteDisplayName('CARTHAGE'), code: "CAR-003", type: "BT", icon: Store },
     { id: 7, name: getSiteDisplayName('CHARGUEYAA'), code: "CHG-004", type: "BT", icon: Store }
   ];
 
@@ -1196,7 +1196,7 @@ const StegModule = ({ onBack, userRole, user }) => {
                     <div className="overflow-y-auto flex-1 space-y-8 pr-2">
                         <div className="bg-slate-50 p-3 sm:p-6 rounded-xl border border-slate-200 overflow-hidden">
                             <h4 className="text-lg font-bold text-blue-900 mb-4 flex items-center"><Factory className="mr-2"/> Compteurs Moyenne Tension (MT)</h4>
-                            <p className="text-sm text-slate-600 mb-4">Concerne : Mégrine, El Khadhra, Naassen.</p>
+                            <p className="text-sm text-slate-600 mb-4">Concerne : Si�ge Megrine, SAV El Khadhra, Parc Nassen.</p>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-900">
                                     <h5 className="font-bold text-slate-800 mb-2">Procédure de Relevé</h5>
@@ -1222,7 +1222,7 @@ const StegModule = ({ onBack, userRole, user }) => {
 
                         <div className="bg-orange-50 p-6 rounded-xl border border-orange-200">
                             <h4 className="text-lg font-bold text-orange-800 mb-4 flex items-center"><Sun className="mr-2"/> Photovoltaïque & BT</h4>
-                            <p className="text-sm text-slate-600 mb-4">Concerne : Showroom Lac (BT+PV).</p>
+                            <p className="text-sm text-slate-600 mb-4">Concerne : Si�ge Megrine, SAV El Khadhra, Parc Nassen.</p>
                             <div className="space-y-4">
                                 <div className="bg-white p-4 rounded-lg border border-orange-100">
                                     <h5 className="font-bold text-slate-800 mb-1">Compteur STEG Bidirectionnel</h5>
@@ -1848,4 +1848,6 @@ const StegModule = ({ onBack, userRole, user }) => {
 // ==================================================================================
 
 export default StegModule;
+
+
 
