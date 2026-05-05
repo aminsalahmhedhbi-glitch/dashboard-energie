@@ -34,7 +34,7 @@ import ModuleHeader from '../../components/layout/ModuleHeader';
 import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
 import politiqueSignature from '../../assets/politique-signature.png';
 import italcarMarquesGrid from '../../assets/italcar-marques-grid.png';
-import tunisiaMapSvg from '../../assets/tunisie52.svg';
+import reseauPropreMockup from '../../assets/reseau-propre-layout.jpg';
 
 const INITIAL_PESTEL = {
   Politique: [{ id: 1, text: 'Reglementations etatiques importation', energy: false }],
@@ -742,50 +742,20 @@ function buildReseauMarkers(propre = [], sousConcessionnaires = []) {
   return markers;
 }
 
-function TunisiaNetworkMapCard({ propre, sousConcessionnaires }) {
-  const markers = useMemo(
-    () => buildReseauMarkers(propre, sousConcessionnaires),
-    [propre, sousConcessionnaires]
-  );
-
+function TunisiaNetworkMapCard() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 p-5 shadow-sm xl:min-h-[520px]">
       <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
         <MapPin className="h-3.5 w-3.5" />
         Carte du reseau en Tunisie
       </div>
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
-        <div className="w-full overflow-hidden rounded-xl bg-white/80">
-          <svg viewBox="0 0 21000 29700" className="h-[640px] w-full rounded-xl">
-            <image href={tunisiaMapSvg} x="0" y="0" width="21000" height="29700" preserveAspectRatio="xMidYMid slice" />
-            {markers.map((marker) => (
-              <g key={marker.id} transform={`translate(${marker.x} ${marker.y}) scale(12)`}>
-                <circle
-                  r="22"
-                  fill={marker.type === 'propre' ? '#ef4444' : '#233876'}
-                  stroke={marker.type === 'propre' ? '#fecaca' : '#e2e8f0'}
-                  strokeWidth="8"
-                  opacity="0.98"
-                />
-                <path
-                  d="M0 -42c-12.5 0-22.5 10-22.5 22.3C-22.5 -4.8 0 26 0 26s22.5-30.8 22.5-45.7C22.5-32 12.5-42 0-42zm0 31.2c-5.1 0-9.2-4.1-9.2-9.2s4.1-9.2 9.2-9.2 9.2 4.1 9.2 9.2-4.1 9.2-9.2 9.2z"
-                  fill={marker.type === 'propre' ? '#dc2626' : '#1d4ed8'}
-                  stroke="white"
-                  strokeWidth="3"
-                />
-              </g>
-            ))}
-          </svg>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-            Reseaux propres
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#233876]/10 px-3 py-1 text-xs font-semibold text-[#233876]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#233876]" />
-            Sous-concessionnaires
-          </span>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="flex h-[430px] w-full items-start justify-center overflow-hidden rounded-xl bg-white/80">
+          <img
+            src={reseauPropreMockup}
+            alt="Reseau ITALCAR en Tunisie"
+            className="h-full w-full object-contain object-top"
+          />
         </div>
       </div>
     </div>
@@ -2610,10 +2580,7 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
 
-                    <TunisiaNetworkMapCard
-                      propre={perimetre.reseau.propre}
-                      sousConcessionnaires={perimetre.reseau.sousConcessionnaires}
-                    />
+                    <TunisiaNetworkMapCard />
                   </div>
 
                   <div className="xl:col-span-12">
