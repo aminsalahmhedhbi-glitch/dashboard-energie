@@ -2617,15 +2617,18 @@ export default function UtilitiesModule({ onBack, user }) {
                   </div>
 
                   <div className="xl:col-span-12">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <div className="mb-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                        <MapPin className="h-3.5 w-3.5" />
-                        Reseau ITALCAR
-                      </div>
-                      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-<div className="mb-3 flex items-center justify-between">
-                              <h4 className="text-sm font-black text-slate-900">Reseau propre</h4>
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="border-b border-slate-200 px-6 py-5">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                          <MapPin className="h-3.5 w-3.5" />
+                          Reseau ITALCAR
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:gap-0">
+                          <div className="xl:border-r xl:border-slate-300 xl:pr-6">
+                            <div className="flex items-center justify-between gap-3">
+                              <h4 className="text-3xl font-black tracking-tight text-slate-950">
+                                Reseau propre
+                              </h4>
                               {presentationEditing && (
                                 <button
                                   type="button"
@@ -2642,117 +2645,13 @@ export default function UtilitiesModule({ onBack, user }) {
                                 </button>
                               )}
                             </div>
-                            <div className="space-y-3">
-                              {perimetre.reseau.propre.map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm"
-                                >
-                                  {presentationEditing ? (
-                                    <div className="space-y-2">
-                                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                        <input
-                                          type="text"
-                                          value={item.text}
-                                          onChange={(event) =>
-                                            updatePerimetreNestedArrayItem(
-                                              'reseau',
-                                              'propre',
-                                              item.id,
-                                              'text',
-                                              event.target.value
-                                            )
-                                          }
-                                          className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                        />
-                                        <select
-                                          value={item.lieu ?? ''}
-                                          onChange={(event) =>
-                                            updatePerimetreNestedArrayItem(
-                                              'reseau',
-                                              'propre',
-                                              item.id,
-                                              'lieu',
-                                              event.target.value
-                                            )
-                                          }
-                                          className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:w-44"
-                                        >
-                                          {TUNISIA_GOVERNORATE_OPTIONS.map((option) => (
-                                            <option key={option} value={option}>
-                                              {option}
-                                            </option>
-                                          ))}
-                                        </select>
-                                        <ItemDeleteButton
-                                          alwaysVisible
-                                          onClick={() =>
-                                            removePerimetreNestedArrayItem('reseau', 'propre', item.id)
-                                          }
-                                        />
-                                      </div>
-                                      <div className="rounded-xl border border-slate-200 bg-white p-3">
-                                        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                                          Domaines d'activites
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                          {perimetre.domainesActivite.map((activite) => {
-                                            const label = activite.text?.trim();
-                                            if (!label) return null;
-                                            const selected = normalizeReseauActivites(item.activites).includes(label);
-                                            return (
-                                              <button
-                                                key={`${item.id}-${activite.id}`}
-                                                type="button"
-                                                onClick={() => toggleReseauPropreActivite(item.id, label)}
-                                                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                                                  selected
-                                                    ? 'border-[#233876] bg-[#233876] text-white'
-                                                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-[#233876] hover:text-[#233876]'
-                                                }`}
-                                              >
-                                                {label}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="flex min-w-0 items-start gap-2">
-                                        <span className="mt-1 text-[#233876]">&bull;</span>
-                                        <div className="min-w-0">
-                                          <div className="font-medium text-slate-800">{item.text}</div>
-                                          {formatReseauActivites(item.activites) ? (
-                                            <div className="mt-1 text-[11px] font-medium text-slate-500">
-                                              {formatReseauActivites(item.activites)}
-                                            </div>
-                                          ) : null}
-                                        </div>
-                                      </div>
-                                      <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">
-                                        {item.lieu || inferReseauPropreLieu(item.text) || 'Lieu a renseigner'}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
                           </div>
-                        </div>
-
-                        {sousConcessionnaireColumns.map((columnItems, columnIndex) => (
-                          <div
-                            key={`sous-col-${columnIndex}`}
-                            className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
-                          >
-                            <div className="mb-3 flex items-center justify-between">
-                              <h4 className="flex items-center gap-2 text-sm font-black text-slate-900">
-                                <Users className="h-4 w-4 text-[#233876]" />
-                                Sous-concessionnaires
+                          <div className="xl:col-span-2 xl:pl-6">
+                            <div className="flex items-center justify-between gap-3">
+                              <h4 className="text-3xl font-black tracking-tight text-slate-950">
+                                Sous-concessionnaire
                               </h4>
-                              {presentationEditing && columnIndex === 0 && (
+                              {presentationEditing && (
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -2769,6 +2668,116 @@ export default function UtilitiesModule({ onBack, user }) {
                                 </button>
                               )}
                             </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 xl:grid-cols-3">
+                        <div className="border-b border-slate-200 p-5 xl:border-b-0 xl:border-r xl:border-slate-300">
+                          <div className="space-y-3">
+                            {perimetre.reseau.propre.map((item) => (
+                              <div
+                                key={item.id}
+                                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm"
+                              >
+                                {presentationEditing ? (
+                                  <div className="space-y-2">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                      <input
+                                        type="text"
+                                        value={item.text}
+                                        onChange={(event) =>
+                                          updatePerimetreNestedArrayItem(
+                                            'reseau',
+                                            'propre',
+                                            item.id,
+                                            'text',
+                                            event.target.value
+                                          )
+                                        }
+                                        className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                      />
+                                      <select
+                                        value={item.lieu ?? ''}
+                                        onChange={(event) =>
+                                          updatePerimetreNestedArrayItem(
+                                            'reseau',
+                                            'propre',
+                                            item.id,
+                                            'lieu',
+                                            event.target.value
+                                          )
+                                        }
+                                        className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:w-44"
+                                      >
+                                        {TUNISIA_GOVERNORATE_OPTIONS.map((option) => (
+                                          <option key={option} value={option}>
+                                            {option}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <ItemDeleteButton
+                                        alwaysVisible
+                                        onClick={() =>
+                                          removePerimetreNestedArrayItem('reseau', 'propre', item.id)
+                                        }
+                                      />
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                        Domaines d'activites
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        {perimetre.domainesActivite.map((activite) => {
+                                          const label = activite.text?.trim();
+                                          if (!label) return null;
+                                          const selected = normalizeReseauActivites(item.activites).includes(label);
+                                          return (
+                                            <button
+                                              key={`${item.id}-${activite.id}`}
+                                              type="button"
+                                              onClick={() => toggleReseauPropreActivite(item.id, label)}
+                                              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                                                selected
+                                                  ? 'border-[#233876] bg-[#233876] text-white'
+                                                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-[#233876] hover:text-[#233876]'
+                                              }`}
+                                            >
+                                              {label}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex min-w-0 items-start gap-2">
+                                      <span className="mt-1 text-[#233876]">&bull;</span>
+                                      <div className="min-w-0">
+                                        <div className="font-medium text-slate-800">{item.text}</div>
+                                        {formatReseauActivites(item.activites) ? (
+                                          <div className="mt-1 text-[11px] font-medium text-slate-500">
+                                            {formatReseauActivites(item.activites)}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                    <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">
+                                      {item.lieu || inferReseauPropreLieu(item.text) || 'Lieu a renseigner'}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {sousConcessionnaireColumns.map((columnItems, columnIndex) => (
+                          <div
+                            key={`sous-col-${columnIndex}`}
+                            className={`p-5 ${columnIndex === 0 ? 'border-b border-slate-200 xl:border-b-0 xl:border-r xl:border-slate-300' : ''}`}
+                          >
                             <div className="space-y-3">
                               {columnItems.length ? (
                                 columnItems.map((item) => (
@@ -2905,7 +2914,6 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:col-span-12">
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -3140,6 +3148,7 @@ export default function UtilitiesModule({ onBack, user }) {
                     </div>
                   </div>
                 </div>
+            </div>
           </section>
         )}
 
