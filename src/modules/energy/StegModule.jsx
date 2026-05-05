@@ -944,13 +944,22 @@ const StegModule = ({ onBack, userRole, user }) => {
     const indicateurPerformanceGlobal = surfaceTotale > 0 ? consoTotaleHistorique / surfaceTotale : 0;
 
     const siteKey = SITE_HISTORY_KEYS[currentSite];
-    const currentYearPerf = new Date().getFullYear();
-    const currentMonthPerf = new Date().getMonth();
+    const selectedPerfMonth =
+      formData.date ||
+      filteredBillingHistory
+        .map((log) => String(log.recordDate || log.date || '').slice(0, 7))
+        .filter((value) => /^\d{4}-\d{2}$/.test(value))
+        .sort()
+        .at(-1) ||
+      new Date().toISOString().slice(0, 7);
+    const [selectedPerfYearStr, selectedPerfMonthStr] = selectedPerfMonth.split('-');
+    const currentYearPerf = Number(selectedPerfYearStr);
+    const currentMonthPerf = Math.max(0, Number(selectedPerfMonthStr) - 1);
 
     let tauxOptimisationAnnuel = 0;
     let optimisationAvailable = false;
 
-    if (siteKey) {
+    if (siteKey && Number.isFinite(currentYearPerf) && Number.isFinite(currentMonthPerf)) {
       const refRow = siteHistoryById.get(`${siteKey}_REF`);
       const refSeriesType = siteKey === 'LAC' ? 'grid' : 'months';
 
@@ -985,7 +994,7 @@ const StegModule = ({ onBack, userRole, user }) => {
       tauxOptimisationAnnuel,
       optimisationAvailable
     };
-  }, [filteredBillingHistory, currentSite, siteHistoryById, billingHistoryByMonth]);
+  }, [filteredBillingHistory, currentSite, formData.date, siteHistoryById, billingHistoryByMonth]);
 
   const indexEstimation = useMemo(() => {
     const siteKey = SITE_HISTORY_KEYS[currentSite];
