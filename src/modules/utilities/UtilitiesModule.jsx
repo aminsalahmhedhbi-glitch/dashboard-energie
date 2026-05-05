@@ -34,7 +34,7 @@ import ModuleHeader from '../../components/layout/ModuleHeader';
 import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
 import politiqueSignature from '../../assets/politique-signature.png';
 import italcarMarquesGrid from '../../assets/italcar-marques-grid.png';
-import tunisiaGovernoratesMap from '../../assets/tunisia-governorates-map.png';
+import tunisiaMapSvg from '../../assets/tunisie52.svg';
 
 const INITIAL_PESTEL = {
   Politique: [{ id: 1, text: 'Reglementations etatiques importation', energy: false }],
@@ -175,9 +175,9 @@ const INITIAL_PERIMETRE = {
       { id: 305, text: 'Parc Nassen', lieu: 'Nassen' },
     ],
     sousConcessionnaires: [
-      { id: 401, nom: 'Auto Service', ville: 'Sousse' },
-      { id: 402, nom: 'Sud Auto', ville: 'Sfax' },
-      { id: 403, nom: 'Cap Bon Motors', ville: 'Nabeul' },
+      { id: 401, nom: 'Auto Service', ville: 'Sousse', services: '', marques: '' },
+      { id: 402, nom: 'Sud Auto', ville: 'Sfax', services: '', marques: '' },
+      { id: 403, nom: 'Cap Bon Motors', ville: 'Nabeul', services: '', marques: '' },
     ],
   },
   activites: [
@@ -334,14 +334,14 @@ const INITIAL_SECTION_META = {
 };
 
 const RESEAU_MAP_POSITIONS = {
-  MEGRINE: { x: 770, y: 315 },
-  'LES BERGES DU LAC': { x: 808, y: 255 },
-  'AZUR CITY': { x: 835, y: 335 },
-  'CITE EL KHADHRA': { x: 735, y: 245 },
-  NAASSEN: { x: 775, y: 390 },
-  SOUSSE: { x: 900, y: 540 },
-  SFAX: { x: 875, y: 760 },
-  NABEUL: { x: 955, y: 335 },
+  MEGRINE: { x: 12250, y: 5600 },
+  'LES BERGES DU LAC': { x: 12850, y: 4500 },
+  'AZUR CITY': { x: 13280, y: 5940 },
+  'CITE EL KHADHRA': { x: 11700, y: 4320 },
+  NAASSEN: { x: 12330, y: 6900 },
+  SOUSSE: { x: 14320, y: 9570 },
+  SFAX: { x: 13920, y: 13480 },
+  NABEUL: { x: 15190, y: 5940 },
 };
 
 const INITIAL_MODULE_STATE = {
@@ -664,9 +664,9 @@ function TunisiaNetworkMapCard({ propre, sousConcessionnaires }) {
         Carte du reseau en Tunisie
       </div>
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
-        <div className="mx-auto w-full max-w-[480px]">
-          <svg viewBox="0 0 1320 1580" className="h-auto w-full rounded-xl">
-            <image href={tunisiaGovernoratesMap} x="0" y="0" width="1320" height="1580" preserveAspectRatio="xMidYMid meet" />
+        <div className="mx-auto w-full max-w-[560px]">
+          <svg viewBox="0 0 21000 29700" className="h-auto w-full rounded-xl">
+            <image href={tunisiaMapSvg} x="0" y="0" width="21000" height="29700" preserveAspectRatio="xMidYMid meet" />
             {markers.map((marker) => (
               <g key={marker.id} transform={`translate(${marker.x} ${marker.y})`}>
                 <circle
@@ -1206,8 +1206,11 @@ export default function UtilitiesModule({ onBack, user }) {
             lieu: item.lieu ?? inferReseauPropreLieu(item.text),
           })) || INITIAL_PERIMETRE.reseau.propre,
         sousConcessionnaires:
-          moduleData.perimetre?.reseau?.sousConcessionnaires ||
-          INITIAL_PERIMETRE.reseau.sousConcessionnaires,
+          moduleData.perimetre?.reseau?.sousConcessionnaires?.map((item) => ({
+            ...item,
+            services: item.services ?? '',
+            marques: item.marques ?? '',
+          })) || INITIAL_PERIMETRE.reseau.sousConcessionnaires,
       },
       activites: moduleData.perimetre?.activites || INITIAL_PERIMETRE.activites,
       sites: moduleData.perimetre?.sites || INITIAL_PERIMETRE.sites,
@@ -2572,6 +2575,8 @@ export default function UtilitiesModule({ onBack, user }) {
                                     addPerimetreNestedArrayItem('reseau', 'sousConcessionnaires', {
                                       nom: 'Nouveau concessionnaire',
                                       ville: 'Ville',
+                                      services: '',
+                                      marques: '',
                                     })
                                   }
                                   className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
@@ -2587,7 +2592,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                   className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm"
                                 >
                                   {presentationEditing ? (
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1.1fr)_150px]">
                                       <input
                                         type="text"
                                         value={item.nom}
@@ -2600,7 +2605,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                             event.target.value
                                           )
                                         }
-                                        className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm font-semibold"
+                                        className="rounded border border-slate-200 bg-white px-2 py-1 text-sm font-semibold"
                                       />
                                       <input
                                         type="text"
@@ -2614,25 +2619,68 @@ export default function UtilitiesModule({ onBack, user }) {
                                             event.target.value
                                           )
                                         }
-                                        className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:w-40"
+                                        placeholder="Emplacement"
+                                        className="rounded border border-slate-200 bg-white px-2 py-1 text-sm"
                                       />
-                                      <ItemDeleteButton
-                                        alwaysVisible
-                                        onClick={() =>
-                                          removePerimetreNestedArrayItem(
+                                      <input
+                                        type="text"
+                                        value={item.services ?? ''}
+                                        onChange={(event) =>
+                                          updatePerimetreNestedArrayItem(
                                             'reseau',
                                             'sousConcessionnaires',
-                                            item.id
+                                            item.id,
+                                            'services',
+                                            event.target.value
                                           )
                                         }
+                                        placeholder="Services"
+                                        className="rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:col-span-2"
                                       />
+                                      <input
+                                        type="text"
+                                        value={item.marques ?? ''}
+                                        onChange={(event) =>
+                                          updatePerimetreNestedArrayItem(
+                                            'reseau',
+                                            'sousConcessionnaires',
+                                            item.id,
+                                            'marques',
+                                            event.target.value
+                                          )
+                                        }
+                                        placeholder="Marques representees (separees par -)"
+                                        className="rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:col-span-2"
+                                      />
+                                      <div className="sm:col-span-2 flex justify-end">
+                                        <ItemDeleteButton
+                                          alwaysVisible
+                                          onClick={() =>
+                                            removePerimetreNestedArrayItem(
+                                              'reseau',
+                                              'sousConcessionnaires',
+                                              item.id
+                                            )
+                                          }
+                                        />
+                                      </div>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center justify-between gap-3">
-                                      <span className="font-semibold text-slate-800">{item.nom}</span>
-                                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
-                                        {item.ville}
-                                      </span>
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                      <div className="min-w-0">
+                                        <div className="font-semibold text-slate-800">{item.nom}</div>
+                                        {item.marques ? (
+                                          <div className="mt-1 text-[11px] font-medium text-slate-500">{item.marques}</div>
+                                        ) : null}
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                                        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
+                                          {item.ville}
+                                        </span>
+                                        {item.services ? (
+                                          <span className="text-xs font-medium text-slate-500">{item.services}</span>
+                                        ) : null}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
