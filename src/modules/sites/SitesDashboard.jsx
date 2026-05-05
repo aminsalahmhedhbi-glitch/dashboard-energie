@@ -318,11 +318,113 @@ const toNumberOrZero = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const safeDivide = (numerator, denominator) =>
+  denominator > 0 ? numerator / denominator : 0;
+
 const formatCompactNumber = (value, digits = 0) =>
   toNumberOrZero(value).toLocaleString('fr-FR', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+
+const getAirLogTimestamp = (row = {}) => {
+  const rawValue = row.createdAt || row.created_at || row.date || row.timestamp || 0;
+  const timestamp = new Date(rawValue).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+const getAirWeekSortValue = (weekValue = '') => {
+  const match = String(weekValue).match(/^(\d{4})-W(\d{1,2})$/i);
+  if (!match) {
+    return 0;
+  }
+  return Number(match[1]) * 100 + Number(match[2]);
+};
+
+const getAirWeekLabel = (weekValue = '') => {
+  const match = String(weekValue).match(/^(\d{4})-W(\d{1,2})$/i);
+  if (!match) {
+    return weekValue || 'S--';
+  }
+  return `S${Number(match[2])} ${String(match[1]).slice(-2)}`;
+};
+
+const normalizeAirWeeklyLog = (row = {}) => {
+  const type = row.type || row.entry_type || row.entryType || '';
+  const compressorId = Number(
+    row.compressorId ??
+      row.compressor ??
+      row.comp ??
+      row.compresseurId ??
+      0
+  );
+  const runHours = toNumberOrZero(row.runDelta ?? row.runHours ?? row.heuresMarche);
+  const loadHours = toNumberOrZero(row.loadDelta ?? row.loadHours ?? row.heuresCharge);
+  const energyConsumedKwh = toNumberOrZero(
+    row.energyConsumedKwh ?? row.energie ?? row.energieConsommee
+  );
+  const volumeProducedM3 = toNumberOrZero(
+    row.volumeProducedM3 ?? row.volume ?? row.volumeProduit
+  );
+  const kpi =
+    row.kpi !== undefined && row.kpi !== null
+      ? toNumberOrZero(row.kpi)
+      : safeDivide(energyConsumedKwh, volumeProducedM3);
+
+  return {
+    ...row,
+    type,
+    week: row.week || row.semaine || row.period || '',
+    compressorId,
+    runHours,
+    loadHours,
+    energyConsumedKwh,
+    volumeProducedM3,
+    kpi,
+    timestamp: getAirLogTimestamp(row),
+  };
+};
+
+const buildAirWeeklyKpiSeries = (airLogs = []) => {
+  const weeklyReports = airLogs
+    .map(normalizeAirWeeklyLog)
+    .filter((row) => row.type === 'WEEKLY_REPORT')
+    .filter((row) => row.week);
+
+  const groupedByWeek = weeklyReports.reduce((accumulator, row) => {
+    const key = row.week;
+    if (!accumulator[key]) {
+      accumulator[key] = {};
+    }
+    const existing = accumulator[key][row.compressorId];
+    if (!existing || row.timestamp > existing.timestamp) {
+      accumulator[key][row.compressorId] = row;
+    }
+    return accumulator;
+  }, {});
+
+  return Object.entries(groupedByWeek)
+    .map(([week, rowsByCompressor]) => {
+      const rows = Object.values(rowsByCompressor);
+      const totalEnergy = rows.reduce(
+        (sum, row) => sum + toNumberOrZero(row.energyConsumedKwh),
+        0
+      );
+      const totalVolume = rows.reduce(
+        (sum, row) => sum + toNumberOrZero(row.volumeProducedM3),
+        0
+      );
+
+      return {
+        week,
+        label: getAirWeekLabel(week),
+        sortValue: getAirWeekSortValue(week),
+        value: safeDivide(totalEnergy, totalVolume),
+      };
+    })
+    .filter((row) => row.value > 0)
+    .sort((left, right) => right.sortValue - left.sortValue);
+};
 
 const getUsageShareByKeywords = (usages = [], keywords = []) => {
   const loweredKeywords = keywords.map((keyword) => keyword.toLowerCase());
@@ -432,6 +534,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   // Pour simplifier l'historique sur le serveur simple, on charge tout 'site_history'
   const { data: allHistory } = useData('site_history', { intervalMs: 0 });
+  const { data: airLogs } = useData('air_logs', { initialData: [], intervalMs: 0 });
   const { factures: siteFactures, loading: facturesLoading } = useFactures({
       site: activeSiteTab,
       intervalMs: 15000,
@@ -1159,7 +1262,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const currentMonthTemp = toNumberOrZero(getSiteData(activeSiteTab, currentYear, 'temperature')[analysisMonthIndex]);
   const previousMonthTemp = toNumberOrZero(getSiteData(activeSiteTab, currentYear - 1, 'temperature')[analysisMonthIndex]);
   const climateDelta = currentMonthTemp - previousMonthTemp;
-  const coveredArea = toNumberOrZero(currentData.covered || currentData.area);
+  const totalSiteArea = toNumberOrZero(currentData.area || currentData.covered);
 
   const usagePieData = useMemo(() => {
     const palette = ['#1d4ed8', '#0ea5e9', '#8b5cf6', '#f59e0b', '#16a34a', '#ef4444', '#64748b'];
@@ -1249,7 +1352,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   const usageShareLighting = getUsageShareByKeywords(currentData.elecUsage, ['eclairage']);
   const usageShareCvc = getUsageShareByKeywords(currentData.elecUsage, ['clim', 'cvc', 'chauffage']);
-  const usageShareAir = getUsageShareByKeywords(currentData.elecUsage, ['air comprim']);
 
   const kpiHistorySeries = useMemo(() => {
     const factureSeries = (factureInsights.monthlyRows || []).map((row) => ({
@@ -1279,38 +1381,52 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       .slice(-6);
 
     return sourceRows.map((row) => {
-      const totalRatio = coveredArea > 0 ? row.consommation / coveredArea : 0;
+      const totalRatio = totalSiteArea > 0 ? row.consommation / totalSiteArea : 0;
+      const lightingRatio = totalSiteArea > 0 ? (row.consommation * usageShareLighting) / totalSiteArea : 0;
+      const cvcRatio = totalSiteArea > 0 ? (row.consommation * usageShareCvc) / totalSiteArea : 0;
       return {
         label: `${SHORT_MONTH_NAMES[row.monthIndex]} ${String(row.year).slice(-2)}`,
         total: Number(totalRatio.toFixed(3)),
-        lighting: Number((totalRatio * usageShareLighting).toFixed(3)),
-        cvc: Number((totalRatio * usageShareCvc).toFixed(3)),
-        air: Number((totalRatio * usageShareAir).toFixed(3)),
+        lighting: Number(lightingRatio.toFixed(3)),
+        cvc: Number(cvcRatio.toFixed(3)),
+        air: 0,
       };
     });
   }, [
-    coveredArea,
+    totalSiteArea,
     factureInsights.monthlyRows,
     getFactureBackedHistoryValues,
     historySeriesType,
-    usageShareAir,
     usageShareCvc,
     usageShareLighting,
     yearsRange,
   ]);
-
-  const latestKpiSnapshot = kpiHistorySeries[kpiHistorySeries.length - 1] || {
-    total: coveredArea > 0 ? displayedCurrentMonthValue / coveredArea : 0,
-    lighting: coveredArea > 0 ? (displayedCurrentMonthValue / coveredArea) * usageShareLighting : 0,
-    cvc: coveredArea > 0 ? (displayedCurrentMonthValue / coveredArea) * usageShareCvc : 0,
-    air: coveredArea > 0 ? (displayedCurrentMonthValue / coveredArea) * usageShareAir : 0,
-  };
 
   const visionReductionTarget = toNumberOrZero(currentData.targets?.reduction2030 || 10);
   const visionRenewableTarget = toNumberOrZero(currentData.targets?.renewable2030 || 20);
   const referenceBase = displayedReferenceYtdValue > 0 ? displayedReferenceYtdValue : displayedCurrentYtdValue;
   const targetConso2030 = referenceBase * (1 - visionReductionTarget / 100);
   const hasAirComprime = ['MEGRINE', 'ELKHADHRA', 'NAASSEN'].includes(activeSiteTab);
+  const airWeeklyKpiSeries = useMemo(() => {
+    if (!hasAirComprime) {
+      return [];
+    }
+
+    return buildAirWeeklyKpiSeries(Array.isArray(airLogs) ? airLogs : [])
+      .slice(0, 4)
+      .reverse();
+  }, [airLogs, hasAirComprime]);
+
+  const averageAirKpi = airWeeklyKpiSeries.length
+    ? airWeeklyKpiSeries.reduce((sum, row) => sum + toNumberOrZero(row.value), 0) / airWeeklyKpiSeries.length
+    : 0;
+
+  const latestKpiSnapshot = {
+    total: totalSiteArea > 0 ? displayedCurrentMonthValue / totalSiteArea : 0,
+    lighting: totalSiteArea > 0 ? (displayedCurrentMonthValue * usageShareLighting) / totalSiteArea : 0,
+    cvc: totalSiteArea > 0 ? (displayedCurrentMonthValue * usageShareCvc) / totalSiteArea : 0,
+    air: averageAirKpi,
+  };
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20 relative font-sans text-slate-600">
@@ -1615,15 +1731,15 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-                  <ReviewMetricCard title="Performance globale" value={formatCompactNumber(latestKpiSnapshot.total, 3)} unit="kWh/m²" accent="blue" subtitle="Consommation globale rapportee a l'espace couvert" />
-                  <ReviewMetricCard title="IPE eclairage" value={formatCompactNumber(latestKpiSnapshot.lighting, 3)} unit="kWh/m²" accent="amber" subtitle="Part eclairage issue de la repartition des usages" />
-                  <ReviewMetricCard title="IPE CVC" value={formatCompactNumber(latestKpiSnapshot.cvc, 3)} unit="kWh/m²" accent="indigo" subtitle="Part CVC issue de la repartition des usages" />
+                  <ReviewMetricCard title="Performance globale" value={formatCompactNumber(latestKpiSnapshot.total, 3)} unit="kWh/m²" accent="blue" subtitle="kWh consommes par site / surface totale m2" />
+                  <ReviewMetricCard title="IPE eclairage" value={formatCompactNumber(latestKpiSnapshot.lighting, 3)} unit="kWh/m²" accent="amber" subtitle="kWh consommes x % usage eclairage / surface totale" />
+                  <ReviewMetricCard title="IPE CVC" value={formatCompactNumber(latestKpiSnapshot.cvc, 3)} unit="kWh/m²" accent="indigo" subtitle="kWh consommes x % usage clim / surface totale" />
                   <ReviewMetricCard
                     title={hasAirComprime ? 'IPE air comprime' : 'Air comprime'}
                     value={hasAirComprime ? formatCompactNumber(latestKpiSnapshot.air, 3) : 'N/A'}
-                    unit={hasAirComprime ? 'indice' : ''}
+                    unit={hasAirComprime ? 'kpi' : ''}
                     accent="slate"
-                    subtitle={hasAirComprime ? 'Part air comprime issue de la repartition des usages' : 'Non applicable pour ce site'}
+                    subtitle={hasAirComprime ? 'Moyenne des 4 derniers releves air comprime' : 'Non applicable pour ce site'}
                   />
                 </div>
             </section>
@@ -1738,7 +1854,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                 <ReviewTrendChart title="IPE eclairage" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.lighting }))} color="#f59e0b" unit="kWh/m²" emptyText="Aucun historique eclairage disponible." />
                 <ReviewTrendChart title="IPE climatisation / CVC" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.cvc }))} color="#2563eb" unit="kWh/m²" emptyText="Aucun historique CVC disponible." />
                 {hasAirComprime ? (
-                  <ReviewTrendChart title="IPE air comprime" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.air }))} color="#7c3aed" unit="indice" emptyText="Aucun historique air comprime disponible." />
+                  <ReviewTrendChart title="IPE air comprime" data={airWeeklyKpiSeries.map((item) => ({ label: item.label, value: item.value }))} color="#7c3aed" unit="kpi" emptyText="Aucun releve air comprime disponible sur les 4 dernieres semaines." />
                 ) : (
                   <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-slate-200 bg-slate-100/70 p-6 text-slate-400">
                     <Wind size={34} className="mb-3 opacity-40" />
@@ -2198,4 +2314,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 // ==================================================================================
 
 export default SitesDashboard;
+
+
 
