@@ -327,6 +327,12 @@ const formatCompactNumber = (value, digits = 0) =>
     maximumFractionDigits: digits,
   });
 
+const normalizeSearchText = (value = '') =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
 const getAirLogTimestamp = (row = {}) => {
   const rawValue = row.createdAt || row.created_at || row.date || row.timestamp || 0;
   const timestamp = new Date(rawValue).getTime();
@@ -427,9 +433,9 @@ const buildAirWeeklyKpiSeries = (airLogs = []) => {
 };
 
 const getUsageShareByKeywords = (usages = [], keywords = []) => {
-  const loweredKeywords = keywords.map((keyword) => keyword.toLowerCase());
+  const loweredKeywords = keywords.map((keyword) => normalizeSearchText(keyword));
   const total = usages.reduce((sum, usage) => {
-    const name = String(usage?.name || '').toLowerCase();
+    const name = normalizeSearchText(usage?.name || '');
     return loweredKeywords.some((keyword) => name.includes(keyword))
       ? sum + toNumberOrZero(usage?.value)
       : sum;
@@ -1406,7 +1412,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const visionRenewableTarget = toNumberOrZero(currentData.targets?.renewable2030 || 20);
   const referenceBase = displayedReferenceYtdValue > 0 ? displayedReferenceYtdValue : displayedCurrentYtdValue;
   const targetConso2030 = referenceBase * (1 - visionReductionTarget / 100);
-  const hasAirComprime = ['MEGRINE', 'ELKHADHRA', 'NAASSEN'].includes(activeSiteTab);
+  const hasAirComprime = activeSiteTab === 'MEGRINE';
   const airWeeklyKpiSeries = useMemo(() => {
     if (!hasAirComprime) {
       return [];
