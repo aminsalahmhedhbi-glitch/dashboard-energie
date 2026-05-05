@@ -312,9 +312,24 @@ const StegModule = ({ onBack, userRole, user }) => {
   const formatInputDisplay = (val) => { if (val === '' || val === undefined || val === null) return ''; const cleanVal = val.toString().replace(/[^0-9.-]/g, ''); return cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, " "); };
   const parseInputValue = (val) => val.replace(/\s/g, ''); 
 
+  const normalizeSiteLabel = (value) =>
+    String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  const normalizeSiteId = (value) => {
+    if (value === undefined || value === null || value === '') return '';
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return String(Math.trunc(parsed));
+    return String(value).trim();
+  };
+  const normalizeSiteIdentity = (value) => normalizeSiteLabel(getSiteDisplayName(value));
+
  useEffect(() => {
   const siteLogs = billingHistory
-    .filter((l) => String(l.siteId) === String(currentSite))
+    .filter((l) => normalizeSiteId(l.siteId) === normalizeSiteId(currentSite))
     .sort((a, b) => {
       const dateA = new Date(a._createdAt || a.recordDate || a.date || 0).getTime();
       const dateB = new Date(b._createdAt || b.recordDate || b.date || 0).getTime();
@@ -606,10 +621,9 @@ const StegModule = ({ onBack, userRole, user }) => {
 
     setTimeout(() => setNotification(null), 3000);
  };
-  console.log("billingHistory:", billingHistory);  
   const liveMetrics = calculateMetrics();
   const monthlyConsumptionData = useMemo(() => {
-    const siteHistory = billingHistory.filter(l => l.siteId == currentSite);
+    const siteHistory = billingHistory.filter((l) => normalizeSiteId(l.siteId) === normalizeSiteId(currentSite));
     const monthlyMap = new Map();
 
     siteHistory.forEach((log) => {
@@ -650,30 +664,34 @@ const StegModule = ({ onBack, userRole, user }) => {
       }));
   }, [billingHistory, currentSite]);
 
-  const normalizeSiteLabel = (value) =>
-    String(value || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
-
   const filteredBillingHistory = useMemo(() => {
     const targetSite = SITES.find((site) => site.id === currentSite);
-    const targetId = String(currentSite);
-    const targetName = normalizeSiteLabel(targetSite?.name);
-    const targetCode = normalizeSiteLabel(targetSite?.code);
+    const targetId = normalizeSiteId(currentSite);
+    const targetAliases = new Set(
+      [
+        targetSite?.name,
+        targetSite?.code,
+        SITE_KEYS_BY_ID[currentSite],
+        getSiteDisplayName(targetSite?.name),
+        getSiteDisplayName(targetSite?.code),
+        getSiteDisplayName(SITE_KEYS_BY_ID[currentSite])
+      ]
+        .map(normalizeSiteIdentity)
+        .filter(Boolean)
+    );
 
     return billingHistory.filter((log) => {
-      const logSiteId = log.siteId != null ? String(log.siteId) : '';
-      const logSiteName = normalizeSiteLabel(log.siteName);
-      const logSiteCode = normalizeSiteLabel(log.siteCode || log.code);
+      const identities = [
+        normalizeSiteId(log.siteId ?? log.site_id ?? log.siteID),
+        normalizeSiteIdentity(log.siteKey),
+        normalizeSiteIdentity(log.site),
+        normalizeSiteIdentity(log.siteName),
+        normalizeSiteIdentity(log.siteLabel),
+        normalizeSiteIdentity(log.site_name),
+        normalizeSiteIdentity(log.siteCode || log.code)
+      ].filter(Boolean);
 
-      return (
-        logSiteId === targetId ||
-        logSiteName === targetName ||
-        (targetCode && logSiteCode === targetCode)
-      );
+      return identities.some((identity) => identity === targetId || targetAliases.has(identity));
     });
   }, [billingHistory, currentSite]);
 
