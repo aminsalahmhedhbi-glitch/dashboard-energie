@@ -1499,6 +1499,12 @@ export default function UtilitiesModule({ onBack, user }) {
     );
   }, [documents, documentSearch]);
 
+  const sousConcessionnaireColumns = useMemo(() => {
+    const items = perimetre.reseau.sousConcessionnaires || [];
+    const midpoint = Math.ceil(items.length / 2);
+    return [items.slice(0, midpoint), items.slice(midpoint)];
+  }, [perimetre.reseau.sousConcessionnaires]);
+
   const nextAttenteCode = useMemo(() => {
     const count = stakeholders.reduce((acc, stakeholder) => acc + stakeholder.attentes.length, 0) + 1;
     return `A${String(count).padStart(2, '0')}`;
@@ -2498,58 +2504,7 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                        Abreviations
-                      </h4>
-                      <div className="space-y-3">
-                        {perimetre.abreviations.map((item) => (
-                          <div key={item.id} className="flex items-start gap-3 text-sm">
-                            {presentationEditing ? (
-                              <>
-                                <input
-                                  type="text"
-                                  value={item.court}
-                                  onChange={(event) =>
-                                    updatePerimetreArrayItem('abreviations', item.id, 'court', event.target.value)
-                                  }
-                                  className="w-16 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-[#233876]"
-                                />
-                                <input
-                                  type="text"
-                                  value={item.long}
-                                  onChange={(event) =>
-                                    updatePerimetreArrayItem('abreviations', item.id, 'long', event.target.value)
-                                  }
-                                  className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                />
-                                <ItemDeleteButton
-                                  alwaysVisible
-                                  onClick={() => removePerimetreArrayItem('abreviations', item.id)}
-                                />
-                              </>
-                            ) : (
-                              <>
-                                <span className="min-w-[48px] font-bold text-[#233876]">{item.court}</span>
-                                <span className="text-slate-600">{item.long}</span>
-                              </>
-                            )}
-                          </div>
-                        ))}
-                        {presentationEditing && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              addPerimetreArrayItem('abreviations', { court: 'NEW', long: 'Nouvelle abreviation' })
-                            }
-                            className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
-                          >
-                            + Ajouter
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                                      </div>
 
                   <div className="space-y-6 xl:col-span-8">
                     <div className="overflow-hidden rounded-2xl border border-transparent bg-gradient-to-br from-[#233876] to-[#3653a6] p-7 text-white shadow-lg">
@@ -2603,16 +2558,76 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.8fr)]">
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="mb-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          <MapPin className="h-3.5 w-3.5" />
-                          Reseau ITALCAR
-                        </div>
+                                            <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        Abreviations
+                      </h4>
+                      <div className="space-y-3">
+                        {perimetre.abreviations.map((item) => (
+                          <div key={item.id} className="flex items-start gap-3 text-sm">
+                            {presentationEditing ? (
+                              <>
+                                <input
+                                  type="text"
+                                  value={item.court}
+                                  onChange={(event) =>
+                                    updatePerimetreArrayItem('abreviations', item.id, 'court', event.target.value)
+                                  }
+                                  className="w-16 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-[#233876]"
+                                />
+                                <input
+                                  type="text"
+                                  value={item.long}
+                                  onChange={(event) =>
+                                    updatePerimetreArrayItem('abreviations', item.id, 'long', event.target.value)
+                                  }
+                                  className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                />
+                                <ItemDeleteButton
+                                  alwaysVisible
+                                  onClick={() => removePerimetreArrayItem('abreviations', item.id)}
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <span className="min-w-[48px] font-bold text-[#233876]">{item.court}</span>
+                                <span className="text-slate-600">{item.long}</span>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                        {presentationEditing && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addPerimetreArrayItem('abreviations', { court: 'NEW', long: 'Nouvelle abreviation' })
+                            }
+                            className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
+                          >
+                            + Ajouter
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
-                        <div className="space-y-6">
-                          <div>
-                            <div className="mb-3 flex items-center justify-between">
+
+                      <TunisiaNetworkMapCard
+                        propre={perimetre.reseau.propre}
+                        sousConcessionnaires={perimetre.reseau.sousConcessionnaires}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="xl:col-span-12">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="mb-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        <MapPin className="h-3.5 w-3.5" />
+                        Reseau ITALCAR
+                      </div>
+                      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+<div className="mb-3 flex items-center justify-between">
                               <h4 className="text-sm font-black text-slate-900">Reseau propre</h4>
                               {presentationEditing && (
                                 <button
@@ -2728,14 +2743,19 @@ export default function UtilitiesModule({ onBack, user }) {
                               ))}
                             </div>
                           </div>
+                        </div>
 
-                          <div className="border-t border-slate-200 pt-5">
+                        {sousConcessionnaireColumns.map((columnItems, columnIndex) => (
+                          <div
+                            key={`sous-col-${columnIndex}`}
+                            className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+                          >
                             <div className="mb-3 flex items-center justify-between">
                               <h4 className="flex items-center gap-2 text-sm font-black text-slate-900">
                                 <Users className="h-4 w-4 text-[#233876]" />
                                 Sous-concessionnaires
                               </h4>
-                              {presentationEditing && (
+                              {presentationEditing && columnIndex === 0 && (
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -2753,141 +2773,143 @@ export default function UtilitiesModule({ onBack, user }) {
                               )}
                             </div>
                             <div className="space-y-3">
-                              {perimetre.reseau.sousConcessionnaires.map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm"
-                                >
-                                  {presentationEditing ? (
-                                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1.1fr)_150px]">
-                                      <input
-                                        type="text"
-                                        value={item.nom}
-                                        onChange={(event) =>
-                                          updatePerimetreNestedArrayItem(
-                                            'reseau',
-                                            'sousConcessionnaires',
-                                            item.id,
-                                            'nom',
-                                            event.target.value
-                                          )
-                                        }
-                                        className="rounded border border-slate-200 bg-white px-2 py-1 text-sm font-semibold"
-                                      />
-                                      <select
-                                        value={item.ville}
-                                        onChange={(event) =>
-                                          updatePerimetreNestedArrayItem(
-                                            'reseau',
-                                            'sousConcessionnaires',
-                                            item.id,
-                                            'ville',
-                                            event.target.value
-                                          )
-                                        }
-                                        className="rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                      >
-                                        {TUNISIA_GOVERNORATE_OPTIONS.map((option) => (
-                                          <option key={option} value={option}>
-                                            {option}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <select
-                                        value={item.services ?? ''}
-                                        onChange={(event) =>
-                                          updatePerimetreNestedArrayItem(
-                                            'reseau',
-                                            'sousConcessionnaires',
-                                            item.id,
-                                            'services',
-                                            event.target.value
-                                          )
-                                        }
-                                        className="rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:col-span-2"
-                                      >
-                                        <option value="">Choisir le service</option>
-                                        {CONCESSIONNAIRE_SERVICE_OPTIONS.map((option) => (
-                                          <option key={option} value={option}>
-                                            {option}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-white p-3">
-                                        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                                          Marques representees
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                          {perimetre.marques.map((marque) => {
-                                            const label = marque.text?.trim();
-                                            if (!label) return null;
-                                            const selected = normalizeConcessionnaireMarques(item.marques).includes(label);
-                                            return (
-                                              <button
-                                                key={`${item.id}-${marque.id}`}
-                                                type="button"
-                                                onClick={() => toggleConcessionnaireMarque(item.id, label)}
-                                                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                                                  selected
-                                                    ? 'border-[#233876] bg-[#233876] text-white'
-                                                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-[#233876] hover:text-[#233876]'
-                                                }`}
-                                              >
-                                                {label}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                      <div className="sm:col-span-2 flex justify-end">
-                                        <ItemDeleteButton
-                                          alwaysVisible
-                                          onClick={() =>
-                                            removePerimetreNestedArrayItem(
+                              {columnItems.length ? (
+                                columnItems.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="rounded-xl border border-slate-100 bg-white px-3 py-3 text-sm"
+                                  >
+                                    {presentationEditing ? (
+                                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1.1fr)_150px]">
+                                        <input
+                                          type="text"
+                                          value={item.nom}
+                                          onChange={(event) =>
+                                            updatePerimetreNestedArrayItem(
                                               'reseau',
                                               'sousConcessionnaires',
-                                              item.id
+                                              item.id,
+                                              'nom',
+                                              event.target.value
                                             )
                                           }
+                                          className="rounded border border-slate-200 bg-white px-2 py-1 text-sm font-semibold"
                                         />
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                      <div className="min-w-0">
-                                        <div className="font-semibold text-slate-800">{item.nom}</div>
-                                        {formatConcessionnaireMarques(item.marques) ? (
-                                          <div className="mt-1 text-[11px] font-medium text-slate-500">
-                                            {formatConcessionnaireMarques(item.marques)}
+                                        <select
+                                          value={item.ville}
+                                          onChange={(event) =>
+                                            updatePerimetreNestedArrayItem(
+                                              'reseau',
+                                              'sousConcessionnaires',
+                                              item.id,
+                                              'ville',
+                                              event.target.value
+                                            )
+                                          }
+                                          className="rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                        >
+                                          {TUNISIA_GOVERNORATE_OPTIONS.map((option) => (
+                                            <option key={option} value={option}>
+                                              {option}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <select
+                                          value={item.services ?? ''}
+                                          onChange={(event) =>
+                                            updatePerimetreNestedArrayItem(
+                                              'reseau',
+                                              'sousConcessionnaires',
+                                              item.id,
+                                              'services',
+                                              event.target.value
+                                            )
+                                          }
+                                          className="rounded border border-slate-200 bg-white px-2 py-1 text-sm sm:col-span-2"
+                                        >
+                                          <option value="">Choisir le service</option>
+                                          {CONCESSIONNAIRE_SERVICE_OPTIONS.map((option) => (
+                                            <option key={option} value={option}>
+                                              {option}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-white p-3">
+                                          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                            Marques representees
                                           </div>
-                                        ) : null}
+                                          <div className="flex flex-wrap gap-2">
+                                            {perimetre.marques.map((marque) => {
+                                              const label = marque.text?.trim();
+                                              if (!label) return null;
+                                              const selected = normalizeConcessionnaireMarques(item.marques).includes(label);
+                                              return (
+                                                <button
+                                                  key={`${item.id}-${marque.id}`}
+                                                  type="button"
+                                                  onClick={() => toggleConcessionnaireMarque(item.id, label)}
+                                                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                                                    selected
+                                                      ? 'border-[#233876] bg-[#233876] text-white'
+                                                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-[#233876] hover:text-[#233876]'
+                                                  }`}
+                                                >
+                                                  {label}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                        <div className="sm:col-span-2 flex justify-end">
+                                          <ItemDeleteButton
+                                            alwaysVisible
+                                            onClick={() =>
+                                              removePerimetreNestedArrayItem(
+                                                'reseau',
+                                                'sousConcessionnaires',
+                                                item.id
+                                              )
+                                            }
+                                          />
+                                        </div>
                                       </div>
-                                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                                        {item.services ? (
+                                    ) : (
+                                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0">
+                                          <div className="font-semibold text-slate-800">{item.nom}</div>
+                                          {formatConcessionnaireMarques(item.marques) ? (
+                                            <div className="mt-1 text-[11px] font-medium text-slate-500">
+                                              {formatConcessionnaireMarques(item.marques)}
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                                          {item.services ? (
+                                            <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-bold text-orange-700">
+                                              {item.services}
+                                            </span>
+                                          ) : null}
                                           <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-bold text-orange-700">
-                                            {item.services}
+                                            {item.ville}
                                           </span>
-                                        ) : null}
-                                        <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-bold text-orange-700">
-                                          {item.ville}
-                                        </span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-5 text-center text-sm text-slate-400">
+                                  Aucun sous-concessionnaire dans cette colonne.
                                 </div>
-                              ))}
+                              )}
                             </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
-
-                      <TunisiaNetworkMapCard
-                        propre={perimetre.reseau.propre}
-                        sousConcessionnaires={perimetre.reseau.sousConcessionnaires}
-                      />
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:col-span-12">
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <h4 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                           Contexte
@@ -3121,8 +3143,6 @@ export default function UtilitiesModule({ onBack, user }) {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
           </section>
         )}
 
