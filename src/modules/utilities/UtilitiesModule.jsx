@@ -742,19 +742,19 @@ function buildReseauMarkers(propre = [], sousConcessionnaires = []) {
   return markers;
 }
 
-function TunisiaNetworkMapCard() {
+function TunisiaNetworkMapCard({ className = '' }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 p-5 shadow-sm">
+    <div className={`flex h-full flex-col rounded-2xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 p-5 shadow-sm ${className}`}>
       <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
         <MapPin className="h-3.5 w-3.5" />
         Carte du reseau en Tunisie
       </div>
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
-        <div className="flex h-[390px] w-full items-start justify-center overflow-hidden rounded-xl bg-white/80">
+      <div className="flex flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="flex min-h-[360px] flex-1 items-center justify-center overflow-hidden rounded-xl bg-white/80">
           <img
             src={reseauPropreMockup}
             alt="Reseau ITALCAR en Tunisie"
-            className="h-full w-full object-contain object-top"
+            className="h-[90%] w-[90%] object-contain object-center"
           />
         </div>
       </div>
@@ -2528,8 +2528,8 @@ export default function UtilitiesModule({ onBack, user }) {
 
                   </div>
 
-                  <div className="space-y-6 xl:col-span-8">
-                    <div className="overflow-hidden rounded-2xl border border-transparent bg-gradient-to-br from-[#233876] to-[#3653a6] p-7 text-white shadow-lg">
+                  <div className="flex h-full flex-col gap-6 xl:col-span-8">
+                    <div className="shrink-0 overflow-hidden rounded-2xl border border-transparent bg-gradient-to-br from-[#233876] to-[#3653a6] p-7 text-white shadow-lg">
                       <h4 className="mb-5 flex items-center gap-2 text-sm font-black uppercase tracking-wider">
                         <Target className="h-4 w-4" />
                         Domaines d'activite
@@ -2580,7 +2580,7 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
 
-                    <TunisiaNetworkMapCard />
+                    <TunisiaNetworkMapCard className="flex-1" />
                   </div>
 
                   <div className="xl:col-span-12">
