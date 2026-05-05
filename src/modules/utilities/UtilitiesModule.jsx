@@ -712,6 +712,125 @@ function formatReseauActivites(value) {
   return normalizeReseauActivites(value).join(' - ');
 }
 
+function buildQualiteScopeContent(perimetre) {
+  const activites = (perimetre?.activites || [])
+    .map((item) => String(item?.text || '').trim())
+    .filter(Boolean);
+  const exclusions = String(perimetre?.qualiteScope?.exclusions || '').trim();
+  const sections = [];
+
+  if (activites.length) {
+    sections.push('**Activites couvertes :**');
+    sections.push(...activites.map((item) => `* ${item}`));
+  }
+
+  if (exclusions) {
+    if (sections.length) sections.push('');
+    sections.push('**Exclusions :**');
+    sections.push(exclusions);
+  }
+
+  return sections.join('\n');
+}
+
+function buildEnergieScopeContent(perimetre) {
+  const sites = (perimetre?.sites || [])
+    .map((item) => String(item?.text || '').trim())
+    .filter(Boolean);
+  const portee = String(perimetre?.energieScope?.activites?.[0] || '').trim();
+  const sections = [];
+
+  if (sites.length) {
+    sections.push('**Sites couverts :**');
+    sections.push(...sites.map((item) => `* ${item}`));
+  }
+
+  if (portee) {
+    if (sections.length) sections.push('');
+    sections.push('**Portee energie :**');
+    sections.push(portee);
+  }
+
+  return sections.join('\n');
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function formatRichTextInline(value) {
+  let html = escapeHtml(value);
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, '$1<em>$2</em>');
+  return html;
+}
+
+function renderSimpleRichText(value) {
+  const lines = String(value || '').split(/\r?\n/);
+  const blocks = [];
+  let listItems = [];
+
+  const flushList = () => {
+    if (listItems.length) {
+      blocks.push(`<ul class="list-disc space-y-2 pl-6">${listItems.join('')}</ul>`);
+      listItems = [];
+    }
+  };
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushList();
+      return;
+    }
+
+    if (trimmed.startsWith('* ')) {
+      listItems.push(`<li>${formatRichTextInline(trimmed.slice(2))}</li>`);
+      return;
+    }
+
+    flushList();
+    blocks.push(`<p>${formatRichTextInline(trimmed)}</p>`);
+  });
+
+  flushList();
+  return blocks.join('');
+}
+
+function wrapSelectedText(value, selectionStart, selectionEnd, prefix, suffix = prefix) {
+  const start = Math.max(0, selectionStart ?? 0);
+  const end = Math.max(start, selectionEnd ?? start);
+  const selected = value.slice(start, end) || 'texte';
+  const nextValue = `${value.slice(0, start)}${prefix}${selected}${suffix}${value.slice(end)}`;
+  return {
+    value: nextValue,
+    selectionStart: start + prefix.length,
+    selectionEnd: start + prefix.length + selected.length,
+  };
+}
+
+function prefixSelectedLines(value, selectionStart, selectionEnd, prefix = '* ') {
+  const start = Math.max(0, selectionStart ?? 0);
+  const end = Math.max(start, selectionEnd ?? start);
+  const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+  const nextBreak = value.indexOf('\n', end);
+  const lineEnd = nextBreak == -1 ? value.length : nextBreak;
+  const segment = value.slice(lineStart, lineEnd);
+  const transformed = segment
+    .split('\n')
+    .map((line) => (line.trim() ? `${prefix}${line.replace(/^\*\s*/, '')}` : line))
+    .join('\n');
+  const nextValue = `${value.slice(0, lineStart)}${transformed}${value.slice(lineEnd)}`;
+  return {
+    value: nextValue,
+    selectionStart: lineStart,
+    selectionEnd: lineStart + transformed.length,
+  };
+}
+
 function buildReseauMarkers(propre = [], sousConcessionnaires = []) {
   const markers = [];
 
@@ -1322,6 +1441,8 @@ export default function UtilitiesModule({ onBack, user }) {
   const [attenteModalOpen, setAttenteModalOpen] = useState(false);
   const [attenteForm, setAttenteForm] = useState(emptyAttenteForm);
   const [docForm, setDocForm] = useState(emptyDocForm);
+  const qualiteEditorRef = useRef(null);
+  const energieEditorRef = useRef(null);
   const isAdmin = user?.role === 'ADMIN';
 
   const createSliceSetter = (key) => (updater) =>
@@ -1368,6 +1489,35 @@ export default function UtilitiesModule({ onBack, user }) {
         [field]: value,
       },
     }));
+  };
+
+  const qualiteScopeContent = perimetre.qualiteScope.content || buildQualiteScopeContent(perimetre);
+  const energieScopeContent = perimetre.energieScope.content || buildEnergieScopeContent(perimetre);
+
+  const applyScopeFormatting = (scopeKey, ref, mode) => {
+    const textarea = ref.current;
+    if (!textarea) return;
+
+    const currentValue = scopeKey === 'qualite' ? qualiteScopeContent : energieScopeContent;
+    const result =
+      mode === 'bold'
+        ? wrapSelectedText(currentValue, textarea.selectionStart, textarea.selectionEnd, '**')
+        : mode === 'italic'
+          ? wrapSelectedText(currentValue, textarea.selectionStart, textarea.selectionEnd, '*')
+          : prefixSelectedLines(currentValue, textarea.selectionStart, textarea.selectionEnd, '* ');
+
+    updatePerimetreNestedObject(
+      scopeKey === 'qualite' ? 'qualiteScope' : 'energieScope',
+      'content',
+      result.value
+    );
+
+    setTimeout(() => {
+      if (ref.current) {
+        ref.current.focus();
+        ref.current.setSelectionRange(result.selectionStart, result.selectionEnd);
+      }
+    }, 0);
   };
 
   const updatePerimetreArrayItem = (arrayKey, itemId, field, value) => {
@@ -2883,11 +3033,11 @@ export default function UtilitiesModule({ onBack, user }) {
                   </div>
                   <div className="grid grid-cols-1 gap-6 xl:col-span-12">
                     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                      <h4 className="mb-4 text-4xl font-black tracking-tight text-slate-950">
+                      <h4 className="mb-5 text-3xl font-black tracking-tight text-slate-950">
                         Contexte de L'entreprise
                       </h4>
-                      <div className="space-y-4">
-                        <div className="text-2xl font-black text-slate-950">&bull; Orientation Strategique :</div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                        <div className="mb-4 text-xl font-black text-slate-950">&bull; Orientation Strategique :</div>
                         {presentationEditing ? (
                           <textarea
                             rows="8"
@@ -2904,10 +3054,10 @@ export default function UtilitiesModule({ onBack, user }) {
                                   .filter((entry) => entry.text)
                               )
                             }
-                            className="min-h-[220px] w-full rounded-none border-2 border-slate-900 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none"
+                            className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-[#233876]"
                           />
                         ) : (
-                          <div className="min-h-[220px] whitespace-pre-wrap border-2 border-slate-900 px-4 py-4 text-base leading-7 text-slate-800">
+                          <div className="min-h-[220px] whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800">
                             {perimetre.contexte.map((item) => item.text).join('\n\n') || 'Aucun contexte renseigne.'}
                           </div>
                         )}
@@ -2915,30 +3065,32 @@ export default function UtilitiesModule({ onBack, user }) {
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                      <div className="mb-4 text-2xl font-black text-slate-950">&bull; Environnement :</div>
-                      {presentationEditing ? (
-                        <textarea
-                          rows="8"
-                          value={perimetre.environnement.map((item) => item.text).join('\n\n')}
-                          onChange={(event) =>
-                            updatePerimetreValue(
-                              'environnement',
-                              event.target.value
-                                .split(/\n{2,}/)
-                                .map((entry, index) => ({
-                                  id: perimetre.environnement[index]?.id ?? Date.now() + index,
-                                  text: entry.trim(),
-                                }))
-                                .filter((entry) => entry.text)
-                            )
-                          }
-                          className="min-h-[220px] w-full rounded-none border-2 border-slate-900 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none"
-                        />
-                      ) : (
-                        <div className="min-h-[220px] whitespace-pre-wrap border-2 border-slate-900 px-4 py-4 text-base leading-7 text-slate-800">
-                          {perimetre.environnement.map((item) => item.text).join('\n\n') || 'Aucun environnement renseigne.'}
-                        </div>
-                      )}
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                        <div className="mb-4 text-xl font-black text-slate-950">&bull; Environnement :</div>
+                        {presentationEditing ? (
+                          <textarea
+                            rows="8"
+                            value={perimetre.environnement.map((item) => item.text).join('\n\n')}
+                            onChange={(event) =>
+                              updatePerimetreValue(
+                                'environnement',
+                                event.target.value
+                                  .split(/\n{2,}/)
+                                  .map((entry, index) => ({
+                                    id: perimetre.environnement[index]?.id ?? Date.now() + index,
+                                    text: entry.trim(),
+                                  }))
+                                  .filter((entry) => entry.text)
+                              )
+                            }
+                            className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-[#233876]"
+                          />
+                        ) : (
+                          <div className="min-h-[220px] whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800">
+                            {perimetre.environnement.map((item) => item.text).join('\n\n') || 'Aucun environnement renseigne.'}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2959,61 +3111,47 @@ export default function UtilitiesModule({ onBack, user }) {
                         <h5 className="font-bold text-slate-900">Qualite</h5>
                       </div>
                       <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                            Activites couvertes
-                          </span>
-                          <button
-                            onClick={() => openGenericModal('activites')}
-                            className="text-slate-400 transition hover:text-[#233876]"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        <div className="space-y-3 text-sm">
-                          {perimetre.activites.map((item) => (
-                            <div key={item.id} className="group flex items-start justify-between gap-3">
-                              <div className="flex gap-2">
-                                <span className="mt-1 text-[#233876]">•</span>
-                                {presentationEditing ? (
-                                  <input
-                                    type="text"
-                                    value={item.text}
-                                    onChange={(event) =>
-                                      updatePerimetreArrayItem('activites', item.id, 'text', event.target.value)
-                                    }
-                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                  />
-                                ) : (
-                                  <span>{item.text}</span>
-                                )}
-                              </div>
-                              {presentationEditing && (
-                                <ItemDeleteButton
-                                  alwaysVisible
-                                  onClick={() => removePerimetreArrayItem('activites', item.id)}
-                                />
-                              )}
+                        {presentationEditing ? (
+                          <>
+                            <div className="mb-3 flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => applyScopeFormatting('qualite', qualiteEditorRef, 'bold')}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                              >
+                                Gras
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyScopeFormatting('qualite', qualiteEditorRef, 'italic')}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs italic text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                              >
+                                Italique
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyScopeFormatting('qualite', qualiteEditorRef, 'bullet')}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                              >
+                                Puce *
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                        <div className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
-                          <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                            Exclusions
-                          </div>
-                          {presentationEditing ? (
                             <textarea
-                              rows="4"
-                              value={perimetre.qualiteScope.exclusions}
+                              ref={qualiteEditorRef}
+                              rows="12"
+                              value={qualiteScopeContent}
                               onChange={(event) =>
-                                updatePerimetreNestedObject('qualiteScope', 'exclusions', event.target.value)
+                                updatePerimetreNestedObject('qualiteScope', 'content', event.target.value)
                               }
-                              className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
+                              className="min-h-[280px] w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-700 outline-none transition focus:border-[#233876]"
                             />
-                          ) : (
-                            <p>{perimetre.qualiteScope.exclusions}</p>
-                          )}
-                        </div>
+                          </>
+                        ) : (
+                          <div
+                            className="prose prose-sm max-w-none text-slate-700 prose-p:my-2 prose-strong:text-slate-900 prose-em:text-slate-700 prose-ul:my-2"
+                            dangerouslySetInnerHTML={{ __html: renderSimpleRichText(qualiteScopeContent) }}
+                          />
+                        )}
                       </div>
                     </div>
 
@@ -3025,61 +3163,47 @@ export default function UtilitiesModule({ onBack, user }) {
                         <h5 className="font-bold text-slate-900">Energie</h5>
                       </div>
                       <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                            Sites couverts
-                          </span>
-                          <button
-                            onClick={() => openGenericModal('sites')}
-                            className="text-slate-400 transition hover:text-[#233876]"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        <div className="space-y-3 text-sm">
-                          {perimetre.sites.map((item) => (
-                            <div key={item.id} className="group flex items-start justify-between gap-3">
-                              <div className="flex gap-2">
-                                <span className="mt-1 text-[#233876]">•</span>
-                                {presentationEditing ? (
-                                  <input
-                                    type="text"
-                                    value={item.text}
-                                    onChange={(event) =>
-                                      updatePerimetreArrayItem('sites', item.id, 'text', event.target.value)
-                                    }
-                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                  />
-                                ) : (
-                                  <span>{item.text}</span>
-                                )}
-                              </div>
-                              {presentationEditing && (
-                                <ItemDeleteButton
-                                  alwaysVisible
-                                  onClick={() => removePerimetreArrayItem('sites', item.id)}
-                                />
-                              )}
+                        {presentationEditing ? (
+                          <>
+                            <div className="mb-3 flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => applyScopeFormatting('energie', energieEditorRef, 'bold')}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
+                              >
+                                Gras
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyScopeFormatting('energie', energieEditorRef, 'italic')}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs italic text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
+                              >
+                                Italique
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyScopeFormatting('energie', energieEditorRef, 'bullet')}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
+                              >
+                                Puce *
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                        <div className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
-                          <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                            Portee energie
-                          </div>
-                          {presentationEditing ? (
                             <textarea
-                              rows="3"
-                              value={perimetre.energieScope.activites[0]}
+                              ref={energieEditorRef}
+                              rows="12"
+                              value={energieScopeContent}
                               onChange={(event) =>
-                                updatePerimetreNestedObject('energieScope', 'activites', [event.target.value])
+                                updatePerimetreNestedObject('energieScope', 'content', event.target.value)
                               }
-                              className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
+                              className="min-h-[280px] w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-700 outline-none transition focus:border-emerald-600"
                             />
-                          ) : (
-                            <p>{perimetre.energieScope.activites[0]}</p>
-                          )}
-                        </div>
+                          </>
+                        ) : (
+                          <div
+                            className="prose prose-sm max-w-none text-slate-700 prose-p:my-2 prose-strong:text-slate-900 prose-em:text-slate-700 prose-ul:my-2"
+                            dangerouslySetInnerHTML={{ __html: renderSimpleRichText(energieScopeContent) }}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
