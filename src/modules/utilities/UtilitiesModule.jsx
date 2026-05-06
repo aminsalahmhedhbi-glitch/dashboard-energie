@@ -3039,9 +3039,14 @@ export default function UtilitiesModule({ onBack, user }) {
                           Contexte de L'entreprise
                         </h4>
                       </div>
-                      <div className="grid grid-cols-1 gap-6 p-6 xl:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-6 p-6">
                         <div className="space-y-4">
-                          <div className="text-xl font-black text-slate-950">&bull; Orientation Strategique :</div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-[#233876]">
+                              <Target className="h-4 w-4" />
+                            </div>
+                            <h5 className="font-bold text-slate-900">Orientation Strategique</h5>
+                          </div>
                           <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                             {presentationEditing ? (
                               <textarea
@@ -3070,7 +3075,12 @@ export default function UtilitiesModule({ onBack, user }) {
                         </div>
 
                         <div className="space-y-4">
-                          <div className="text-xl font-black text-slate-950">&bull; Environnement :</div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                              <Leaf className="h-4 w-4" />
+                            </div>
+                            <h5 className="font-bold text-slate-900">Environnement</h5>
+                          </div>
                           <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                             {presentationEditing ? (
                               <textarea
