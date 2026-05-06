@@ -3031,65 +3031,72 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 gap-6 xl:col-span-12">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                      <h4 className="mb-5 text-3xl font-black tracking-tight text-slate-950">
-                        Contexte de L'entreprise
-                      </h4>
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                        <div className="mb-4 text-xl font-black text-slate-950">&bull; Orientation Strategique :</div>
-                        {presentationEditing ? (
-                          <textarea
-                            rows="8"
-                            value={perimetre.contexte.map((item) => item.text).join('\n\n')}
-                            onChange={(event) =>
-                              updatePerimetreValue(
-                                'contexte',
-                                event.target.value
-                                  .split(/\n{2,}/)
-                                  .map((entry, index) => ({
-                                    id: perimetre.contexte[index]?.id ?? Date.now() + index,
-                                    text: entry.trim(),
-                                  }))
-                                  .filter((entry) => entry.text)
-                              )
-                            }
-                            className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-[#233876]"
-                          />
-                        ) : (
-                          <div className="min-h-[220px] whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800">
-                            {perimetre.contexte.map((item) => item.text).join('\n\n') || 'Aucun contexte renseigne.'}
-                          </div>
-                        )}
+                  <div className="xl:col-span-12">
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                        <h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-900">
+                          <Building2 className="h-4 w-4 text-[#233876]" />
+                          Contexte de L'entreprise
+                        </h4>
                       </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                        <div className="mb-4 text-xl font-black text-slate-950">&bull; Environnement :</div>
-                        {presentationEditing ? (
-                          <textarea
-                            rows="8"
-                            value={perimetre.environnement.map((item) => item.text).join('\n\n')}
-                            onChange={(event) =>
-                              updatePerimetreValue(
-                                'environnement',
-                                event.target.value
-                                  .split(/\n{2,}/)
-                                  .map((entry, index) => ({
-                                    id: perimetre.environnement[index]?.id ?? Date.now() + index,
-                                    text: entry.trim(),
-                                  }))
-                                  .filter((entry) => entry.text)
-                              )
-                            }
-                            className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-[#233876]"
-                          />
-                        ) : (
-                          <div className="min-h-[220px] whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800">
-                            {perimetre.environnement.map((item) => item.text).join('\n\n') || 'Aucun environnement renseigne.'}
+                      <div className="grid grid-cols-1 gap-6 p-6 xl:grid-cols-2">
+                        <div className="space-y-4">
+                          <div className="text-xl font-black text-slate-950">&bull; Orientation Strategique :</div>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                            {presentationEditing ? (
+                              <textarea
+                                rows="8"
+                                value={perimetre.contexte.map((item) => item.text).join('\n\n')}
+                                onChange={(event) =>
+                                  updatePerimetreValue(
+                                    'contexte',
+                                    event.target.value
+                                      .split(/\n{2,}/)
+                                      .map((entry, index) => ({
+                                        id: perimetre.contexte[index]?.id ?? Date.now() + index,
+                                        text: entry.trim(),
+                                      }))
+                                      .filter((entry) => entry.text)
+                                  )
+                                }
+                                className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-[#233876]"
+                              />
+                            ) : (
+                              <div className="min-h-[220px] whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800">
+                                {perimetre.contexte.map((item) => item.text).join('\n\n') || 'Aucun contexte renseigne.'}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="text-xl font-black text-slate-950">&bull; Environnement :</div>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                            {presentationEditing ? (
+                              <textarea
+                                rows="8"
+                                value={perimetre.environnement.map((item) => item.text).join('\n\n')}
+                                onChange={(event) =>
+                                  updatePerimetreValue(
+                                    'environnement',
+                                    event.target.value
+                                      .split(/\n{2,}/)
+                                      .map((entry, index) => ({
+                                        id: perimetre.environnement[index]?.id ?? Date.now() + index,
+                                        text: entry.trim(),
+                                      }))
+                                      .filter((entry) => entry.text)
+                                  )
+                                }
+                                className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-[#233876]"
+                              />
+                            ) : (
+                              <div className="min-h-[220px] whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800">
+                                {perimetre.environnement.map((item) => item.text).join('\n\n') || 'Aucun environnement renseigne.'}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
