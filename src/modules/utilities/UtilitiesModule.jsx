@@ -868,8 +868,8 @@ function TunisiaNetworkMapCard({ className = '' }) {
         <MapPin className="h-3.5 w-3.5" />
         Carte du reseau en Tunisie
       </div>
-      <div className="mx-auto flex w-fit max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-0">
-        <div className="mx-auto flex min-h-[190px] w-fit items-center justify-center overflow-hidden rounded-xl bg-white">
+      <div className="mx-auto flex w-fit max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-0">
+        <div className="mx-auto flex w-fit items-center justify-center overflow-hidden bg-white">
           <img
             src={reseauPropreMockup}
             alt="Reseau ITALCAR en Tunisie"
