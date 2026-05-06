@@ -873,7 +873,7 @@ function TunisiaNetworkMapCard({ className = '' }) {
           <img
             src={reseauPropreMockup}
             alt="Reseau ITALCAR en Tunisie"
-            className="h-[72%] w-[72%] object-contain object-center"
+            className="h-[82%] w-[72%] object-contain object-center"
           />
         </div>
       </div>
