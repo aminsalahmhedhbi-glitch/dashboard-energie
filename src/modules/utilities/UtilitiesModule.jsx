@@ -1335,7 +1335,7 @@ function CartographieCanvas({ data, isEditing = false, onUpdateProcesses, onUpda
 }
 
 export default function UtilitiesModule({ onBack, user }) {
-  const [activeTab, setActiveTab] = useState('pestel');
+  const [activeTab, setActiveTab] = useState('perimetre');
   const [strategicView, setStrategicView] = useState('pestel');
   const [presentationEditing, setPresentationEditing] = useState(false);
   const [cartographieEditing, setCartographieEditing] = useState(false);
