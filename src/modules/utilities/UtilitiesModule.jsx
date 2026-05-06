@@ -416,20 +416,20 @@ const TABS = [
     color: 'red',
   },
   {
-    id: 'parties',
-    title: 'Parties Interessees',
-    subtitle: 'Attentes & Suivi',
-    chapter: 'Ch 4.2',
-    icon: Users,
-    color: 'sky',
-  },
-  {
     id: 'pestel',
     title: 'Analyse Strategique',
     subtitle: 'PESTEL, SWOT et Enjeux',
     chapter: 'Ch 4.1',
     icon: Globe,
     color: 'blue',
+  },
+  {
+    id: 'parties',
+    title: 'Parties Interessees',
+    subtitle: 'Attentes & Suivi',
+    chapter: 'Ch 4.2',
+    icon: Users,
+    color: 'sky',
   },
   {
     id: 'cartographie',
