@@ -872,11 +872,11 @@ function TunisiaNetworkMapCard({ className = '' }) {
         <MapPin className="h-3.5 w-3.5" />
         Carte du reseau en Tunisie
       </div>
-      <div className="ml-auto w-full max-w-[620px] overflow-hidden rounded-xl border border-slate-200 bg-white leading-none">
+      <div className="ml-auto w-full max-w-[560px] overflow-hidden rounded-xl border border-slate-200 bg-white leading-none">
         <img
           src={reseauPropreMockup}
           alt="Reseau ITALCAR en Tunisie"
-          className="block w-full scale-[1.22] -translate-y-4 transform-gpu object-contain object-center"
+          className="block w-full scale-[1.16] -translate-y-3 transform-gpu object-contain object-center"
         />
       </div>
     </div>
@@ -2767,7 +2767,7 @@ export default function UtilitiesModule({ onBack, user }) {
                       </div>
                     </div>
 
-                    <TunisiaNetworkMapCard className="flex-1" />
+                    <TunisiaNetworkMapCard className="self-start" />
                   </div>
 
                   <div className="xl:col-span-12">
