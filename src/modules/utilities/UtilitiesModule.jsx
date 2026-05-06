@@ -607,31 +607,46 @@ function TabCard({ tab, active, onClick }) {
     slate: 'bg-slate-50 border-slate-200 text-slate-600',
     green: 'bg-emerald-50 border-emerald-100 text-emerald-600',
   };
+  const isStakeholdersTab = tab.id === 'parties';
 
   return (
     <button
       onClick={onClick}
       className={`relative flex h-[88px] w-full min-w-0 flex-col justify-between rounded-2xl border px-3 py-3 text-left transition-all ${
         active
-          ? 'border-transparent bg-[#233876] text-white shadow-md'
-          : 'border-slate-200 bg-white text-slate-800 shadow-sm hover:border-slate-300'
+          ? isStakeholdersTab
+            ? 'border-transparent bg-gradient-to-br from-sky-600 via-[#233876] to-blue-900 text-white shadow-lg shadow-sky-200/70'
+            : 'border-transparent bg-[#233876] text-white shadow-md'
+          : isStakeholdersTab
+            ? 'border-sky-200 bg-gradient-to-br from-sky-50 to-white text-slate-800 shadow-md ring-1 ring-sky-100 hover:border-sky-300'
+            : 'border-slate-200 bg-white text-slate-800 shadow-sm hover:border-slate-300'
       }`}
     >
       <div className="flex items-start justify-between">
         <div
           className={`flex h-7 w-7 items-center justify-center rounded-lg border ${
-            active ? 'border-white/10 bg-white/15 text-white' : inactiveByColor[tab.color]
+            active
+              ? 'border-white/10 bg-white/15 text-white'
+              : isStakeholdersTab
+                ? 'border-sky-200 bg-sky-100 text-sky-700'
+                : inactiveByColor[tab.color]
           }`}
         >
           <Icon className="h-3.5 w-3.5" />
         </div>
+        {isStakeholdersTab && (
+          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${active ? 'bg-white/15 text-white' : 'bg-sky-100 text-sky-700'}`}>
+            Focus
+          </span>
+        )}
       </div>
       <div>
         <div className="line-clamp-2 text-[13px] font-bold tracking-wide">{tab.title}</div>
-        <div className={`mt-0.5 line-clamp-2 text-[10px] font-medium ${active ? 'text-white/75' : 'text-slate-400'}`}>
+        <div className={`mt-0.5 line-clamp-2 text-[10px] font-medium ${active ? 'text-white/75' : isStakeholdersTab ? 'text-sky-700/80' : 'text-slate-400'}`}>
           {tab.subtitle}
         </div>
       </div>
+      {isStakeholdersTab && !active && <div className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-sky-500" />}
     </button>
   );
 }
@@ -913,14 +928,16 @@ function formatSectionDate(value) {
   return value;
 }
 
-function SectionHeader({ icon: Icon, title, subtitle, meta, isAdmin, onMetaChange, actions }) {
+function SectionHeader({ icon: Icon, title, subtitle, meta, isAdmin, onMetaChange, actions, hideReference = false }) {
   return (
     <div className="mb-6 flex flex-col gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="flex items-start gap-3">
         <Icon className="mt-0.5 h-5 w-5 text-[#233876]" />
         <div>
           <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-          {isAdmin ? (
+          {hideReference ? (
+            subtitle ? <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">{subtitle}</p> : null
+          ) : isAdmin ? (
             <input
               type="text"
               value={meta.reference}
@@ -933,7 +950,7 @@ function SectionHeader({ icon: Icon, title, subtitle, meta, isAdmin, onMetaChang
               {meta.reference || subtitle}
             </p>
           )}
-          {!meta.reference && subtitle && !isAdmin && (
+          {!hideReference && !meta.reference && subtitle && !isAdmin && (
             <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
           )}
         </div>
@@ -1388,6 +1405,7 @@ export default function UtilitiesModule({ onBack, user }) {
             ...item,
             lieu: normalizeGovernorateChoice(item.lieu) || inferReseauPropreLieu(item.lieu ?? item.text),
             activites: normalizeReseauActivites(item.activites),
+            marque: String(item.marque || '').trim(),
           })) || INITIAL_PERIMETRE.reseau.propre,
         sousConcessionnaires:
           moduleData.perimetre?.reseau?.sousConcessionnaires?.map((item) => ({
@@ -1432,6 +1450,8 @@ export default function UtilitiesModule({ onBack, user }) {
     }),
     [moduleData.politiqueIntro]
   );
+  const contexteContent = (perimetre.contexte || []).map((item) => String(item?.text || '').trim()).filter(Boolean).join('\n\n');
+  const environnementContent = (perimetre.environnement || []).map((item) => String(item?.text || '').trim()).filter(Boolean).join('\n\n');
   const politiqueIntroContent =
     politiqueIntro.content || [politiqueIntro.lead, politiqueIntro.body].filter(Boolean).join('\n\n');
   const politiqueClosingContent = politiqueIntro.closing || INITIAL_POLITIQUE_INTRO.closing;
@@ -1449,6 +1469,8 @@ export default function UtilitiesModule({ onBack, user }) {
   const [docForm, setDocForm] = useState(emptyDocForm);
   const qualiteEditorRef = useRef(null);
   const energieEditorRef = useRef(null);
+  const contexteEditorRef = useRef(null);
+  const environnementEditorRef = useRef(null);
   const politiqueIntroEditorRef = useRef(null);
   const politiqueClosingEditorRef = useRef(null);
   const isAdmin = user?.role === 'ADMIN';
@@ -1644,6 +1666,42 @@ export default function UtilitiesModule({ onBack, user }) {
         }),
       },
     }));
+  };
+
+  const updateContextBlock = (field, value) => {
+    const source = field === 'contexte' ? perimetre.contexte : perimetre.environnement;
+    updatePerimetreValue(
+      field,
+      value
+        .split(/\n{2,}/)
+        .map((entry, index) => ({
+          id: source[index]?.id ?? Date.now() + index,
+          text: entry.trim(),
+        }))
+        .filter((entry) => entry.text)
+    );
+  };
+
+  const applyContextFormatting = (field, ref, mode) => {
+    const textarea = ref.current;
+    if (!textarea) return;
+
+    const currentValue = field === 'contexte' ? contexteContent : environnementContent;
+    const result =
+      mode === 'bold'
+        ? wrapSelectedText(currentValue, textarea.selectionStart, textarea.selectionEnd, '**')
+        : mode === 'italic'
+          ? wrapSelectedText(currentValue, textarea.selectionStart, textarea.selectionEnd, '*')
+          : prefixSelectedLines(currentValue, textarea.selectionStart, textarea.selectionEnd, '* ');
+
+    updateContextBlock(field, result.value);
+
+    setTimeout(() => {
+      if (ref.current) {
+        ref.current.focus();
+        ref.current.setSelectionRange(result.selectionStart, result.selectionEnd);
+      }
+    }, 0);
   };
 
   const filteredDocuments = useMemo(() => {
@@ -2462,6 +2520,7 @@ export default function UtilitiesModule({ onBack, user }) {
                 meta={sectionMeta.perimetre}
                 isAdmin={isAdmin}
                 onMetaChange={(field, value) => updateSectionMeta('perimetre', field, value)}
+                hideReference
                 actions={
                   isAdmin ? (
                     <button
@@ -2791,6 +2850,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                       text: 'Nouveau site',
                                       lieu: 'Tunis',
                                       activites: [],
+                                      marque: '',
                                     })
                                   }
                                   className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-[#233876] hover:text-[#233876]"
@@ -2903,6 +2963,35 @@ export default function UtilitiesModule({ onBack, user }) {
                                         })}
                                       </div>
                                     </div>
+                                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                        Marque
+                                      </div>
+                                      <select
+                                        value={item.marque ?? ''}
+                                        onChange={(event) =>
+                                          updatePerimetreNestedArrayItem(
+                                            'reseau',
+                                            'propre',
+                                            item.id,
+                                            'marque',
+                                            event.target.value
+                                          )
+                                        }
+                                        className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                                      >
+                                        <option value="">Choisir une marque</option>
+                                        {perimetre.marques.map((marque) => {
+                                          const label = marque.text?.trim();
+                                          if (!label) return null;
+                                          return (
+                                            <option key={`${item.id}-brand-${marque.id}`} value={label}>
+                                              {label}
+                                            </option>
+                                          );
+                                        })}
+                                      </select>
+                                    </div>
                                   </div>
                                 ) : (
                                   <div className="flex items-start justify-between gap-3">
@@ -2914,6 +3003,9 @@ export default function UtilitiesModule({ onBack, user }) {
                                           <div className="mt-1 text-[11px] font-medium text-slate-500">
                                             {formatReseauActivites(item.activites)}
                                           </div>
+                                        ) : null}
+                                        {item.marque ? (
+                                          <div className="mt-1 text-[11px] font-semibold text-blue-600">{item.marque}</div>
                                         ) : null}
                                       </div>
                                     </div>
@@ -3086,27 +3178,43 @@ export default function UtilitiesModule({ onBack, user }) {
                           </div>
                           <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                             {presentationEditing ? (
-                              <textarea
-                                rows="8"
-                                value={perimetre.contexte.map((item) => item.text).join('\n\n')}
-                                onChange={(event) =>
-                                  updatePerimetreValue(
-                                    'contexte',
-                                    event.target.value
-                                      .split(/\n{2,}/)
-                                      .map((entry, index) => ({
-                                        id: perimetre.contexte[index]?.id ?? Date.now() + index,
-                                        text: entry.trim(),
-                                      }))
-                                      .filter((entry) => entry.text)
-                                  )
-                                }
-                                className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-[#233876]"
-                              />
+                              <>
+                                <div className="mb-3 flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => applyContextFormatting('contexte', contexteEditorRef, 'bold')}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                                  >
+                                    Gras
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => applyContextFormatting('contexte', contexteEditorRef, 'italic')}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs italic text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                                  >
+                                    Italique
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => applyContextFormatting('contexte', contexteEditorRef, 'bullet')}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                                  >
+                                    Puce *
+                                  </button>
+                                </div>
+                                <textarea
+                                  ref={contexteEditorRef}
+                                  rows="8"
+                                  value={contexteContent}
+                                  onChange={(event) => updateContextBlock('contexte', event.target.value)}
+                                  className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-[#233876]"
+                                />
+                              </>
                             ) : (
-                              <div className="min-h-[220px] whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800">
-                                {perimetre.contexte.map((item) => item.text).join('\n\n') || 'Aucun contexte renseigne.'}
-                              </div>
+                              <div
+                                className="prose prose-sm min-h-[220px] max-w-none rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 prose-p:my-2 prose-strong:text-slate-900 prose-em:text-slate-700 prose-ul:my-2"
+                                dangerouslySetInnerHTML={{ __html: renderSimpleRichText(contexteContent || 'Aucun contexte renseigne.') }}
+                              />
                             )}
                           </div>
                         </div>
@@ -3120,27 +3228,43 @@ export default function UtilitiesModule({ onBack, user }) {
                           </div>
                           <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                             {presentationEditing ? (
-                              <textarea
-                                rows="8"
-                                value={perimetre.environnement.map((item) => item.text).join('\n\n')}
-                                onChange={(event) =>
-                                  updatePerimetreValue(
-                                    'environnement',
-                                    event.target.value
-                                      .split(/\n{2,}/)
-                                      .map((entry, index) => ({
-                                        id: perimetre.environnement[index]?.id ?? Date.now() + index,
-                                        text: entry.trim(),
-                                      }))
-                                      .filter((entry) => entry.text)
-                                  )
-                                }
-                                className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-[#233876]"
-                              />
+                              <>
+                                <div className="mb-3 flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => applyContextFormatting('environnement', environnementEditorRef, 'bold')}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
+                                  >
+                                    Gras
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => applyContextFormatting('environnement', environnementEditorRef, 'italic')}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs italic text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
+                                  >
+                                    Italique
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => applyContextFormatting('environnement', environnementEditorRef, 'bullet')}
+                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
+                                  >
+                                    Puce *
+                                  </button>
+                                </div>
+                                <textarea
+                                  ref={environnementEditorRef}
+                                  rows="8"
+                                  value={environnementContent}
+                                  onChange={(event) => updateContextBlock('environnement', event.target.value)}
+                                  className="min-h-[220px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 outline-none transition focus:border-emerald-600"
+                                />
+                              </>
                             ) : (
-                              <div className="min-h-[220px] whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800">
-                                {perimetre.environnement.map((item) => item.text).join('\n\n') || 'Aucun environnement renseigne.'}
-                              </div>
+                              <div
+                                className="prose prose-sm min-h-[220px] max-w-none rounded-xl border border-slate-200 bg-white px-4 py-4 text-base leading-7 text-slate-800 prose-p:my-2 prose-strong:text-slate-900 prose-em:text-slate-700 prose-ul:my-2"
+                                dangerouslySetInnerHTML={{ __html: renderSimpleRichText(environnementContent || 'Aucun environnement renseigne.') }}
+                              />
                             )}
                           </div>
                         </div>
@@ -3277,6 +3401,7 @@ export default function UtilitiesModule({ onBack, user }) {
                 meta={sectionMeta.cartographie}
                 isAdmin={isAdmin}
                 onMetaChange={(field, value) => updateSectionMeta('cartographie', field, value)}
+                hideReference
                 actions={
                   isAdmin ? (
                     <button
@@ -3337,10 +3462,7 @@ export default function UtilitiesModule({ onBack, user }) {
 
         {activeTab === 'politique' && (
           <section className="w-full">
-            <div
-              className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
-              style={{ fontFamily: '"Times New Roman", Times, serif' }}
-            >
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
               <SectionHeader
                 icon={FileText}
                 title="Politique Qualite & Energie"
@@ -3348,6 +3470,7 @@ export default function UtilitiesModule({ onBack, user }) {
                 meta={sectionMeta.politique}
                 isAdmin={isAdmin}
                 onMetaChange={(field, value) => updateSectionMeta('politique', field, value)}
+                hideReference
                 actions={
                   isAdmin ? (
                     <button
@@ -3394,7 +3517,6 @@ export default function UtilitiesModule({ onBack, user }) {
                     value={politiqueIntroContent}
                     onChange={(event) => updatePolitiqueText('content', event.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] leading-7 text-slate-700 outline-none transition focus:border-[#233876]"
-                    style={{ fontFamily: '"Times New Roman", Times, serif' }}
                   />
                 ) : (
                   <div
@@ -3475,7 +3597,6 @@ export default function UtilitiesModule({ onBack, user }) {
                       value={politiqueClosingContent}
                       onChange={(event) => updatePolitiqueText('closing', event.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-lg leading-8 text-black outline-none transition focus:border-[#233876]"
-                      style={{ fontFamily: '"Times New Roman", Times, serif' }}
                     />
                   ) : (
                     <div dangerouslySetInnerHTML={{ __html: renderSimpleRichText(politiqueClosingContent) }} />
@@ -3504,6 +3625,7 @@ export default function UtilitiesModule({ onBack, user }) {
                   meta={sectionMeta.documents}
                   isAdmin={isAdmin}
                   onMetaChange={(field, value) => updateSectionMeta('documents', field, value)}
+                  hideReference
                   actions={
                     <div className="relative">
                       <input
