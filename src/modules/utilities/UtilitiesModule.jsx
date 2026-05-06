@@ -320,6 +320,10 @@ const INITIAL_DOCUMENTS = [
 const INITIAL_POLITIQUE_INTRO = {
   lead: "ITALCAR s'engage a etablir et a maintenir un systeme de management de la Qualite & Energie conforme aux exigences ISO 9001 et ISO 50001.",
   body: "ITALCAR aspire a etre parmi les leaders du marche, et s'engage a ameliorer son efficacite energetique pour favoriser le developpement durable. Afin de developper en continu nos performances, notre politique qualite & energie repose sur les axes strategiques suivants :",
+  content:
+    "ITALCAR s'engage a etablir et a maintenir un systeme de management de la Qualite & Energie conforme aux exigences ISO 9001 et ISO 50001.\n\nITALCAR aspire a etre parmi les leaders du marche, et s'engage a ameliorer son efficacite energetique pour favoriser le developpement durable. Afin de developper en continu nos performances, notre politique qualite & energie repose sur les axes strategiques suivants :",
+  closing:
+    "La Direction s'engage a mettre a disposition toutes les ressources et l'environnement de travail necessaires pour l'atteinte de ces objectifs ainsi que les moyens pour l'evaluation periodique de l'efficacite du systeme.",
 };
 
 const INITIAL_SECTION_META = {
@@ -1429,6 +1433,9 @@ export default function UtilitiesModule({ onBack, user }) {
     }),
     [moduleData.politiqueIntro]
   );
+  const politiqueIntroContent =
+    politiqueIntro.content || [politiqueIntro.lead, politiqueIntro.body].filter(Boolean).join('\n\n');
+  const politiqueClosingContent = politiqueIntro.closing || INITIAL_POLITIQUE_INTRO.closing;
   const sectionMeta = useMemo(
     () => ({
       ...INITIAL_SECTION_META,
@@ -1443,6 +1450,8 @@ export default function UtilitiesModule({ onBack, user }) {
   const [docForm, setDocForm] = useState(emptyDocForm);
   const qualiteEditorRef = useRef(null);
   const energieEditorRef = useRef(null);
+  const politiqueIntroEditorRef = useRef(null);
+  const politiqueClosingEditorRef = useRef(null);
   const isAdmin = user?.role === 'ADMIN';
 
   const createSliceSetter = (key) => (updater) =>
@@ -1511,6 +1520,35 @@ export default function UtilitiesModule({ onBack, user }) {
       'content',
       result.value
     );
+
+    setTimeout(() => {
+      if (ref.current) {
+        ref.current.focus();
+        ref.current.setSelectionRange(result.selectionStart, result.selectionEnd);
+      }
+    }, 0);
+  };
+
+  const updatePolitiqueText = (field, value) => {
+    setPolitiqueIntro((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const applyPolitiqueFormatting = (field, ref, mode) => {
+    const textarea = ref.current;
+    if (!textarea) return;
+
+    const currentValue = field === 'content' ? politiqueIntroContent : politiqueClosingContent;
+    const result =
+      mode === 'bold'
+        ? wrapSelectedText(currentValue, textarea.selectionStart, textarea.selectionEnd, '**')
+        : mode === 'italic'
+          ? wrapSelectedText(currentValue, textarea.selectionStart, textarea.selectionEnd, '*')
+          : prefixSelectedLines(currentValue, textarea.selectionStart, textarea.selectionEnd, '* ');
+
+    updatePolitiqueText(field, result.value);
 
     setTimeout(() => {
       if (ref.current) {
@@ -3313,33 +3351,43 @@ export default function UtilitiesModule({ onBack, user }) {
                 onMetaChange={(field, value) => updateSectionMeta('politique', field, value)}
               />
 
-              <div className="mb-8 space-y-4 text-[15px] leading-7 text-slate-700">
+              <div className="mb-8 space-y-3 text-[15px] leading-7 text-slate-700">
+                {isAdmin && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => applyPolitiqueFormatting('content', politiqueIntroEditorRef, 'bold')}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                    >
+                      Gras
+                    </button>
+                    <button
+                      onClick={() => applyPolitiqueFormatting('content', politiqueIntroEditorRef, 'italic')}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs italic text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                    >
+                      Italique
+                    </button>
+                    <button
+                      onClick={() => applyPolitiqueFormatting('content', politiqueIntroEditorRef, 'bullet')}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                    >
+                      Puce *
+                    </button>
+                  </div>
+                )}
                 {isAdmin ? (
-                  <>
-                    <textarea
-                      rows="3"
-                      value={politiqueIntro.lead}
-                      onChange={(event) =>
-                        setPolitiqueIntro((prev) => ({ ...prev, lead: event.target.value }))
-                      }
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] leading-7 text-slate-700 outline-none transition focus:border-[#233876]"
-                      style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                    />
-                    <textarea
-                      rows="4"
-                      value={politiqueIntro.body}
-                      onChange={(event) =>
-                        setPolitiqueIntro((prev) => ({ ...prev, body: event.target.value }))
-                      }
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] leading-7 text-slate-700 outline-none transition focus:border-[#233876]"
-                      style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                    />
-                  </>
+                  <textarea
+                    ref={politiqueIntroEditorRef}
+                    rows="8"
+                    value={politiqueIntroContent}
+                    onChange={(event) => updatePolitiqueText('content', event.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] leading-7 text-slate-700 outline-none transition focus:border-[#233876]"
+                    style={{ fontFamily: '"Times New Roman", Times, serif' }}
+                  />
                 ) : (
-                  <>
-                    <p>{politiqueIntro.lead}</p>
-                    <p>{politiqueIntro.body}</p>
-                  </>
+                  <div
+                    className="space-y-4"
+                    dangerouslySetInnerHTML={{ __html: renderSimpleRichText(politiqueIntroContent) }}
+                  />
                 )}
               </div>
 
@@ -3382,11 +3430,42 @@ export default function UtilitiesModule({ onBack, user }) {
               </div>
 
               <div className="rounded-r-xl border-l-2 border-slate-300 bg-slate-50 p-5 pl-6 text-lg leading-8 text-black">
-                <p>
-                  La Direction s'engage a mettre a disposition toutes les ressources et
-                  l'environnement de travail necessaires pour l'atteinte de ces objectifs ainsi
-                  que les moyens pour l'evaluation periodique de l'efficacite du systeme.
-                </p>
+                <div className="space-y-3 text-lg leading-8 text-black">
+                  {isAdmin && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => applyPolitiqueFormatting('closing', politiqueClosingEditorRef, 'bold')}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                      >
+                        Gras
+                      </button>
+                      <button
+                        onClick={() => applyPolitiqueFormatting('closing', politiqueClosingEditorRef, 'italic')}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs italic text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                      >
+                        Italique
+                      </button>
+                      <button
+                        onClick={() => applyPolitiqueFormatting('closing', politiqueClosingEditorRef, 'bullet')}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:border-[#233876] hover:text-[#233876]"
+                      >
+                        Puce *
+                      </button>
+                    </div>
+                  )}
+                  {isAdmin ? (
+                    <textarea
+                      ref={politiqueClosingEditorRef}
+                      rows="4"
+                      value={politiqueClosingContent}
+                      onChange={(event) => updatePolitiqueText('closing', event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-lg leading-8 text-black outline-none transition focus:border-[#233876]"
+                      style={{ fontFamily: '"Times New Roman", Times, serif' }}
+                    />
+                  ) : (
+                    <div dangerouslySetInnerHTML={{ __html: renderSimpleRichText(politiqueClosingContent) }} />
+                  )}
+                </div>
                 <div className="mt-6 flex flex-col items-end text-right">
                   <span className="text-lg font-semibold text-black">Direction Generale</span>
                   <img
