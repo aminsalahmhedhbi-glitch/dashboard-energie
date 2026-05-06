@@ -24,6 +24,14 @@ export const BRAND = {
 
 export const DASHBOARD_MODULES = [
   {
+    id: 'utilities',
+    title: 'Gouvernance et Engagement',
+    description:
+      'Définition de la politique énergétique, analyse du contexte (enjeux, parties intéressées) et gestion documentaire centralisée.',
+    icon: Shield,
+    allowedRoles: ['ADMIN', 'EQUIPE_ENERGIE'],
+  },
+  {
     id: 'steg',
     title: 'Dépenses Énergétiques',
     description:
@@ -87,14 +95,7 @@ export const DASHBOARD_MODULES = [
     icon: Database,
     allowedRoles: ['ADMIN', 'EQUIPE_ENERGIE'],
   },
-  {
-    id: 'utilities',
-    title: 'Gouvernance et Engagement',
-    description:
-      'Définition de la politique énergétique, analyse du contexte (enjeux, parties intéressées) et gestion documentaire centralisée.',
-    icon: Shield,
-    allowedRoles: ['ADMIN', 'EQUIPE_ENERGIE'],
-  },
+
   {
     id: 'rh',
     title: 'Compétences et Sensibilisation',
