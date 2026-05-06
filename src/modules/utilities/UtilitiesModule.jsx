@@ -1343,6 +1343,7 @@ export default function UtilitiesModule({ onBack, user }) {
   const [strategicView, setStrategicView] = useState('pestel');
   const [presentationEditing, setPresentationEditing] = useState(false);
   const [cartographieEditing, setCartographieEditing] = useState(false);
+  const [politiqueEditing, setPolitiqueEditing] = useState(false);
   const [expandedItems, setExpandedItems] = useState({});
   const [selectedStakeholderName, setSelectedStakeholderName] = useState('');
   const { data: moduleData, setData: setModuleData } = useModuleState(
@@ -3349,10 +3350,24 @@ export default function UtilitiesModule({ onBack, user }) {
                 meta={sectionMeta.politique}
                 isAdmin={isAdmin}
                 onMetaChange={(field, value) => updateSectionMeta('politique', field, value)}
+                actions={
+                  isAdmin ? (
+                    <button
+                      onClick={() => setPolitiqueEditing((prev) => !prev)}
+                      className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+                        politiqueEditing
+                          ? 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                          : 'bg-[#233876] text-white hover:bg-[#1a2f64]'
+                      }`}
+                    >
+                      {politiqueEditing ? 'Terminer les modifications' : 'Modifier'}
+                    </button>
+                  ) : null
+                }
               />
 
               <div className="mb-8 space-y-3 text-[15px] leading-7 text-slate-700">
-                {isAdmin && (
+                {isAdmin && politiqueEditing && (
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => applyPolitiqueFormatting('content', politiqueIntroEditorRef, 'bold')}
@@ -3374,7 +3389,7 @@ export default function UtilitiesModule({ onBack, user }) {
                     </button>
                   </div>
                 )}
-                {isAdmin ? (
+                {isAdmin && politiqueEditing ? (
                   <textarea
                     ref={politiqueIntroEditorRef}
                     rows="8"
@@ -3396,13 +3411,15 @@ export default function UtilitiesModule({ onBack, user }) {
                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                     Axes Strategiques
                   </h4>
-                  <button
+                  {politiqueEditing && (
+                    <button
                     onClick={() => openGenericModal('axes')}
                     className="flex items-center gap-1 rounded px-2 py-1 text-xs font-bold text-[#233876] transition hover:bg-blue-50"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Ajouter
                   </button>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {axes.map((item) => (
@@ -3422,7 +3439,7 @@ export default function UtilitiesModule({ onBack, user }) {
                           </div>
                           {item.energy && <EnergyBadge />}
                         </div>
-                        <ItemDeleteButton onClick={() => deleteGenericItem('axes', null, item.id)} />
+                        {politiqueEditing && <ItemDeleteButton onClick={() => deleteGenericItem('axes', null, item.id)} />}
                       </div>
                     </div>
                   ))}
@@ -3431,7 +3448,7 @@ export default function UtilitiesModule({ onBack, user }) {
 
               <div className="rounded-r-xl border-l-2 border-slate-300 bg-slate-50 p-5 pl-6 text-lg leading-8 text-black">
                 <div className="space-y-3 text-lg leading-8 text-black">
-                  {isAdmin && (
+                  {isAdmin && politiqueEditing && (
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => applyPolitiqueFormatting('closing', politiqueClosingEditorRef, 'bold')}
@@ -3453,7 +3470,7 @@ export default function UtilitiesModule({ onBack, user }) {
                       </button>
                     </div>
                   )}
-                  {isAdmin ? (
+                  {isAdmin && politiqueEditing ? (
                     <textarea
                       ref={politiqueClosingEditorRef}
                       rows="4"
