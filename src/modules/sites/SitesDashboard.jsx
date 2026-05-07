@@ -6,7 +6,7 @@ import {
   Info, Wind, Thermometer, Timer, Wrench, LayoutGrid, ArrowLeft, Edit2,
   PieChart, MapPin, Maximize2, Building2, Leaf, CloudSun, Flag, BarChart3,
   Database, User, Users, LogOut, Key, Shield, X, Trash2, PlusCircle,
-  Store, Droplets, Filter, Check, Printer, TrendingDown, Download, Sliders,
+  Store, Droplets, Filter, Check, Printer, TrendingDown, Download, Sliders, ChevronDown, ChevronRight,
   Target, Flame, Lightbulb, ThermometerSun, ClipboardList, ListChecks
 } from 'lucide-react';
 import {
@@ -594,7 +594,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const [autoTemperatureData, setAutoTemperatureData] = useState({});
   const [showHistoryInput, setShowHistoryInput] = useState(false);
   const [showUsageConfig, setShowUsageConfig] = useState(false);
+  const [showUsageGuide, setShowUsageGuide] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [collapsedUsageRows, setCollapsedUsageRows] = useState({});
   const prevMonth = new Date();
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const [reportMonth, setReportMonth] = useState(prevMonth.toISOString().slice(0, 7));
@@ -770,6 +772,13 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         site.elecUsage = newUsages;
         return newData;
     });
+  };
+
+  const toggleUsageRow = (rowKey) => {
+    setCollapsedUsageRows((prev) => ({
+      ...prev,
+      [rowKey]: !prev[rowKey],
+    }));
   };
 
   const defaultHistoryYears = ['REF', 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025];
@@ -1588,7 +1597,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       groups.push({
         id: 'electricite',
         name: 'Electricite',
-        rows: electricityRows,
+        rows: electricityRows.map((row, index) => ({ ...row, usageIndex: index })),
         pct: electricityRows.reduce((sum, row) => sum + toNumberOrZero(row.pct), 0),
       });
     }
@@ -1596,7 +1605,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       groups.push({
         id: 'gaz',
         name: 'Gaz',
-        rows: gasRows,
+        rows: gasRows.map((row, index) => ({ ...row, usageIndex: usageMatrixRows.findIndex((usage) => usage.name === row.name) })),
         pct: gasRows.reduce((sum, row) => sum + toNumberOrZero(row.pct), 0),
       });
     }
@@ -2045,15 +2054,24 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-700">
                       Evaluation des usages - <span className="text-blue-600">{currentSiteName}</span>
                     </h3>
-                    {userRole === 'ADMIN' ? (
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setShowUsageConfig(true)}
-                        className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100"
+                        onClick={() => setShowUsageGuide(true)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50"
                       >
-                        <Settings size={14} />
-                        Configurer UES
+                        <HelpCircle size={14} />
+                        Guide UES
                       </button>
-                    ) : null}
+                      {userRole === 'ADMIN' ? (
+                        <button
+                          onClick={() => setShowUsageConfig(true)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100"
+                        >
+                          <Settings size={14} />
+                          Configurer UES
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto">
@@ -2072,6 +2090,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                           <th rowSpan="2" className="border-b border-slate-200 py-4 pr-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 align-bottom">
                             Etat
                           </th>
+                          <th rowSpan="2" className="border-b border-slate-200 py-4 pr-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 align-bottom">
+                            Actions
+                          </th>
                         </tr>
                         <tr className="border-b border-slate-200 bg-white">
                           <th className="w-24 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">Note conso</th>
@@ -2082,7 +2103,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                       <tbody>
                         {usageSourceGroups.length === 0 ? (
                           <tr>
-                            <td colSpan="6" className="px-4 py-12 text-center text-sm text-slate-400">
+                            <td colSpan="7" className="px-4 py-12 text-center text-sm text-slate-400">
                               Aucun usage configure pour ce site.
                             </td>
                           </tr>
@@ -2101,14 +2122,30 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                 <td className="py-4 text-center text-slate-400">-</td>
                                 <td className="py-4 text-center font-bold text-slate-400">-</td>
                                 <td className="py-4 pr-4 text-right text-slate-300">-</td>
+                                <td className="py-4 pr-4 text-right text-slate-300">-</td>
                               </tr>
 
                               {group.rows.map((row, rowIndex) => (
                                 <React.Fragment key={`${group.id}-${row.name}-${rowIndex}`}>
+                                  {(() => {
+                                    const rowKey = `${group.id}-${rowIndex}`;
+                                    const isCollapsed = Boolean(collapsedUsageRows[rowKey]);
+                                    return (
+                                      <>
                                   <tr className="group border-b border-slate-100 hover:bg-slate-50">
                                     <td className="py-4 pl-10">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-slate-300">•</span>
+                                        {row.subUsages.length > 0 ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleUsageRow(rowKey)}
+                                            className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                                          >
+                                            {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                                          </button>
+                                        ) : (
+                                          <span className="text-slate-300">•</span>
+                                        )}
                                         <span className="font-medium text-slate-700">{row.name}</span>
                                       </div>
                                     </td>
@@ -2121,9 +2158,29 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                         {row.significant ? 'UES' : 'Suivi'}
                                       </span>
                                     </td>
+                                    <td className="py-4 pr-4 text-right">
+                                      <div className="flex items-center justify-end gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSubUsageAdd(row.usageIndex)}
+                                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-100"
+                                        >
+                                          <PlusCircle size={12} />
+                                          Ajouter
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setShowUsageConfig(true)}
+                                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+                                        >
+                                          <Edit2 size={12} />
+                                          Modifier
+                                        </button>
+                                      </div>
+                                    </td>
                                   </tr>
 
-                                  {row.subUsages.map((subUsage, subIndex) => (
+                                  {!isCollapsed && row.subUsages.map((subUsage, subIndex) => (
                                     <tr key={`${group.id}-${row.name}-${subUsage.name}-${subIndex}`} className="border-b border-slate-100 bg-white">
                                       <td className="py-3 pl-16 text-sm text-slate-500">
                                         <div className="flex items-center gap-2">
@@ -2136,8 +2193,12 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                       <td className="py-3 text-center text-slate-300">-</td>
                                       <td className="py-3 text-center text-slate-300">-</td>
                                       <td className="py-3 pr-4 text-right text-slate-300">-</td>
+                                      <td className="py-3 pr-4 text-right text-slate-300">-</td>
                                     </tr>
                                   ))}
+                                      </>
+                                    );
+                                  })()}
                                 </React.Fragment>
                               ))}
                             </React.Fragment>
@@ -2293,6 +2354,90 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     </div>
                     <div className="mt-6 pt-4 border-t flex justify-end">
                         <button onClick={() => setShowUsageConfig(false)} className="bg-blue-900 text-white px-8 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-800">Enregistrer les modifications</button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {showUsageGuide && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+                <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-slate-100 bg-blue-50 p-5">
+                        <div className="flex items-center gap-2 text-blue-700">
+                            <HelpCircle size={18} />
+                            <h3 className="text-lg font-bold">Guide UES</h3>
+                        </div>
+                        <button onClick={() => setShowUsageGuide(false)} className="rounded-full p-2 text-slate-400 hover:bg-white hover:text-slate-600">
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4 p-6 text-sm text-slate-600">
+                        <p>
+                            L'equipe energie evalue les usages a partir de la part de consommation et du gain potentiel afin d'identifier les usages energetiques significatifs.
+                        </p>
+
+                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                            <table className="w-full border-collapse text-center text-xs">
+                                <thead>
+                                    <tr className="border-b border-slate-200 bg-slate-100 text-slate-700">
+                                        <th className="border-r border-slate-200 px-3 py-3 font-bold">% Consommation</th>
+                                        <th className="border-r border-slate-200 px-3 py-3 font-bold text-blue-600">Note conso</th>
+                                        <th className="border-r border-slate-200 px-3 py-3 font-bold">Gain potentiel</th>
+                                        <th className="px-3 py-3 font-bold text-amber-600">Note gain</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-b border-slate-200">
+                                        <td className="border-r border-slate-200 px-3 py-2">&lt; 5%</td>
+                                        <td className="border-r border-slate-200 px-3 py-2 font-bold text-blue-600">1</td>
+                                        <td className="border-r border-slate-200 px-3 py-2">&lt; 5%</td>
+                                        <td className="px-3 py-2 font-bold text-amber-600">1</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-200 bg-slate-50">
+                                        <td className="border-r border-slate-200 px-3 py-2">[5% - 10%[</td>
+                                        <td className="border-r border-slate-200 px-3 py-2 font-bold text-blue-600">2</td>
+                                        <td className="border-r border-slate-200 px-3 py-2">[5% - 10%[</td>
+                                        <td className="px-3 py-2 font-bold text-amber-600">2</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-200">
+                                        <td className="border-r border-slate-200 px-3 py-2">[10% - 20%[</td>
+                                        <td className="border-r border-slate-200 px-3 py-2 font-bold text-blue-600">3</td>
+                                        <td className="border-r border-slate-200 px-3 py-2">[10% - 20%[</td>
+                                        <td className="px-3 py-2 font-bold text-amber-600">3</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-200 bg-slate-50">
+                                        <td className="border-r border-slate-200 px-3 py-2">[20% - 30%[</td>
+                                        <td className="border-r border-slate-200 px-3 py-2 font-bold text-blue-600">4</td>
+                                        <td className="border-r border-slate-200 px-3 py-2">[20% - 30%[</td>
+                                        <td className="px-3 py-2 font-bold text-amber-600">4</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border-r border-slate-200 px-3 py-2">≥ 30%</td>
+                                        <td className="border-r border-slate-200 px-3 py-2 font-bold text-blue-600">5</td>
+                                        <td className="border-r border-slate-200 px-3 py-2">≥ 30%</td>
+                                        <td className="px-3 py-2 font-bold text-amber-600">5</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+                                <div className="text-lg font-bold text-amber-700">Produit ≥ 10</div>
+                                <p className="mt-2 text-xs text-amber-700">Usage energetique significatif (UES)</p>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+                                <div className="text-lg font-bold text-slate-600">Produit &lt; 10</div>
+                                <p className="mt-2 text-xs text-slate-500">Usage suivi sans classement UES</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end border-t border-slate-100 p-4">
+                        <button onClick={() => setShowUsageGuide(false)} className="rounded-lg bg-blue-900 px-5 py-2 text-sm font-medium text-white hover:bg-blue-800">
+                            Fermer
+                        </button>
                     </div>
                 </div>
             </div>
