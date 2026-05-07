@@ -36,6 +36,10 @@ import politiqueSignature from '../../assets/politique-signature.png';
 import italcarMarquesGrid from '../../assets/italcar-marques-grid.png';
 import reseauPropreMockup from '../../assets/reseau-propre-layout.jpg';
 
+const PARTIES_LABEL = `Parties int${String.fromCharCode(233)}ress${String.fromCharCode(233)}es`;
+const PARTIE_LABEL = `Partie int${String.fromCharCode(233)}ress${String.fromCharCode(233)}e`;
+const GOVERNANCE_SUBTITLE = `Contexte, leadership, parties int${String.fromCharCode(233)}ress${String.fromCharCode(233)}es et base documentaire`;
+
 const INITIAL_PESTEL = {
   Politique: [{ id: 1, text: 'Reglementations etatiques importation', energy: false }],
   Economique: [
@@ -200,7 +204,7 @@ const INITIAL_PERIMETRE = {
     { id: 502, court: 'VN', long: 'Vehicules Neufs' },
     { id: 503, court: 'PDR', long: 'Pieces De Rechange' },
     { id: 504, court: 'SAV', long: 'Service Apres-Vente' },
-    { id: 505, court: 'PI', long: 'Parties int\u00e9ress\u00e9es' },
+    { id: 505, court: 'PI', long: PARTIES_LABEL },
   ],
   contexte: [
     { id: 601, text: 'Croissance du marche automobile en Tunisie.' },
@@ -425,7 +429,7 @@ const TABS = [
   },
   {
     id: 'parties',
-    title: 'Parties int\u00e9ress\u00e9es',
+    title: PARTIES_LABEL,
     subtitle: 'Attentes & Suivi',
     chapter: 'Ch 4.2',
     icon: Users,
@@ -607,46 +611,31 @@ function TabCard({ tab, active, onClick }) {
     slate: 'bg-slate-50 border-slate-200 text-slate-600',
     green: 'bg-emerald-50 border-emerald-100 text-emerald-600',
   };
-  const isStakeholdersTab = tab.id === 'parties';
 
   return (
     <button
       onClick={onClick}
       className={`relative flex h-[88px] w-full min-w-0 flex-col justify-between rounded-2xl border px-3 py-3 text-left transition-all ${
         active
-          ? isStakeholdersTab
-            ? 'border-transparent bg-gradient-to-br from-sky-600 via-[#233876] to-blue-900 text-white shadow-lg shadow-sky-200/70'
-            : 'border-transparent bg-[#233876] text-white shadow-md'
-          : isStakeholdersTab
-            ? 'border-sky-200 bg-gradient-to-br from-sky-50 to-white text-slate-800 shadow-md ring-1 ring-sky-100 hover:border-sky-300'
-            : 'border-slate-200 bg-white text-slate-800 shadow-sm hover:border-slate-300'
+          ? 'border-transparent bg-[#233876] text-white shadow-md'
+          : 'border-slate-200 bg-white text-slate-800 shadow-sm hover:border-slate-300'
       }`}
     >
       <div className="flex items-start justify-between">
         <div
           className={`flex h-7 w-7 items-center justify-center rounded-lg border ${
-            active
-              ? 'border-white/10 bg-white/15 text-white'
-              : isStakeholdersTab
-                ? 'border-sky-200 bg-sky-100 text-sky-700'
-                : inactiveByColor[tab.color]
+            active ? 'border-white/10 bg-white/15 text-white' : inactiveByColor[tab.color]
           }`}
         >
           <Icon className="h-3.5 w-3.5" />
         </div>
-        {isStakeholdersTab && (
-          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${active ? 'bg-white/15 text-white' : 'bg-sky-100 text-sky-700'}`}>
-            Focus
-          </span>
-        )}
       </div>
       <div>
         <div className="line-clamp-2 text-[13px] font-bold tracking-wide">{tab.title}</div>
-        <div className={`mt-0.5 line-clamp-2 text-[10px] font-medium ${active ? 'text-white/75' : isStakeholdersTab ? 'text-sky-700/80' : 'text-slate-400'}`}>
+        <div className={`mt-0.5 line-clamp-2 text-[10px] font-medium ${active ? 'text-white/75' : 'text-slate-400'}`}>
           {tab.subtitle}
         </div>
       </div>
-      {isStakeholdersTab && !active && <div className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-sky-500" />}
     </button>
   );
 }
@@ -2387,7 +2376,7 @@ export default function UtilitiesModule({ onBack, user }) {
               <div className="px-6 py-5">
                 <SectionHeader
                   icon={Users}
-                  title="Attentes des Parties int\u00e9ress\u00e9es"
+                  title={`Attentes des ${PARTIES_LABEL}`}
                   subtitle="Identification et surveillance"
                   meta={sectionMeta.parties}
                   isAdmin={isAdmin}
@@ -2408,7 +2397,7 @@ export default function UtilitiesModule({ onBack, user }) {
                   <thead>
                     <tr>
                       {[
-                        'Partie int\u00e9ress\u00e9e',
+                        PARTIE_LABEL,
                         'Impact',
                         'N°',
                         'Attente / Exigence',
@@ -3444,7 +3433,7 @@ export default function UtilitiesModule({ onBack, user }) {
               <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-slate-600">
                 Cette matrice presente les interactions entre les processus de pilotage, de
                 realisation et de support, ainsi que les liens avec les exigences et la
-                satisfaction des parties int\u00e9ress\u00e9es.
+                satisfaction des parties int?ress?es.
               </div>
 
               <div className="mb-5 flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
@@ -3929,7 +3918,7 @@ export default function UtilitiesModule({ onBack, user }) {
           <form onSubmit={saveAttente} className="grid grid-cols-2 gap-5">
             <div className="col-span-2">
               <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Partie int\u00e9ress\u00e9e
+                {PARTIE_LABEL}
               </label>
               <input
                 list="pi-list"
