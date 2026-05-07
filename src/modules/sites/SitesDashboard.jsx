@@ -538,6 +538,56 @@ const ReviewTrendChart = ({ title, data, color, unit, emptyText }) => (
   </div>
 );
 
+const ReviewUsageDonutCard = ({ title, label, data, emptyText }) => (
+  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="mb-4 flex items-center justify-between gap-3">
+      <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-700">{title}</h3>
+    </div>
+    {data.length === 0 ? (
+      <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">
+        {emptyText}
+      </div>
+    ) : (
+      <div className="flex flex-col items-center">
+        <div className="h-[170px] w-full max-w-[220px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={44}
+                outerRadius={64}
+                paddingAngle={2}
+                stroke="none"
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`${entry.name}-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => `${formatCompactNumber(value, 1)} %`} />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        </div>
+        <span className="mt-[-96px] mb-[70px] text-xs font-medium text-slate-400">{label}</span>
+        <div className="grid w-full grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          {data.map((item, index) => (
+            <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                <span className="truncate text-slate-600" title={item.name}>{item.name}</span>
+              </div>
+              <span className="font-semibold text-slate-800">{formatCompactNumber(item.value, 1)}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+);
+
 const SitesDashboard = ({ onBack, userRole, user }) => {
   const [activeSiteTab, setActiveSiteTab] = useState('MEGRINE');
   const [historyData, setHistoryData] = useState({});
@@ -1523,6 +1573,60 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     });
   }, [currentData.elecUsage, significanceRows]);
 
+  const usageColorMap = useMemo(
+    () => new Map(usagePieData.map((usage) => [normalizeSearchText(usage.name), usage.color])),
+    [usagePieData]
+  );
+
+  const usageSourceGroups = useMemo(() => {
+    const isGazUsage = (name) => normalizeSearchText(name).includes('gaz');
+    const electricityRows = usageMatrixRows.filter((row) => !isGazUsage(row.name));
+    const gasRows = usageMatrixRows.filter((row) => isGazUsage(row.name));
+
+    const groups = [];
+    if (electricityRows.length > 0) {
+      groups.push({
+        id: 'electricite',
+        name: 'Electricite',
+        rows: electricityRows,
+        pct: electricityRows.reduce((sum, row) => sum + toNumberOrZero(row.pct), 0),
+      });
+    }
+    if (gasRows.length > 0) {
+      groups.push({
+        id: 'gaz',
+        name: 'Gaz',
+        rows: gasRows,
+        pct: gasRows.reduce((sum, row) => sum + toNumberOrZero(row.pct), 0),
+      });
+    }
+    return groups;
+  }, [usageMatrixRows]);
+
+  const electricityUsageChartRows = useMemo(
+    () =>
+      usageSourceGroups
+        .find((group) => group.id === 'electricite')
+        ?.rows.map((row) => ({
+          name: row.name,
+          value: row.pct,
+          color: usageColorMap.get(normalizeSearchText(row.name)) || '#2563eb',
+        })) || [],
+    [usageColorMap, usageSourceGroups]
+  );
+
+  const gasUsageChartRows = useMemo(
+    () =>
+      usageSourceGroups
+        .find((group) => group.id === 'gaz')
+        ?.rows.map((row) => ({
+          name: row.name,
+          value: row.pct,
+          color: usageColorMap.get(normalizeSearchText(row.name)) || '#ef4444',
+        })) || [],
+    [usageColorMap, usageSourceGroups]
+  );
+
   const usageShareLighting = getUsageShareByKeywords(currentData.elecUsage, ['eclairage']);
   const usageShareCvc = getUsageShareByKeywords(currentData.elecUsage, ['clim', 'cvc', 'chauffage']);
 
@@ -1920,131 +2024,128 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             <section className="space-y-6">
               <ReviewSectionHeader icon={Settings} title="Matrice des Usages Energetiques Significatifs (UES)" subtitle="La repartition et la significativite restent alimentees par la configuration UES deja enregistree." />
 
-              <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-                <div className="border-b border-slate-200 bg-slate-50 px-6 py-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-800">
-                        Repartition detaillee des usages
-                      </h3>
-                      <p className="mt-2 max-w-3xl text-sm text-slate-500">
-                        Vue synthetique des usages, sous-usages et niveaux de significativite a partir de la configuration UES deja enregistree.
-                      </p>
-                    </div>
-                    {userRole === 'ADMIN' && (
-                      <button
-                        onClick={() => setShowUsageConfig(true)}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-blue-200 hover:text-blue-900"
-                      >
-                        <Settings size={16} />
-                        Configurer
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-700">Usages configures</p>
-                      <p className="mt-2 text-2xl font-black text-blue-900">{usageMatrixRows.length}</p>
-                    </div>
-                    <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700">UES actives</p>
-                      <p className="mt-2 text-2xl font-black text-amber-800">
-                        {usageMatrixRows.filter((row) => row.significant).length}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700">Part totale couverte</p>
-                      <p className="mt-2 text-2xl font-black text-emerald-800">
-                        {formatCompactNumber(
-                          usageMatrixRows.reduce((sum, row) => sum + toNumberOrZero(row.pct), 0),
-                          0
-                        )}
-                        %
-                      </p>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                <div className="space-y-6 lg:col-span-4">
+                  <ReviewUsageDonutCard
+                    title="Usages - Electricite"
+                    label="Elec."
+                    data={electricityUsageChartRows}
+                    emptyText="Aucun usage electrique defini."
+                  />
+                  <ReviewUsageDonutCard
+                    title="Usages - Gaz"
+                    label="Gaz"
+                    data={gasUsageChartRows}
+                    emptyText="Aucun usage gaz defini."
+                  />
                 </div>
 
-                <div className="overflow-x-auto p-4">
-                  <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-                    <thead>
-                      <tr className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                        <th className="rounded-tl-2xl border-b border-slate-200 bg-slate-50 px-4 py-3">Usage</th>
-                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Part</th>
-                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Ratio</th>
-                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Note conso</th>
-                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Note gain</th>
-                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Produit</th>
-                        <th className="rounded-tr-2xl border-b border-slate-200 bg-slate-50 px-4 py-3 text-right">Etat</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usageMatrixRows.length === 0 ? (
-                        <tr>
-                          <td colSpan="7" className="px-4 py-12 text-center text-sm text-slate-400">
-                            Aucun usage configure pour ce site.
-                          </td>
-                        </tr>
-                      ) : (
-                        usageMatrixRows.map((row, index) => (
-                          <React.Fragment key={`${row.name}-${index}`}>
-                            <tr className="group">
-                              <td className="border-b border-slate-100 px-4 py-4 align-top">
-                                <div className="flex items-start gap-3">
-                                  <span className={`mt-1 h-2.5 w-2.5 rounded-full ${row.significant ? 'bg-amber-500' : 'bg-slate-300'}`} />
-                                  <div>
-                                    <p className="font-semibold text-slate-800">{row.name}</p>
-                                    {row.subUsages.length > 0 ? (
-                                      <p className="mt-1 text-xs text-slate-400">
-                                        {row.subUsages.length} sous-usage{row.subUsages.length > 1 ? 's' : ''}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="border-b border-slate-100 px-4 py-4 text-center font-bold text-slate-700">
-                                {formatCompactNumber(row.pct, 0)}%
-                              </td>
-                              <td className="border-b border-slate-100 px-4 py-4 text-center text-slate-500">
-                                {row.ratio || '-'}
-                              </td>
-                              <td className="border-b border-slate-100 px-4 py-4 text-center font-semibold text-slate-600">
-                                {row.consoScore}
-                              </td>
-                              <td className="border-b border-slate-100 px-4 py-4 text-center font-semibold text-slate-600">
-                                {row.gainScore}
-                              </td>
-                              <td className="border-b border-slate-100 px-4 py-4 text-center font-black text-slate-800">
-                                {row.finalScore}
-                              </td>
-                              <td className="border-b border-slate-100 px-4 py-4 text-right">
-                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${row.significant ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
-                                  {row.significant ? 'UES' : 'Suivi'}
-                                </span>
-                              </td>
-                            </tr>
+                <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm lg:col-span-8">
+                  <div className="flex items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/60 p-6">
+                    <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-700">
+                      Evaluation des usages - <span className="text-blue-600">{currentSiteName}</span>
+                    </h3>
+                    {userRole === 'ADMIN' ? (
+                      <button
+                        onClick={() => setShowUsageConfig(true)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100"
+                      >
+                        <Settings size={14} />
+                        Configurer UES
+                      </button>
+                    ) : null}
+                  </div>
 
-                            {row.subUsages.map((subUsage, subIndex) => (
-                              <tr key={`${row.name}-${subUsage.name}-${subIndex}`} className="bg-slate-50/80">
-                                <td className="border-b border-slate-100 px-4 py-2 pl-12 text-xs text-slate-500">
-                                  • {subUsage.name}
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="bg-white">
+                          <th rowSpan="2" className="w-[34%] border-b border-slate-200 py-4 pl-4 text-xs font-semibold uppercase tracking-wider text-slate-400 align-bottom">
+                            Source / Usage
+                          </th>
+                          <th rowSpan="2" className="border-b border-slate-200 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 align-bottom">
+                            Part
+                          </th>
+                          <th colSpan="3" className="border-b border-slate-200 bg-slate-50/80 py-2 text-center text-xs font-bold uppercase tracking-wider text-slate-600">
+                            Niveau de significativite
+                          </th>
+                          <th rowSpan="2" className="border-b border-slate-200 py-4 pr-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 align-bottom">
+                            Etat
+                          </th>
+                        </tr>
+                        <tr className="border-b border-slate-200 bg-white">
+                          <th className="w-24 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">Note conso</th>
+                          <th className="w-24 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">Note gain</th>
+                          <th className="w-24 py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">Produit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usageSourceGroups.length === 0 ? (
+                          <tr>
+                            <td colSpan="6" className="px-4 py-12 text-center text-sm text-slate-400">
+                              Aucun usage configure pour ce site.
+                            </td>
+                          </tr>
+                        ) : (
+                          usageSourceGroups.map((group) => (
+                            <React.Fragment key={group.id}>
+                              <tr className="group border-b border-slate-200 bg-slate-50">
+                                <td className="py-4 pl-4 font-semibold text-slate-800">
+                                  <div className="flex items-center gap-2">
+                                    <Zap size={14} className={group.id === 'gaz' ? 'text-red-500' : 'text-amber-500'} />
+                                    <span>{group.name}</span>
+                                  </div>
                                 </td>
-                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs font-bold text-slate-500">
-                                  {formatCompactNumber(toNumberOrZero(subUsage.value), 0)}%
-                                </td>
-                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs text-slate-300">-</td>
-                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs text-slate-300">-</td>
-                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs text-slate-300">-</td>
-                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs text-slate-300">-</td>
-                                <td className="border-b border-slate-100 px-4 py-2 text-right text-xs text-slate-300">Sous-usage</td>
+                                <td className="py-4 font-medium text-slate-800">{formatCompactNumber(group.pct, 0)}%</td>
+                                <td className="py-4 text-center text-slate-400">-</td>
+                                <td className="py-4 text-center text-slate-400">-</td>
+                                <td className="py-4 text-center font-bold text-slate-400">-</td>
+                                <td className="py-4 pr-4 text-right text-slate-300">-</td>
                               </tr>
-                            ))}
-                          </React.Fragment>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+
+                              {group.rows.map((row, rowIndex) => (
+                                <React.Fragment key={`${group.id}-${row.name}-${rowIndex}`}>
+                                  <tr className="group border-b border-slate-100 hover:bg-slate-50">
+                                    <td className="py-4 pl-10">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-slate-300">•</span>
+                                        <span className="font-medium text-slate-700">{row.name}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-4 font-medium text-slate-600">{formatCompactNumber(row.pct, 0)}%</td>
+                                    <td className="py-4 text-center text-slate-500">{row.consoScore}</td>
+                                    <td className="py-4 text-center text-slate-500">{row.gainScore}</td>
+                                    <td className="py-4 text-center font-bold text-slate-900">{row.finalScore}</td>
+                                    <td className="py-4 pr-4 text-right">
+                                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${row.significant ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                                        {row.significant ? 'UES' : 'Suivi'}
+                                      </span>
+                                    </td>
+                                  </tr>
+
+                                  {row.subUsages.map((subUsage, subIndex) => (
+                                    <tr key={`${group.id}-${row.name}-${subUsage.name}-${subIndex}`} className="border-b border-slate-100 bg-white">
+                                      <td className="py-3 pl-16 text-sm text-slate-500">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-slate-300">•</span>
+                                          <span>{subUsage.name}</span>
+                                        </div>
+                                      </td>
+                                      <td className="py-3 text-slate-600">{formatCompactNumber(toNumberOrZero(subUsage.value), 1)}%</td>
+                                      <td className="py-3 text-center text-slate-300">-</td>
+                                      <td className="py-3 text-center text-slate-300">-</td>
+                                      <td className="py-3 text-center text-slate-300">-</td>
+                                      <td className="py-3 pr-4 text-right text-slate-300">-</td>
+                                    </tr>
+                                  ))}
+                                </React.Fragment>
+                              ))}
+                            </React.Fragment>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </section>
