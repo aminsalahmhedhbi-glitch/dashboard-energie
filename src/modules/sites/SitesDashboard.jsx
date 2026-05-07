@@ -2314,26 +2314,26 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                         <button
                                           type="button"
                                           onClick={() => openUsageAddModal(row.usageIndex)}
-                                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-100"
+                                          title="Ajouter un sous-usage"
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100"
                                         >
-                                          <PlusCircle size={12} />
-                                          Ajouter
+                                          <PlusCircle size={14} />
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => openUsageEditModal(row.usageIndex)}
-                                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+                                          title="Modifier l’usage"
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                         >
-                                          <Edit2 size={12} />
-                                          Modifier
+                                          <Edit2 size={14} />
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => handleUsageActionDelete(row.usageIndex)}
-                                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-100"
+                                          title="Supprimer l’usage"
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
                                         >
-                                          <Trash2 size={12} />
-                                          Suppr.
+                                          <Trash2 size={14} />
                                         </button>
                                       </div>
                                     </td>
@@ -2357,18 +2357,18 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                           <button
                                             type="button"
                                             onClick={() => openUsageEditModal(row.usageIndex, subIndex)}
-                                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+                                            title="Modifier le sous-usage"
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                           >
-                                            <Edit2 size={12} />
-                                            Modifier
+                                            <Edit2 size={14} />
                                           </button>
                                           <button
                                             type="button"
                                             onClick={() => handleUsageActionDelete(row.usageIndex, subIndex)}
-                                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-100"
+                                            title="Supprimer le sous-usage"
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
                                           >
-                                            <Trash2 size={12} />
-                                            Suppr.
+                                            <Trash2 size={14} />
                                           </button>
                                         </div>
                                       </td>
