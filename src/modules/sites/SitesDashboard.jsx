@@ -457,6 +457,23 @@ const getUsageShareByKeywords = (usages = [], keywords = []) => {
   return total / 100;
 };
 
+const getUsageConsoScoreByPart = (partValue) => {
+  const value = toNumberOrZero(partValue);
+  if (value >= 35) return 5;
+  if (value >= 20) return 4;
+  if (value >= 10) return 3;
+  if (value >= 5) return 2;
+  return 1;
+};
+
+const getUsageGainScoreFallback = (partValue) => {
+  const value = toNumberOrZero(partValue);
+  if (value >= 30) return 4;
+  if (value >= 15) return 3;
+  if (value >= 8) return 2;
+  return 1;
+};
+
 const ReviewSectionHeader = ({ icon: Icon, title, subtitle }) => (
   <div className="flex items-start justify-between gap-4">
     <div>
@@ -607,6 +624,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     name: '',
     value: '',
     ratio: '',
+    noteGain: '',
     significant: false,
   });
   const prevMonth = new Date();
@@ -806,6 +824,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       name: '',
       value: '',
       ratio: '',
+      noteGain: '',
       significant: false,
     });
   };
@@ -821,6 +840,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       name: '',
       value: '',
       ratio: '',
+      noteGain: '',
       significant: false,
     });
   };
@@ -840,6 +860,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         name: usage.name || '',
         value: String(toNumberOrZero(usage.value)),
         ratio: usage.ratio || '',
+        noteGain: usage?.noteGain != null ? String(usage.noteGain) : '',
         significant: Boolean(usage.significant),
       });
       return;
@@ -858,6 +879,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       name: subUsage.name || '',
       value: String(toNumberOrZero(subUsage.value)),
       ratio: '',
+      noteGain: subUsage?.noteGain != null ? String(subUsage.noteGain) : '',
       significant: false,
     });
   };
@@ -877,6 +899,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     if (!trimmedName) return;
 
     const numericValue = Math.max(0, toNumberOrZero(usageActionForm.value));
+    const noteGainValue = usageActionForm.noteGain === '' ? null : Math.max(1, Math.min(5, toNumberOrZero(usageActionForm.noteGain)));
 
     setSitesDataState((prev) => {
       const next = { ...prev };
@@ -894,6 +917,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
           name: trimmedName,
           value: numericValue,
           ratio: usageActionForm.ratio || '-',
+          noteGain: noteGainValue,
           significant: Boolean(usageActionForm.significant),
         };
       } else {
@@ -905,6 +929,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
           subUsages.push({
             name: trimmedName,
             value: numericValue,
+            noteGain: noteGainValue,
           });
         } else if (
           usageActionModal.mode === 'edit-sub' &&
@@ -915,6 +940,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             ...subUsages[usageActionModal.subIndex],
             name: trimmedName,
             value: numericValue,
+            noteGain: noteGainValue,
           };
         }
 
@@ -1679,15 +1705,10 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const significanceRows = useMemo(() => {
     const rows = [];
     usagePieData.forEach((usage) => {
-      const consoScore =
-        usage.value >= 35 ? 5 :
-        usage.value >= 20 ? 4 :
-        usage.value >= 10 ? 3 :
-        usage.value >= 5 ? 2 : 1;
-      const gainScore =
-        usage.value >= 30 ? 4 :
-        usage.value >= 15 ? 3 :
-        usage.value >= 8 ? 2 : 1;
+      const consoScore = getUsageConsoScoreByPart(usage.value);
+      const gainScore = usage?.noteGain != null && usage.noteGain !== ''
+        ? Math.max(1, Math.min(5, toNumberOrZero(usage.noteGain)))
+        : getUsageGainScoreFallback(usage.value);
       const finalScore = consoScore * gainScore;
 
       rows.push({
@@ -2468,19 +2489,17 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         {usageActionModal.open && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-              <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-5">
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">
                     {usageActionModal.mode === 'add-sub'
-                      ? 'Ajouter un sous-usage'
+                      ? 'Ajouter un usage'
                       : usageActionModal.mode === 'edit-sub'
-                        ? 'Modifier le sous-usage'
-                        : 'Modifier l’usage'}
+                        ? 'Modifier un usage'
+                        : 'Modifier un usage'}
                   </h3>
-                  <p className="text-xs text-slate-400">
-                    {usageActionModal.mode === 'edit-usage'
-                      ? 'Edition rapide depuis la matrice des usages.'
-                      : 'Ce formulaire met a jour directement les donnees du site actif.'}
+                  <p className="mt-1 text-xs text-slate-400">
+                    Cette edition met a jour les donnees du site actif sans changer la structure existante.
                   </p>
                 </div>
                 <button onClick={closeUsageActionModal} className="rounded-full p-2 text-slate-400 hover:bg-white hover:text-slate-600">
@@ -2488,10 +2507,10 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                 </button>
               </div>
 
-              <form onSubmit={handleSaveUsageActionModal} className="space-y-4 p-5">
+              <form onSubmit={handleSaveUsageActionModal} className="space-y-5 p-5">
                 <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    {usageActionModal.mode === 'edit-usage' ? 'Nom de l’usage' : 'Nom du sous-usage'}
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Nom de l&apos;usage
                   </label>
                   <input
                     type="text"
@@ -2503,64 +2522,62 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                         name: event.target.value,
                       }))
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
 
-                <div className={usageActionModal.mode === 'edit-usage' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2' : ''}>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Part (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={usageActionForm.value}
+                    onChange={(event) =>
+                      setUsageActionForm((prev) => ({
+                        ...prev,
+                        value: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                      {usageActionModal.mode === 'edit-usage' ? 'Part (%)' : 'Part du sous-usage (%)'}
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">
+                      Note Conso (1-5) <span className="ml-1 text-xs font-normal text-blue-500">(Calculé)</span>
                     </label>
                     <input
                       type="number"
-                      min="0"
-                      step="0.1"
-                      value={usageActionForm.value}
-                      onChange={(event) =>
-                        setUsageActionForm((prev) => ({
-                          ...prev,
-                          value: event.target.value,
-                        }))
-                      }
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      disabled
+                      value={getUsageConsoScoreByPart(usageActionForm.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500 outline-none"
                     />
                   </div>
-
-                  {usageActionModal.mode === 'edit-usage' ? (
-                    <div>
-                      <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Ratio / KPI</label>
-                      <input
-                        type="text"
-                        value={usageActionForm.ratio}
-                        onChange={(event) =>
-                          setUsageActionForm((prev) => ({
-                            ...prev,
-                            ratio: event.target.value,
-                          }))
-                        }
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </div>
-                  ) : null}
-                </div>
-
-                {usageActionModal.mode === 'edit-usage' ? (
-                  <label className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-semibold text-amber-700">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">
+                      Note Gain (1-5)
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={usageActionForm.significant}
+                      type="number"
+                      min="1"
+                      max="5"
+                      step="1"
+                      placeholder="Optionnel"
+                      value={usageActionForm.noteGain}
                       onChange={(event) =>
                         setUsageActionForm((prev) => ({
                           ...prev,
-                          significant: event.target.checked,
+                          noteGain: event.target.value,
                         }))
                       }
-                      className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-300"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                     />
-                    Marquer comme usage significatif (UES)
-                  </label>
-                ) : null}
+                  </div>
+                </div>
 
                 <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                   <button
