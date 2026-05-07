@@ -747,6 +747,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         const newUsages = [...site.elecUsage];
         if(!newUsages[usageIndex].subUsages) newUsages[usageIndex].subUsages = [];
         newUsages[usageIndex].subUsages.push({name: "Nouveau", value: 0});
+        site.elecUsage = newUsages;
         return newData;
     });
   };
@@ -757,6 +758,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         const site = newData[activeSiteTab];
         const newUsages = [...site.elecUsage];
         newUsages[usageIndex].subUsages = newUsages[usageIndex].subUsages.filter((_, i) => i !== subIndex);
+        site.elecUsage = newUsages;
         return newData;
     });
   };
