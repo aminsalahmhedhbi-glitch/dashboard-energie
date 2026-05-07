@@ -2085,7 +2085,7 @@ export default function UtilitiesModule({ onBack, user }) {
       <div className="sticky top-0 z-40 px-3 py-3 sm:px-4 lg:px-5">
         <ModuleHeader
           title="Gouvernance et Engagement"
-          subtitle="Contexte, leadership, parties intéressées et base documentaire"
+          subtitle={GOVERNANCE_SUBTITLE}
           icon={Shield}
           user={user}
           onHomeClick={onBack}
