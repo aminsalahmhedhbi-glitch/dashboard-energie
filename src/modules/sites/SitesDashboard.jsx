@@ -1501,6 +1501,28 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     return rows;
   }, [usagePieData]);
 
+  const usageMatrixRows = useMemo(() => {
+    const scoreMap = new Map(
+      significanceRows
+        .filter((row) => row.type === 'usage')
+        .map((row) => [normalizeSearchText(row.usage), row])
+    );
+
+    return (currentData.elecUsage || []).map((usage) => {
+      const scoreRow = scoreMap.get(normalizeSearchText(usage?.name || ''));
+      return {
+        name: usage?.name || 'Usage',
+        pct: toNumberOrZero(usage?.value),
+        ratio: usage?.ratio || '',
+        consoScore: scoreRow?.consoScore ?? '-',
+        gainScore: scoreRow?.gainScore ?? '-',
+        finalScore: scoreRow?.finalScore ?? '-',
+        significant: scoreRow?.significant ?? Boolean(usage?.significant),
+        subUsages: Array.isArray(usage?.subUsages) ? usage.subUsages : [],
+      };
+    });
+  }, [currentData.elecUsage, significanceRows]);
+
   const usageShareLighting = getUsageShareByKeywords(currentData.elecUsage, ['eclairage']);
   const usageShareCvc = getUsageShareByKeywords(currentData.elecUsage, ['clim', 'cvc', 'chauffage']);
 
@@ -1896,103 +1918,133 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             </section>
 
             <section className="space-y-6">
-              <ReviewSectionHeader icon={Settings} title="Matrice des Usages Energetiques Significatifs (UES)" subtitle="La repartition et la significativite restent alimentees par la configuration UES du site actif." />
+              <ReviewSectionHeader icon={Settings} title="Matrice des Usages Energetiques Significatifs (UES)" subtitle="La repartition et la significativite restent alimentees par la configuration UES deja enregistree." />
 
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr,2fr]">
-                <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Repartition globale</h3>
+              <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-200 bg-slate-50 px-6 py-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-800">
+                        Repartition detaillee des usages
+                      </h3>
+                      <p className="mt-2 max-w-3xl text-sm text-slate-500">
+                        Vue synthetique des usages, sous-usages et niveaux de significativite a partir de la configuration UES deja enregistree.
+                      </p>
+                    </div>
                     {userRole === 'ADMIN' && (
-                      <button onClick={() => setShowUsageConfig(true)} className="rounded-full bg-slate-50 p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-blue-900">
+                      <button
+                        onClick={() => setShowUsageConfig(true)}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-blue-200 hover:text-blue-900"
+                      >
                         <Settings size={16} />
+                        Configurer
                       </button>
                     )}
                   </div>
 
-                  {usagePieData.length === 0 ? (
-                    <div className="flex h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">
-                      Donnees de repartition non disponibles pour ce site.
+                  <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-700">Usages configures</p>
+                      <p className="mt-2 text-2xl font-black text-blue-900">{usageMatrixRows.length}</p>
                     </div>
-                  ) : (
-                    <>
-                      <div className="h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RechartsPieChart>
-                            <Pie data={usagePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={65} outerRadius={96} paddingAngle={2} stroke="none">
-                              {usagePieData.map((entry) => (
-                                <Cell key={entry.name} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip formatter={(value) => `${formatCompactNumber(value, 1)} %`} />
-                          </RechartsPieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        {usagePieData.map((usage) => (
-                          <div key={usage.name} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs">
-                            <span className="flex items-center gap-2 font-medium text-slate-600">
-                              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: usage.color }} />
-                              {usage.name}
-                            </span>
-                            <span className="font-black text-slate-800">{formatCompactNumber(usage.value, 1)}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700">UES actives</p>
+                      <p className="mt-2 text-2xl font-black text-amber-800">
+                        {usageMatrixRows.filter((row) => row.significant).length}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700">Part totale couverte</p>
+                      <p className="mt-2 text-2xl font-black text-emerald-800">
+                        {formatCompactNumber(
+                          usageMatrixRows.reduce((sum, row) => sum + toNumberOrZero(row.pct), 0),
+                          0
+                        )}
+                        %
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-                  <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Evaluation & niveau de significativite</h3>
-                  </div>
-                  <div className="overflow-x-auto p-4">
-                    <table className="min-w-full border-collapse text-left text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                          <th className="px-3 py-3">Usage</th>
-                          <th className="px-3 py-3 text-center">Part</th>
-                          <th className="px-3 py-3 text-center">Note conso</th>
-                          <th className="px-3 py-3 text-center">Note gain</th>
-                          <th className="px-3 py-3 text-center">Produit</th>
-                          <th className="px-3 py-3 text-right">Etat</th>
+                <div className="overflow-x-auto p-4">
+                  <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+                    <thead>
+                      <tr className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                        <th className="rounded-tl-2xl border-b border-slate-200 bg-slate-50 px-4 py-3">Usage</th>
+                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Part</th>
+                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Ratio</th>
+                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Note conso</th>
+                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Note gain</th>
+                        <th className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-center">Produit</th>
+                        <th className="rounded-tr-2xl border-b border-slate-200 bg-slate-50 px-4 py-3 text-right">Etat</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usageMatrixRows.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" className="px-4 py-12 text-center text-sm text-slate-400">
+                            Aucun usage configure pour ce site.
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {significanceRows.length === 0 ? (
-                          <tr>
-                            <td colSpan="6" className="px-3 py-10 text-center text-sm text-slate-400">Aucun usage configure pour ce site.</td>
-                          </tr>
-                        ) : (
-                          significanceRows.map((row, index) =>
-                            row.type === 'sub' ? (
-                              <tr key={`${row.usage}-${index}`} className="bg-slate-50/70">
-                                <td className="px-3 py-2 pl-8 text-xs text-slate-500">• {row.usage}</td>
-                                <td className="px-3 py-2 text-center text-xs font-bold text-slate-500">{formatCompactNumber(row.pct, 0)}%</td>
-                                <td className="px-3 py-2 text-center text-xs text-slate-300">-</td>
-                                <td className="px-3 py-2 text-center text-xs text-slate-300">-</td>
-                                <td className="px-3 py-2 text-center text-xs text-slate-300">-</td>
-                                <td className="px-3 py-2 text-right text-xs text-slate-300">Sous-usage</td>
-                              </tr>
-                            ) : (
-                              <tr key={`${row.usage}-${index}`} className="hover:bg-slate-50">
-                                <td className="px-3 py-3 font-semibold text-slate-700">{row.usage}</td>
-                                <td className="px-3 py-3 text-center font-bold text-slate-600">{formatCompactNumber(row.pct, 0)}%</td>
-                                <td className="px-3 py-3 text-center">{row.consoScore}</td>
-                                <td className="px-3 py-3 text-center">{row.gainScore}</td>
-                                <td className="px-3 py-3 text-center font-black text-slate-800">{row.finalScore}</td>
-                                <td className="px-3 py-3 text-right">
-                                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${row.significant ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
-                                    {row.significant ? 'UES' : 'Suivi'}
-                                  </span>
+                      ) : (
+                        usageMatrixRows.map((row, index) => (
+                          <React.Fragment key={`${row.name}-${index}`}>
+                            <tr className="group">
+                              <td className="border-b border-slate-100 px-4 py-4 align-top">
+                                <div className="flex items-start gap-3">
+                                  <span className={`mt-1 h-2.5 w-2.5 rounded-full ${row.significant ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                                  <div>
+                                    <p className="font-semibold text-slate-800">{row.name}</p>
+                                    {row.subUsages.length > 0 ? (
+                                      <p className="mt-1 text-xs text-slate-400">
+                                        {row.subUsages.length} sous-usage{row.subUsages.length > 1 ? 's' : ''}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="border-b border-slate-100 px-4 py-4 text-center font-bold text-slate-700">
+                                {formatCompactNumber(row.pct, 0)}%
+                              </td>
+                              <td className="border-b border-slate-100 px-4 py-4 text-center text-slate-500">
+                                {row.ratio || '-'}
+                              </td>
+                              <td className="border-b border-slate-100 px-4 py-4 text-center font-semibold text-slate-600">
+                                {row.consoScore}
+                              </td>
+                              <td className="border-b border-slate-100 px-4 py-4 text-center font-semibold text-slate-600">
+                                {row.gainScore}
+                              </td>
+                              <td className="border-b border-slate-100 px-4 py-4 text-center font-black text-slate-800">
+                                {row.finalScore}
+                              </td>
+                              <td className="border-b border-slate-100 px-4 py-4 text-right">
+                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${row.significant ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                                  {row.significant ? 'UES' : 'Suivi'}
+                                </span>
+                              </td>
+                            </tr>
+
+                            {row.subUsages.map((subUsage, subIndex) => (
+                              <tr key={`${row.name}-${subUsage.name}-${subIndex}`} className="bg-slate-50/80">
+                                <td className="border-b border-slate-100 px-4 py-2 pl-12 text-xs text-slate-500">
+                                  • {subUsage.name}
                                 </td>
+                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs font-bold text-slate-500">
+                                  {formatCompactNumber(toNumberOrZero(subUsage.value), 0)}%
+                                </td>
+                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs text-slate-300">-</td>
+                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs text-slate-300">-</td>
+                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs text-slate-300">-</td>
+                                <td className="border-b border-slate-100 px-4 py-2 text-center text-xs text-slate-300">-</td>
+                                <td className="border-b border-slate-100 px-4 py-2 text-right text-xs text-slate-300">Sous-usage</td>
                               </tr>
-                            )
-                          )
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                            ))}
+                          </React.Fragment>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </section>
