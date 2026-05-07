@@ -200,7 +200,7 @@ const INITIAL_PERIMETRE = {
     { id: 502, court: 'VN', long: 'Vehicules Neufs' },
     { id: 503, court: 'PDR', long: 'Pieces De Rechange' },
     { id: 504, court: 'SAV', long: 'Service Apres-Vente' },
-    { id: 505, court: 'PI', long: 'Parties Interessees' },
+    { id: 505, court: 'PI', long: 'Parties int\u00e9ress\u00e9es' },
   ],
   contexte: [
     { id: 601, text: 'Croissance du marche automobile en Tunisie.' },
@@ -425,7 +425,7 @@ const TABS = [
   },
   {
     id: 'parties',
-    title: 'Parties Interessees',
+    title: 'Parties int\u00e9ress\u00e9es',
     subtitle: 'Attentes & Suivi',
     chapter: 'Ch 4.2',
     icon: Users,
@@ -1405,6 +1405,7 @@ export default function UtilitiesModule({ onBack, user }) {
             ...item,
             lieu: normalizeGovernorateChoice(item.lieu) || inferReseauPropreLieu(item.lieu ?? item.text),
             activites: normalizeReseauActivites(item.activites),
+            marques: normalizeConcessionnaireMarques(item.marques || item.marque),
             marque: String(item.marque || '').trim(),
           })) || INITIAL_PERIMETRE.reseau.propre,
         sousConcessionnaires:
@@ -1646,6 +1647,27 @@ export default function UtilitiesModule({ onBack, user }) {
             ? currentActivites.filter((label) => label !== activiteLabel)
             : [...currentActivites, activiteLabel];
           return { ...item, activites: nextActivites };
+        }),
+      },
+    }));
+  };
+
+  const toggleReseauPropreMarque = (itemId, marqueLabel) => {
+    setPerimetre((prev) => ({
+      ...prev,
+      reseau: {
+        ...(prev?.reseau || {}),
+        propre: (prev?.reseau?.propre || []).map((item) => {
+          if (item.id !== itemId) return item;
+          const currentMarques = normalizeConcessionnaireMarques(item.marques || item.marque);
+          const nextMarques = currentMarques.includes(marqueLabel)
+            ? currentMarques.filter((label) => label !== marqueLabel)
+            : [...currentMarques, marqueLabel];
+          return {
+            ...item,
+            marques: nextMarques,
+            marque: nextMarques[0] || '',
+          };
         }),
       },
     }));
@@ -2365,7 +2387,7 @@ export default function UtilitiesModule({ onBack, user }) {
               <div className="px-6 py-5">
                 <SectionHeader
                   icon={Users}
-                  title="Attentes des Parties Interessees"
+                  title="Attentes des Parties int\u00e9ress\u00e9es"
                   subtitle="Identification et surveillance"
                   meta={sectionMeta.parties}
                   isAdmin={isAdmin}
@@ -2386,7 +2408,7 @@ export default function UtilitiesModule({ onBack, user }) {
                   <thead>
                     <tr>
                       {[
-                        'Partie interessee',
+                        'Partie int\u00e9ress\u00e9e',
                         'Impact',
                         'N°',
                         'Attente / Exigence',
@@ -2850,6 +2872,7 @@ export default function UtilitiesModule({ onBack, user }) {
                                       text: 'Nouveau site',
                                       lieu: 'Tunis',
                                       activites: [],
+                                      marques: [],
                                       marque: '',
                                     })
                                   }
@@ -2965,32 +2988,29 @@ export default function UtilitiesModule({ onBack, user }) {
                                     </div>
                                     <div className="rounded-xl border border-slate-200 bg-white p-3">
                                       <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                                        Marque
+                                        Marques
                                       </div>
-                                      <select
-                                        value={item.marque ?? ''}
-                                        onChange={(event) =>
-                                          updatePerimetreNestedArrayItem(
-                                            'reseau',
-                                            'propre',
-                                            item.id,
-                                            'marque',
-                                            event.target.value
-                                          )
-                                        }
-                                        className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                                      >
-                                        <option value="">Choisir une marque</option>
+                                      <div className="flex flex-wrap gap-2">
                                         {perimetre.marques.map((marque) => {
                                           const label = marque.text?.trim();
                                           if (!label) return null;
+                                          const selected = normalizeConcessionnaireMarques(item.marques || item.marque).includes(label);
                                           return (
-                                            <option key={`${item.id}-brand-${marque.id}`} value={label}>
+                                            <button
+                                              key={`${item.id}-brand-${marque.id}`}
+                                              type="button"
+                                              onClick={() => toggleReseauPropreMarque(item.id, label)}
+                                              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                                                selected
+                                                  ? 'border-[#233876] bg-[#233876] text-white'
+                                                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-[#233876] hover:text-[#233876]'
+                                              }`}
+                                            >
                                               {label}
-                                            </option>
+                                            </button>
                                           );
                                         })}
-                                      </select>
+                                      </div>
                                     </div>
                                   </div>
                                 ) : (
@@ -3004,8 +3024,10 @@ export default function UtilitiesModule({ onBack, user }) {
                                             {formatReseauActivites(item.activites)}
                                           </div>
                                         ) : null}
-                                        {item.marque ? (
-                                          <div className="mt-1 text-[11px] font-semibold text-blue-600">{item.marque}</div>
+                                        {formatConcessionnaireMarques(item.marques || item.marque) ? (
+                                          <div className="mt-1 text-[11px] font-semibold text-blue-600">
+                                            {formatConcessionnaireMarques(item.marques || item.marque)}
+                                          </div>
                                         ) : null}
                                       </div>
                                     </div>
@@ -3422,7 +3444,7 @@ export default function UtilitiesModule({ onBack, user }) {
               <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-slate-600">
                 Cette matrice presente les interactions entre les processus de pilotage, de
                 realisation et de support, ainsi que les liens avec les exigences et la
-                satisfaction des parties interessees.
+                satisfaction des parties int\u00e9ress\u00e9es.
               </div>
 
               <div className="mb-5 flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
@@ -3907,7 +3929,7 @@ export default function UtilitiesModule({ onBack, user }) {
           <form onSubmit={saveAttente} className="grid grid-cols-2 gap-5">
             <div className="col-span-2">
               <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Partie interessee
+                Partie int\u00e9ress\u00e9e
               </label>
               <input
                 list="pi-list"
