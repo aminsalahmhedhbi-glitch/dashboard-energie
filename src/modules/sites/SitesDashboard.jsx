@@ -474,6 +474,21 @@ const getUsageGainScoreFallback = (partValue) => {
   return 1;
 };
 
+const getUsageSignificanceSnapshot = (partValue, noteGainValue, forcedSignificant = false) => {
+  const consoScore = getUsageConsoScoreByPart(partValue);
+  const gainScore = noteGainValue != null && noteGainValue !== ''
+    ? Math.max(1, Math.min(5, toNumberOrZero(noteGainValue)))
+    : getUsageGainScoreFallback(partValue);
+  const finalScore = consoScore * gainScore;
+
+  return {
+    consoScore,
+    gainScore,
+    finalScore,
+    significant: Boolean(forcedSignificant) || finalScore >= 12,
+  };
+};
+
 const ReviewSectionHeader = ({ icon: Icon, title, subtitle }) => (
   <div className="flex items-start justify-between gap-4">
     <div>
@@ -1658,8 +1673,13 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       .map((usage, index) => ({
         name: usage.name,
         value: toNumberOrZero(usage.value),
+        noteGain: usage?.noteGain ?? null,
         significant: Boolean(usage.significant),
-        subUsages: usage.subUsages || [],
+        subUsages: (usage.subUsages || []).map((subUsage) => ({
+          ...subUsage,
+          value: toNumberOrZero(subUsage?.value),
+          noteGain: subUsage?.noteGain ?? null,
+        })),
         color: palette[index % palette.length],
       }));
   }, [currentData.elecUsage]);
@@ -1705,11 +1725,12 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const significanceRows = useMemo(() => {
     const rows = [];
     usagePieData.forEach((usage) => {
-      const consoScore = getUsageConsoScoreByPart(usage.value);
-      const gainScore = usage?.noteGain != null && usage.noteGain !== ''
-        ? Math.max(1, Math.min(5, toNumberOrZero(usage.noteGain)))
-        : getUsageGainScoreFallback(usage.value);
-      const finalScore = consoScore * gainScore;
+      const {
+        consoScore,
+        gainScore,
+        finalScore,
+        significant,
+      } = getUsageSignificanceSnapshot(usage.value, usage.noteGain, usage.significant);
 
       rows.push({
         type: 'usage',
@@ -1718,14 +1739,19 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         consoScore,
         gainScore,
         finalScore,
-        significant: usage.significant || finalScore >= 12,
+        significant,
       });
 
       (usage.subUsages || []).forEach((subUsage) => {
+        const subSnapshot = getUsageSignificanceSnapshot(subUsage.value, subUsage.noteGain, false);
         rows.push({
           type: 'sub',
           usage: subUsage.name,
           pct: toNumberOrZero(subUsage.value),
+          consoScore: subSnapshot.consoScore,
+          gainScore: subSnapshot.gainScore,
+          finalScore: subSnapshot.finalScore,
+          significant: subSnapshot.significant,
         });
       });
     });
@@ -1749,7 +1775,23 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         gainScore: scoreRow?.gainScore ?? '-',
         finalScore: scoreRow?.finalScore ?? '-',
         significant: scoreRow?.significant ?? Boolean(usage?.significant),
-        subUsages: Array.isArray(usage?.subUsages) ? usage.subUsages : [],
+        subUsages: Array.isArray(usage?.subUsages)
+          ? usage.subUsages.map((subUsage) => {
+              const snapshot = getUsageSignificanceSnapshot(
+                subUsage?.value,
+                subUsage?.noteGain ?? null,
+                false
+              );
+              return {
+                ...subUsage,
+                value: toNumberOrZero(subUsage?.value),
+                consoScore: snapshot.consoScore,
+                gainScore: snapshot.gainScore,
+                finalScore: snapshot.finalScore,
+                significant: snapshot.significant,
+              };
+            })
+          : [],
       };
     });
   }, [currentData.elecUsage, significanceRows]);
@@ -2369,10 +2411,14 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                         </div>
                                       </td>
                                       <td className="py-3 text-slate-600">{formatCompactNumber(toNumberOrZero(subUsage.value), 1)}%</td>
-                                      <td className="py-3 text-center text-slate-300">-</td>
-                                      <td className="py-3 text-center text-slate-300">-</td>
-                                      <td className="py-3 text-center text-slate-300">-</td>
-                                      <td className="py-3 pr-4 text-right text-slate-300">-</td>
+                                      <td className="py-3 text-center text-slate-500">{subUsage.consoScore ?? '-'}</td>
+                                      <td className="py-3 text-center text-slate-500">{subUsage.gainScore ?? '-'}</td>
+                                      <td className="py-3 text-center font-bold text-slate-700">{subUsage.finalScore ?? '-'}</td>
+                                      <td className="py-3 pr-4 text-right">
+                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${subUsage.significant ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                                          {subUsage.significant ? 'UES' : 'Suivi'}
+                                        </span>
+                                      </td>
                                       <td className="py-3 pr-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                           <button
