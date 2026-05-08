@@ -1839,14 +1839,30 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   );
 
   const gasUsageChartRows = useMemo(
-    () =>
-      usageSourceGroups
-        .find((group) => group.id === 'gaz')
-        ?.rows.map((row) => ({
-          name: row.name,
-          value: row.pct,
-          color: usageColorMap.get(normalizeSearchText(row.name)) || '#ef4444',
-        })) || [],
+    () => {
+      const gasGroup = usageSourceGroups.find((group) => group.id === 'gaz');
+      if (!gasGroup) return [];
+
+      const gasSubUsageRows = gasGroup.rows.flatMap((row, rowIndex) =>
+        (row.subUsages || [])
+          .filter((subUsage) => toNumberOrZero(subUsage.value) > 0)
+          .map((subUsage, subIndex) => ({
+            name: subUsage.name,
+            value: toNumberOrZero(subUsage.value),
+            color: ['#ef4444', '#f97316', '#f59e0b', '#fb7185', '#dc2626'][(rowIndex + subIndex) % 5],
+          }))
+      );
+
+      if (gasSubUsageRows.length > 0) {
+        return gasSubUsageRows;
+      }
+
+      return gasGroup.rows.map((row) => ({
+        name: row.name,
+        value: row.pct,
+        color: usageColorMap.get(normalizeSearchText(row.name)) || '#ef4444',
+      }));
+    },
     [usageColorMap, usageSourceGroups]
   );
 
