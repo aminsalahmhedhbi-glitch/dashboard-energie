@@ -32,6 +32,7 @@ import { buildFactureInsights, getFactureMetrics, getFactureMonthKey } from '../
 import { getSiteDisplayName } from '../../lib/sites';
 import { useData } from '../../hooks/useData';
 import { useFactures } from '../../hooks/useFactures';
+import { useModuleState } from '../../hooks/useModuleState';
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(() =>
@@ -257,6 +258,30 @@ const mergeHistoryEntry = (base = {}, override = {}) => ({
   pvProd: mergeHistoryArrays(base?.pvProd, override?.pvProd),
   pvExport: mergeHistoryArrays(base?.pvExport, override?.pvExport),
 });
+
+const REVIEW_USAGES_MODULE_KEY = 'pilotage-review-usage-matrix-v1';
+
+const buildReviewUsageModulePayload = (sitesState = {}) =>
+  Object.keys(sitesState || {}).reduce((accumulator, siteKey) => {
+    accumulator[siteKey] = {
+      elecUsage: Array.isArray(sitesState[siteKey]?.elecUsage)
+        ? sitesState[siteKey].elecUsage
+        : [],
+    };
+    return accumulator;
+  }, {});
+
+const mergeReviewUsageModulePayload = (baseState = {}, persistedState = {}) =>
+  Object.keys(baseState || {}).reduce((accumulator, siteKey) => {
+    const persistedUsage = persistedState?.[siteKey]?.elecUsage;
+    accumulator[siteKey] = {
+      ...baseState[siteKey],
+      elecUsage: Array.isArray(persistedUsage)
+        ? persistedUsage
+        : baseState[siteKey]?.elecUsage || [],
+    };
+    return accumulator;
+  }, {});
 
 const getHistorySeriesType = (siteKey) => (siteKey === 'LAC' ? 'grid' : 'months');
 
@@ -727,6 +752,40 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         targets: { reduction2030: 5, renewable2030: 0 }
     }
   });
+  const initialReviewUsageStateRef = React.useRef(
+    buildReviewUsageModulePayload(sitesDataState)
+  );
+  const reviewUsageState = useModuleState(
+    REVIEW_USAGES_MODULE_KEY,
+    initialReviewUsageStateRef.current,
+    { seedOnMissing: true, debounceMs: 700 }
+  );
+  const reviewUsageHydratedRef = React.useRef(false);
+  const reviewUsageSignatureRef = React.useRef('');
+
+  useEffect(() => {
+    if (!reviewUsageState.isReady || reviewUsageHydratedRef.current) return;
+
+    setSitesDataState((prev) => {
+      const next = mergeReviewUsageModulePayload(prev, reviewUsageState.data || {});
+      reviewUsageSignatureRef.current = JSON.stringify(buildReviewUsageModulePayload(next));
+      return next;
+    });
+
+    reviewUsageHydratedRef.current = true;
+  }, [reviewUsageState.data, reviewUsageState.isReady]);
+
+  useEffect(() => {
+    if (!reviewUsageHydratedRef.current) return;
+
+    const payload = buildReviewUsageModulePayload(sitesDataState);
+    const signature = JSON.stringify(payload);
+
+    if (signature === reviewUsageSignatureRef.current) return;
+
+    reviewUsageSignatureRef.current = signature;
+    reviewUsageState.setData(payload);
+  }, [reviewUsageState, sitesDataState]);
 
   useEffect(() => {
     try {
