@@ -1876,6 +1876,10 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   const usageSourceGroups = useMemo(() => {
     const isGazUsage = (name) => normalizeSearchText(name).includes('gaz');
+    const isGenericGazUsage = (name) => {
+      const normalized = normalizeSearchText(name);
+      return normalized === 'gaz' || normalized === 'gazprimaire';
+    };
     const electricityRows = usageMatrixRows.filter((row) => !isGazUsage(row.name));
     const gasRows = usageMatrixRows.filter((row) => isGazUsage(row.name));
 
@@ -1889,10 +1893,37 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       });
     }
     if (gasRows.length > 0) {
+      const gasContainerRow = gasRows.find(
+        (row) => isGenericGazUsage(row.name) && Array.isArray(row.subUsages) && row.subUsages.length > 0
+      );
+      const gasDisplayRows = gasContainerRow
+        ? gasContainerRow.subUsages.map((subUsage, subIndex) => ({
+            name: subUsage.name,
+            pct: toNumberOrZero(subUsage.value),
+            ratio: '',
+            consoScore: subUsage.consoScore ?? '-',
+            gainScore: subUsage.gainScore ?? '-',
+            finalScore: subUsage.finalScore ?? '-',
+            significant: Boolean(subUsage.significant),
+            subUsages: [],
+            usageIndex: usageMatrixRows.findIndex((usage) => usage.name === gasContainerRow.name),
+            subIndex,
+            isGasSubUsageRow: true,
+          }))
+        : gasRows.map((row) => ({
+            ...row,
+            usageIndex: usageMatrixRows.findIndex((usage) => usage.name === row.name),
+            subIndex: null,
+            isGasSubUsageRow: false,
+          }));
+
       groups.push({
         id: 'gaz',
         name: 'Gaz',
-        rows: gasRows.map((row, index) => ({ ...row, usageIndex: usageMatrixRows.findIndex((usage) => usage.name === row.name) })),
+        parentUsageIndex: gasContainerRow
+          ? usageMatrixRows.findIndex((usage) => usage.name === gasContainerRow.name)
+          : null,
+        rows: gasDisplayRows,
         pct: gasRows.reduce((sum, row) => sum + toNumberOrZero(row.pct), 0),
       });
     }
@@ -2425,7 +2456,20 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                 <td className="py-4 text-center text-slate-400">-</td>
                                 <td className="py-4 text-center font-bold text-slate-400">-</td>
                                 <td className="py-4 pr-4 text-right text-slate-300">-</td>
-                                <td className="py-4 pr-4 text-right text-slate-300">-</td>
+                                <td className="py-4 pr-4 text-right">
+                                  {group.parentUsageIndex != null ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => openUsageAddModal(group.parentUsageIndex)}
+                                      title="Ajouter un sous-usage gaz"
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                    >
+                                      <PlusCircle size={14} />
+                                    </button>
+                                  ) : (
+                                    <span className="text-slate-300">-</span>
+                                  )}
+                                </td>
                               </tr>
 
                               {group.rows.map((row, rowIndex) => (
@@ -2433,12 +2477,13 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                   {(() => {
                                     const rowKey = `${group.id}-${rowIndex}`;
                                     const isCollapsed = Boolean(collapsedUsageRows[rowKey]);
+                                    const isGasSubUsageRow = Boolean(row.isGasSubUsageRow);
                                     return (
                                       <>
                                   <tr className="group border-b border-slate-100 hover:bg-slate-50">
                                     <td className="py-4 pl-10">
                                       <div className="flex items-center gap-2">
-                                        {row.subUsages.length > 0 ? (
+                                        {!isGasSubUsageRow && row.subUsages.length > 0 ? (
                                           <button
                                             type="button"
                                             onClick={() => toggleUsageRow(rowKey)}
@@ -2463,17 +2508,19 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                     </td>
                                     <td className="py-4 pr-4 text-right">
                                       <div className="flex items-center justify-end gap-2">
+                                        {!isGasSubUsageRow ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => openUsageAddModal(row.usageIndex)}
+                                            title="Ajouter un sous-usage"
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                          >
+                                            <PlusCircle size={14} />
+                                          </button>
+                                        ) : null}
                                         <button
                                           type="button"
-                                          onClick={() => openUsageAddModal(row.usageIndex)}
-                                          title="Ajouter un sous-usage"
-                                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100"
-                                        >
-                                          <PlusCircle size={14} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => openUsageEditModal(row.usageIndex)}
+                                          onClick={() => openUsageEditModal(row.usageIndex, isGasSubUsageRow ? row.subIndex : null)}
                                           title="Modifier l’usage"
                                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                         >
@@ -2481,7 +2528,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => handleUsageActionDelete(row.usageIndex)}
+                                          onClick={() => handleUsageActionDelete(row.usageIndex, isGasSubUsageRow ? row.subIndex : null)}
                                           title="Supprimer l’usage"
                                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
                                         >
@@ -2491,7 +2538,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                     </td>
                                   </tr>
 
-                                  {!isCollapsed && row.subUsages.map((subUsage, subIndex) => (
+                                  {!isGasSubUsageRow && !isCollapsed && row.subUsages.map((subUsage, subIndex) => (
                                     <tr key={`${group.id}-${row.name}-${subUsage.name}-${subIndex}`} className="border-b border-slate-100 bg-white">
                                       <td className="py-3 pl-16 text-sm text-slate-500">
                                         <div className="flex items-center gap-2">
