@@ -1683,13 +1683,27 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   const currentSiteName = getSiteDisplayName(activeSiteTab) || currentData.name;
   const historySeriesType = getHistorySeriesType(activeSiteTab);
-  const analysisMonthIndex = factureInsights.analysisMonthIndex ?? Math.max(currentMonthIdx, 0);
-  const analysisYear = factureInsights.analysisYear ?? currentYear;
-  const analysisMonthName = FULL_MONTH_NAMES[analysisMonthIndex] || FULL_MONTH_NAMES[0];
-  const analysisMonthShortName = SHORT_MONTH_NAMES[analysisMonthIndex] || SHORT_MONTH_NAMES[0];
-
   const referenceHistoryValues = getSiteData(activeSiteTab, 'REF', historySeriesType);
   const currentHistoryValues = getFactureBackedHistoryValues(currentYear, historySeriesType);
+  const latestNonZeroHistoryMonthIndex = (() => {
+    for (let index = currentHistoryValues.length - 1; index >= 0; index -= 1) {
+      if (toNumberOrZero(currentHistoryValues[index]) > 0) {
+        return index;
+      }
+    }
+    return Math.max(currentMonthIdx, 0);
+  })();
+  const hasNonZeroFactureMonth = (factureInsights.monthlyRows || []).some(
+    (row) => toNumberOrZero(row.consommationKwh) > 0
+  );
+  const analysisMonthIndex = factureInsights.hasData
+    ? factureInsights.analysisMonthIndex ?? latestNonZeroHistoryMonthIndex
+    : latestNonZeroHistoryMonthIndex;
+  const analysisYear = factureInsights.hasData && hasNonZeroFactureMonth
+    ? factureInsights.analysisYear ?? currentYear
+    : currentYear;
+  const analysisMonthName = FULL_MONTH_NAMES[analysisMonthIndex] || FULL_MONTH_NAMES[0];
+  const analysisMonthShortName = SHORT_MONTH_NAMES[analysisMonthIndex] || SHORT_MONTH_NAMES[0];
 
   const fallbackCurrentMonthValue = toNumberOrZero(currentHistoryValues[analysisMonthIndex]);
   const fallbackReferenceMonthValue = toNumberOrZero(referenceHistoryValues[analysisMonthIndex]);
