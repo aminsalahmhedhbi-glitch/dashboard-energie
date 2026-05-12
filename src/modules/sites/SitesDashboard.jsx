@@ -34,20 +34,6 @@ import { useData } from '../../hooks/useData';
 import { useFactures } from '../../hooks/useFactures';
 import { useModuleState } from '../../hooks/useModuleState';
 
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < 640 : false
-  );
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  return isMobile;
-};
-
 const useLiveEnergy = (siteKey = 'MEGRINE') => {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -75,31 +61,8 @@ const useLiveEnergy = (siteKey = 'MEGRINE') => {
 };
 
 const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
-  const isMobileView = useIsMobile();
   const { data: lastEnergy, error } = useLiveEnergy(siteKey);
-  const [history, setHistory] = useState([]);
-
-  useEffect(() => {
-    setHistory([]);
-  }, [siteKey]);
-
-  useEffect(() => {
-    if (!lastEnergy) return;
-
-    setHistory((prev) => [
-      ...prev.slice(-19),
-      {
-        time: new Date().toLocaleTimeString('fr-FR', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        }),
-        P: Number(lastEnergy.P_SUM_kW),
-        Q: Number(lastEnergy.Q_SUM_kvar),
-        S: Number(lastEnergy.S_SUM_kVA),
-      },
-    ]);
-  }, [lastEnergy]);
+  const lastTimestamp = lastEnergy?.Timestamp || lastEnergy?.measuredAt || null;
 
   return (
     <div className="space-y-6">
@@ -157,63 +120,30 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
         </div>
       </div>
 
-      <div className="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200">
-        <h4 className="text-sm font-bold text-slate-700 mb-4 uppercase">
-          Évolution Temps Réel
-        </h4>
-
-        <div className="h-[300px] sm:h-[360px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={history}
-              margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: isMobileView ? 10 : 12 }}
-                minTickGap={isMobileView ? 24 : 12}
-              />
-              <YAxis
-                width={isMobileView ? 32 : 48}
-                tick={{ fontSize: isMobileView ? 10 : 12 }}
-              />
-              <Tooltip />
-              {!isMobileView && <Legend verticalAlign="top" height={36} />}
-
-              <Line
-                type="monotone"
-                dataKey="P"
-                name="Puissance Active"
-                stroke="#1e3a8a"
-                strokeWidth={3}
-                dot={false}
-                activeDot={{ r: 6 }}
-                connectNulls
-              />
-              <Line
-                type="monotone"
-                dataKey="Q"
-                name="Puissance Réactive"
-                stroke="#dc2626"
-                strokeWidth={3}
-                dot={false}
-                activeDot={{ r: 6 }}
-                connectNulls
-              />
-              <Line
-                type="monotone"
-                dataKey="S"
-                name="Puissance Apparente"
-                stroke="#000000"
-                strokeWidth={3}
-                dot={false}
-                activeDot={{ r: 6 }}
-                connectNulls
-              />
-            </LineChart>
-          </ResponsiveContainer>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <p className="text-xs text-slate-500 uppercase">Tension moyenne</p>
+          <p className="text-2xl font-black text-slate-900 break-words">
+            {lastEnergy ? lastEnergy.V_AVG_V : '--'} V
+          </p>
         </div>
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <p className="text-xs text-slate-500 uppercase">Courant moyen</p>
+          <p className="text-2xl font-black text-slate-900 break-words">
+            {lastEnergy ? lastEnergy.I_AVG_A : '--'} A
+          </p>
+        </div>
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <p className="text-xs text-slate-500 uppercase">Fréquence</p>
+          <p className="text-2xl font-black text-slate-900 break-words">
+            {lastEnergy ? lastEnergy.FREQ_Hz : '--'} Hz
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <span className="font-semibold text-slate-700">Dernière lecture :</span>{' '}
+        {lastTimestamp ? String(lastTimestamp) : `en attente de mesure pour ${siteKey}`}
       </div>
     </div>
   );
@@ -2052,6 +1982,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const referenceBase = displayedReferenceYtdValue > 0 ? displayedReferenceYtdValue : displayedCurrentYtdValue;
   const targetConso2030 = referenceBase * (1 - visionReductionTarget / 100);
   const hasAirComprime = activeSiteTab === 'MEGRINE';
+  const hasPacMonitoring = ['MEGRINE', 'ELKHADHRA', 'NAASSEN'].includes(activeSiteTab);
   const airWeeklyKpiSeries = useMemo(() => {
     if (!hasAirComprime) {
       return [];
@@ -2635,7 +2566,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
               </div>
             </section>
 
-            {hasAirComprime && (
+            {hasPacMonitoring && (
               <section className="space-y-6">
                 <div className="overflow-hidden rounded-[32px] border border-slate-800 bg-[#0f172a] p-6 shadow-lg">
                   <div className="mb-6 flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
