@@ -2,13 +2,15 @@ param(
     [string]$TaskName = "ITALCAR PAC Agent",
     [string]$ApiBase = "https://dashboard-energie-api.onrender.com",
     [int]$PeriodSeconds = 300,
-    [switch]$SkipCsv
+    [switch]$SkipCsv,
+    [switch]$RunAsCurrentUser
 )
 
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $runnerScript = Join-Path $PSScriptRoot 'run_pac_agent_service.ps1'
+$currentUserId = if ($env:USERDOMAIN) { "$($env:USERDOMAIN)\$($env:USERNAME)" } else { $env:USERNAME }
 
 if (-not (Test-Path -LiteralPath $runnerScript)) {
     throw "Script introuvable: $runnerScript"
@@ -32,8 +34,17 @@ $action = New-ScheduledTaskAction `
     -Argument ($arguments -join ' ') `
     -WorkingDirectory $repoRoot
 
-$trigger = New-ScheduledTaskTrigger -AtStartup
-$principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+$trigger = if ($RunAsCurrentUser) {
+    New-ScheduledTaskTrigger -AtLogOn
+} else {
+    New-ScheduledTaskTrigger -AtStartup
+}
+
+$principal = if ($RunAsCurrentUser) {
+    New-ScheduledTaskPrincipal -UserId $currentUserId -LogonType Interactive -RunLevel Highest
+} else {
+    New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+}
 $settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
@@ -51,3 +62,4 @@ Write-Host "Tâche planifiée '$TaskName' installée et démarrée."
 Write-Host "Script lancé au boot: $runnerScript"
 Write-Host "API cible: $ApiBase"
 Write-Host "Période agent: ${PeriodSeconds}s"
+Write-Host "Mode: $(if ($RunAsCurrentUser) { 'Session utilisateur' } else { 'SYSTEM au démarrage' })"
