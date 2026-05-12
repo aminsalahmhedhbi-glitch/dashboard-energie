@@ -4,6 +4,7 @@ import csv
 import json
 import logging
 import re
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
@@ -281,6 +282,12 @@ def normalize_billing_row(data: dict[str, Any]) -> dict[str, Any]:
     return {key: sanitize_value(value) for key, value in row.items()}
 
 
+def normalize_billing_site_token(value: Any) -> str:
+    normalized = unicodedata.normalize("NFD", str(value or "").strip().lower())
+    normalized = "".join(character for character in normalized if unicodedata.category(character) != "Mn")
+    return re.sub(r"\s+", " ", normalized)
+
+
 def read_billing_rows() -> list[dict[str, Any]]:
     if not BILLING_CSV.exists():
         return []
@@ -409,18 +416,32 @@ def get_site_history_key_from_billing(row: dict[str, Any]) -> str | None:
     site_id = str(row.get("siteId") or "").strip()
     if site_id in BILLING_SITE_HISTORY_KEYS:
         return BILLING_SITE_HISTORY_KEYS[site_id]
+    try:
+        numeric_site_id = str(int(float(site_id)))
+        if numeric_site_id in BILLING_SITE_HISTORY_KEYS:
+            return BILLING_SITE_HISTORY_KEYS[numeric_site_id]
+    except (TypeError, ValueError):
+        pass
 
-    site_name = str(row.get("siteName") or "").strip().lower()
+    site_name = normalize_billing_site_token(
+        row.get("siteName") or row.get("site") or row.get("siteKey") or row.get("siteCode")
+    )
     fallback_map = {
         "mégrine": "MEGRINE",
         "megrine": "MEGRINE",
         "el khadhra": "ELKHADHRA",
+        "sav el khadhra": "ELKHADHRA",
+        "sav el khadhera": "ELKHADHRA",
+        "el khadhera": "ELKHADHRA",
         "naassen": "NAASSEN",
+        "parc nassen": "NAASSEN",
         "showroom lac": "LAC",
         "lac": "LAC",
         "azur city": "AZUR",
+        "concept store azur city": "AZUR",
         "avenue de carthage": "CARTHAGE",
         "rue de carthage": "CARTHAGE",
+        "showroom av. de carthage": "CARTHAGE",
         "showroom charguia": "CHARGUEYAA",
         "showroom chargueia": "CHARGUEYAA",
         "charguia": "CHARGUEYAA",

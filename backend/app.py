@@ -661,6 +661,31 @@ def sync_site_history_from_billing(payload: dict[str, Any]) -> SiteHistory | Non
     return history
 
 
+def backfill_site_history_from_existing_billing_records() -> int:
+    synced_histories: set[str] = set()
+
+    billing_records = BillingRecord.query.order_by(BillingRecord.created_at.asc(), BillingRecord.id.asc()).all()
+    for record in billing_records:
+        payload = record.payload or facture_payload_from_record(record)
+        history = sync_site_history_from_billing(payload)
+        if history is not None:
+            synced_histories.add(history.id)
+
+    existing_record_ids = {str(record.id) for record in billing_records}
+    for row in read_billing_rows():
+        row_id = str(row.get("id") or "").strip()
+        if row_id and row_id in existing_record_ids:
+            continue
+        history = sync_site_history_from_billing(row)
+        if history is not None:
+            synced_histories.add(history.id)
+
+    if db.session.new or db.session.dirty:
+        db.session.commit()
+
+    return len(synced_histories)
+
+
 def upsert_meeting(payload: dict[str, Any], meeting: Meeting | None = None) -> Meeting:
     meeting = meeting or Meeting(id=str(payload.get("id") or make_string_id("REU-")))
     meeting.meeting_type = str(payload.get("type") or "RÃ©union")
@@ -774,6 +799,12 @@ def init_database() -> None:
             table.create(bind=db.engine, checkfirst=False)
             existing_tables.add(table.name)
     ensure_runtime_schema_compatibility()
+    backfilled_histories = backfill_site_history_from_existing_billing_records()
+    if backfilled_histories:
+        logger.info(
+            "Backfill site_history effectué depuis les factures existantes: %s historique(s) synchronisé(s).",
+            backfilled_histories,
+        )
 
 
 def create_app() -> Flask:
@@ -1715,4 +1746,3 @@ def create_app() -> Flask:
         return json_response({"error": "Erreur interne du serveur"}, 500)
 
     return app
-
