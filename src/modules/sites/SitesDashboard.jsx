@@ -261,11 +261,32 @@ const mergeHistoryEntry = (base = {}, override = {}) => ({
 
 const REVIEW_USAGES_MODULE_KEY = 'pilotage-review-usage-matrix-v1';
 
+const normalizeReviewUsageRows = (usages = []) =>
+  (Array.isArray(usages) ? usages : []).map((usage) => {
+    const normalizedName = normalizeSearchText(usage?.name || '');
+    const isGasUsage = normalizedName.includes('gaz');
+    const hasSubUsages = Array.isArray(usage?.subUsages) && usage.subUsages.length > 0;
+
+    return {
+      ...usage,
+      source: usage?.source || (isGasUsage ? 'gaz' : 'electricite'),
+      name: isGasUsage && hasSubUsages ? 'Gaz' : usage?.name,
+      subUsages: hasSubUsages
+        ? usage.subUsages.map((subUsage) => ({
+            ...subUsage,
+            source: 'gaz',
+          }))
+        : Array.isArray(usage?.subUsages)
+          ? usage.subUsages
+          : [],
+    };
+  });
+
 const buildReviewUsageModulePayload = (sitesState = {}) =>
   Object.keys(sitesState || {}).reduce((accumulator, siteKey) => {
     accumulator[siteKey] = {
       elecUsage: Array.isArray(sitesState[siteKey]?.elecUsage)
-        ? sitesState[siteKey].elecUsage
+        ? normalizeReviewUsageRows(sitesState[siteKey].elecUsage)
         : [],
     };
     return accumulator;
@@ -277,8 +298,8 @@ const mergeReviewUsageModulePayload = (baseState = {}, persistedState = {}) =>
     accumulator[siteKey] = {
       ...baseState[siteKey],
       elecUsage: Array.isArray(persistedUsage)
-        ? persistedUsage
-        : baseState[siteKey]?.elecUsage || [],
+        ? normalizeReviewUsageRows(persistedUsage)
+        : normalizeReviewUsageRows(baseState[siteKey]?.elecUsage || []),
     };
     return accumulator;
   }, {});
@@ -1877,13 +1898,15 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   );
 
   const usageSourceGroups = useMemo(() => {
-    const isGazUsage = (name) => normalizeSearchText(name).includes('gaz');
+    const isGazUsage = (row) =>
+      String(row?.source || '').toLowerCase() === 'gaz' ||
+      normalizeSearchText(row?.name || '').includes('gaz');
     const isGenericGazUsage = (name) => {
       const normalized = normalizeSearchText(name);
       return normalized === 'gaz' || normalized === 'gazprimaire';
     };
-    const electricityRows = usageMatrixRows.filter((row) => !isGazUsage(row.name));
-    const gasRows = usageMatrixRows.filter((row) => isGazUsage(row.name));
+    const electricityRows = usageMatrixRows.filter((row) => !isGazUsage(row));
+    const gasRows = usageMatrixRows.filter((row) => isGazUsage(row));
 
     const groups = [];
     if (electricityRows.length > 0) {
