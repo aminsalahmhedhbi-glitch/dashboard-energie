@@ -352,7 +352,9 @@ const buildMonthlyClimateArchiveUrl = ({ latitude, longitude, startDate, endDate
   `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${startDate}&end_date=${endDate}&daily=temperature_2m_max,temperature_2m_min&timezone=Africa%2FTunis`;
 
 const toNumberOrZero = (value) => {
-  const parsed = Number(value);
+  const normalizedValue =
+    typeof value === 'string' ? value.replace(',', '.').trim() : value;
+  const parsed = Number(normalizedValue);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
@@ -2713,14 +2715,14 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     Part (%)
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.1"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]+([.,][0-9]+)?"
                     value={usageActionForm.value}
                     onChange={(event) =>
                       setUsageActionForm((prev) => ({
                         ...prev,
-                        value: event.target.value,
+                        value: event.target.value.replace(/[^0-9,.\s]/g, ''),
                       }))
                     }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
