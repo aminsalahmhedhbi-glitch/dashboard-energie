@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$ApiBase = ($ApiBase | ForEach-Object { "$_" }).Trim()
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $runnerScript = Join-Path $PSScriptRoot 'run_pac_agent_service.ps1'

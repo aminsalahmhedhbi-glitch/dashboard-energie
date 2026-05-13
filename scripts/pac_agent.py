@@ -252,6 +252,7 @@ def main() -> int:
     args = parse_args()
     configure_logging(args.verbose)
     logger = logging.getLogger("pac-agent")
+    args.api_base = str(args.api_base or "").strip()
     pacs = selected_pacs(args.site)
 
     logger.info("PAC agent started")

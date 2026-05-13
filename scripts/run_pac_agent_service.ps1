@@ -6,6 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$ApiBase = ($ApiBase | ForEach-Object { "$_" }).Trim()
 
 function Resolve-PythonCommand {
     $launcher = Get-Command py.exe -ErrorAction SilentlyContinue
