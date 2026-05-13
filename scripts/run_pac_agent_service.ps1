@@ -8,6 +8,14 @@ param(
 $ErrorActionPreference = 'Stop'
 
 function Resolve-PythonCommand {
+    $launcher = Get-Command py.exe -ErrorAction SilentlyContinue
+    if ($launcher) {
+        return @{
+            Executable = $launcher.Source
+            Arguments = @('-3')
+        }
+    }
+
     $python = Get-Command python.exe -ErrorAction SilentlyContinue
     if ($python) {
         return @{
@@ -21,14 +29,6 @@ function Resolve-PythonCommand {
         return @{
             Executable = $python.Source
             Arguments = @()
-        }
-    }
-
-    $launcher = Get-Command py.exe -ErrorAction SilentlyContinue
-    if ($launcher) {
-        return @{
-            Executable = $launcher.Source
-            Arguments = @('-3')
         }
     }
 
@@ -50,12 +50,19 @@ $logDir = Join-Path $repoRoot 'data\logs'
 $null = New-Item -ItemType Directory -Path $logDir -Force
 $script:LogPath = Join-Path $logDir 'pac_agent_service.log'
 
-$mutexName = 'Global\ITALCAR_PAC_AGENT_SERVICE'
+$mutexName = 'Local\ITALCAR_PAC_AGENT_SERVICE'
 $createdNew = $false
-$mutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
-if (-not $createdNew) {
-    Write-ServiceLog "Une instance du service PAC tourne déjà. Arrêt du doublon."
-    exit 0
+$mutex = $null
+
+try {
+    $mutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
+    if (-not $createdNew) {
+        Write-ServiceLog "Une instance du service PAC tourne déjà. Arrêt du doublon."
+        exit 0
+    }
+}
+catch {
+    Write-ServiceLog "Mutex non disponible ($mutexName): $($_.Exception.Message). Le service continue sans verrou global."
 }
 
 try {
@@ -71,6 +78,7 @@ try {
     }
 
     Write-ServiceLog "Service PAC démarré. API=$ApiBase | période=${PeriodSeconds}s"
+    Write-ServiceLog "Interpréteur Python: $($pythonCommand.Executable) $($pythonCommand.Arguments -join ' ')"
 
     while ($true) {
         try {
@@ -88,7 +96,11 @@ try {
 }
 finally {
     if ($mutex) {
-        $mutex.ReleaseMutex() | Out-Null
+        try {
+            $mutex.ReleaseMutex() | Out-Null
+        }
+        catch {
+        }
         $mutex.Dispose()
     }
 }
