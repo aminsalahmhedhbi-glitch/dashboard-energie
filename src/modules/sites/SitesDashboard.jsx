@@ -2083,7 +2083,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         </header>
         )}
 
-        {false && (
         <main className="max-w-7xl mx-auto p-6 animate-in fade-in duration-500">
             <SiteTabs />
             <PerformanceWidget />
@@ -2228,8 +2227,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
             <VisionWidget />
         </main>
-        )}
-
         {showReport && (
             <div className="print-container fixed inset-0 z-[120] flex items-start justify-center overflow-auto bg-slate-950/70 p-6">
                 <div className="print-scale w-full max-w-[1122px] rounded-[28px] bg-white shadow-2xl">
