@@ -3417,12 +3417,13 @@ export default function UtilitiesModule({ onBack, user }) {
               />
 
               <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-slate-600">
-                Cette matrice presente les interactions entre les processus de pilotage, de
-                realisation et de support, ainsi que les liens avec les exigences et la
-                satisfaction des parties int?ress?es.
+                Cette matrice pr{String.fromCharCode(233)}sente les interactions entre les
+                processus de pilotage, de r{String.fromCharCode(233)}alisation et de support,
+                ainsi que les liens avec les exigences et la satisfaction des{' '}
+                {PARTIES_LABEL.toLowerCase()}.
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-inner">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <img
                   src={cartographieProcessusImage}
                   alt="Cartographie des processus ITALCAR"
