@@ -2848,8 +2848,8 @@ export default function UtilitiesModule({ onBack, user }) {
                           <MapPin className="h-3.5 w-3.5" />
                           Reseau ITALCAR
                         </div>
-                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:gap-0">
-                          <div className="xl:border-r xl:border-slate-300 xl:pr-6">
+                        <div className="grid grid-cols-1 xl:grid-cols-3">
+                          <div className="border-b border-slate-200 pb-4 xl:border-b-0 xl:border-r xl:border-slate-300 xl:pb-0 xl:pr-5">
                             <div className="flex items-center justify-between gap-3">
                               <h4 className="text-3xl font-black tracking-tight text-slate-950">
                                 Reseau propre
@@ -2873,7 +2873,7 @@ export default function UtilitiesModule({ onBack, user }) {
                               )}
                             </div>
                           </div>
-                          <div className="xl:col-span-2 xl:pl-6">
+                          <div className="pt-4 xl:col-span-2 xl:pt-0 xl:pl-5">
                             <div className="flex items-center justify-between gap-3">
                               <h4 className="text-3xl font-black tracking-tight text-slate-950">
                                 Sous-concessionnaire
