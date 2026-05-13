@@ -24,6 +24,8 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { BrandLogo, FallbackLogo } from '../../components/branding/BrandLogo';
 import HeaderInfoDisplay from '../../components/layout/HeaderInfoDisplay';
 import ModuleHeader from '../../components/layout/ModuleHeader';
@@ -2092,84 +2094,55 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     "Vérifier les fuites du réseau air comprimé chaque semaine.",
     "Favoriser l'éclairage naturel dans les zones vitrées.",
   ];
-  const handlePrintMonthlyReport = () => {
+  const handlePrintMonthlyReport = async () => {
     const reportNode = reportPrintRef.current;
     if (!reportNode) return;
+    try {
+      const canvas = await html2canvas(reportNode, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
 
-    const headAssets = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map((node) => node.outerHTML)
-      .join('\n');
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
 
-    const iframe = document.createElement('iframe');
-    iframe.setAttribute('aria-hidden', 'true');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.visibility = 'hidden';
-    document.body.appendChild(iframe);
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const usableWidth = pageWidth - margin * 2;
+      const usableHeight = pageHeight - margin * 2;
 
-    const iframeDoc = iframe.contentWindow?.document;
-    if (!iframeDoc || !iframe.contentWindow) {
-      iframe.remove();
-      return;
+      const imgWidth = usableWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const fittedHeight = Math.min(imgHeight, usableHeight);
+      const fittedWidth = imgHeight > usableHeight ? (canvas.width * fittedHeight) / canvas.height : imgWidth;
+      const offsetX = (pageWidth - fittedWidth) / 2;
+      const offsetY = (pageHeight - fittedHeight) / 2;
+
+      pdf.addImage(
+        canvas.toDataURL('image/png'),
+        'PNG',
+        offsetX,
+        offsetY,
+        fittedWidth,
+        fittedHeight,
+        undefined,
+        'FAST'
+      );
+
+      const safeSiteName = String(currentData.name || 'site').replace(/[^\w\-]+/g, '-');
+      pdf.save(`rapport-mensuel-${safeSiteName}-${reportMonth}.pdf`);
+    } catch (error) {
+      console.error('Erreur generation PDF rapport mensuel:', error);
+      setNotif("Erreur lors de la génération du PDF");
+      window.setTimeout(() => setNotif(null), 3000);
     }
-
-    iframeDoc.open();
-    iframeDoc.write(`
-      <!DOCTYPE html>
-      <html lang="fr">
-        <head>
-          <meta charset="UTF-8" />
-          <title>Rapport Mensuel - ${currentData.name} - ${reportMonth}</title>
-          ${headAssets}
-          <style>
-            @page { size: A4 landscape; margin: 8mm; }
-            html, body {
-              width: 297mm;
-              min-height: 210mm;
-              margin: 0;
-              padding: 0;
-              background: #ffffff;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            body {
-              display: flex;
-              justify-content: center;
-              align-items: flex-start;
-            }
-            .report-print-root {
-              width: 281mm;
-              min-height: 194mm;
-              margin: 0;
-              padding: 0;
-              background: #ffffff;
-            }
-            .report-print-root .print-scale {
-              width: 281mm !important;
-              min-height: 194mm !important;
-              max-width: none !important;
-              box-shadow: none !important;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="report-print-root">${reportNode.outerHTML}</div>
-        </body>
-      </html>
-    `);
-    iframeDoc.close();
-
-    window.setTimeout(() => {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-      window.setTimeout(() => {
-        iframe.remove();
-      }, 1000);
-    }, 600);
   };
   const reportKpiSnapshot = {
     total: reportPerformance,
