@@ -2150,6 +2150,159 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     cvc: totalSiteArea > 0 ? (reportConsumption * usageShareCvc) / totalSiteArea : 0,
     air: averageAirKpi,
   };
+  const renderMonthlyReportSheet = (sheetRef = null, extraClassName = '') => (
+    <div
+      ref={sheetRef}
+      className={`print-scale relative flex min-h-[21cm] w-full max-w-[29.7cm] flex-col overflow-hidden bg-white ${extraClassName}`.trim()}
+    >
+      <div className="flex flex-1 flex-col bg-white px-7 py-6">
+        <div className="mb-5 flex items-center justify-between border-b-4 border-blue-900 pb-4">
+          <div className="flex items-center gap-6">
+            <BrandLogo size="h-16" />
+            <div className="h-12 w-px bg-slate-200" />
+            <div>
+              <h1 className="mb-1 text-3xl font-black uppercase leading-none tracking-tight text-slate-900">Rapport Mensuel</h1>
+              <div className="text-sm font-bold uppercase tracking-widest text-blue-900">Performance Énergétique & ISO 50001</div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-100 bg-slate-50 px-6 py-3 text-right">
+            <div className="mb-1 text-xs font-bold uppercase text-slate-400">Période concernée</div>
+            <div className="text-2xl font-black capitalize text-slate-800">
+              {reportMonthDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+            </div>
+            <div className="mt-1 ml-auto flex w-fit items-center justify-end rounded border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-500">
+              <MapPin size={10} className="mr-1" /> {currentData.name}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <Factory size={16} className="text-slate-500" />
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Fiche technique</h3>
+            </div>
+            <div className="flex items-end gap-2">
+              <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentData.area)}</span>
+              <span className="pb-1 text-sm font-bold text-slate-400">m² total</span>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Dont <span className="font-bold text-blue-900">{formatCompactNumber(currentData.covered)} m²</span> couverts et <span className="font-bold text-slate-700">{formatCompactNumber(currentData.open)} m²</span> ouverts.
+            </p>
+            <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              {(currentData.coveredBreakdown || []).map((zone, index) => (
+                <div key={index} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-slate-500">{zone.label}</span>
+                  <span className="font-bold text-slate-700">{formatCompactNumber(zone.value)} m²</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <TrendingUp size={16} className="text-slate-500" />
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Gains consommation</h3>
+            </div>
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Mois analysé ({reportMonthDate.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })})</div>
+                    <div className="mt-1 text-2xl font-black text-slate-900">
+                      {reportConsumption > 0 ? formatCompactNumber(reportConsumption, 0) : '--'} <span className="text-xs font-bold text-slate-400">kWh</span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-500">Réf. {reportReferenceValue > 0 ? formatCompactNumber(reportReferenceValue, 0) : '--'} kWh</div>
+                  </div>
+                  <span className={`rounded-xl px-3 py-2 text-xs font-black ${reportReferenceValue > 0 && reportDiffPercent <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                    {reportReferenceValue > 0 ? `${reportDiffPercent > 0 ? '+' : ''}${formatCompactNumber(reportDiffPercent, 1)}%` : '--'}
+                  </span>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cumul YTD</div>
+                    <div className="mt-1 text-2xl font-black text-slate-900">
+                      {reportCurrentYtd > 0 ? formatCompactNumber(reportCurrentYtd, 0) : '--'} <span className="text-xs font-bold text-slate-400">kWh</span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-500">Réf. {reportReferenceYtd > 0 ? formatCompactNumber(reportReferenceYtd, 0) : '--'} kWh</div>
+                  </div>
+                  <span className={`rounded-xl px-3 py-2 text-xs font-black ${reportReferenceYtd > 0 && reportYtdDiffPercent <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                    {reportReferenceYtd > 0 ? `${reportYtdDiffPercent > 0 ? '+' : ''}${formatCompactNumber(reportYtdDiffPercent, 1)}%` : '--'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-4 gap-4">
+          <ReviewMetricCard title="Performance globale" value={formatCompactNumber(reportKpiSnapshot.total, 3)} unit="kWh/m²" accent="blue" subtitle="kWh consommés par site / surface totale m2" />
+          <ReviewMetricCard title="IPE eclairage" value={formatCompactNumber(reportKpiSnapshot.lighting, 3)} unit="kWh/m²" accent="amber" subtitle="kWh consommés × % usage eclairage / surface totale" />
+          <ReviewMetricCard title="IPE CVC" value={formatCompactNumber(reportKpiSnapshot.cvc, 3)} unit="kWh/m²" accent="indigo" subtitle="kWh consommés × % usage clim / surface totale" />
+          <ReviewMetricCard title={hasAirComprime ? 'IPE air comprime' : 'Air comprime'} value={hasAirComprime ? formatCompactNumber(reportKpiSnapshot.air, 3) : 'N/A'} unit={hasAirComprime ? 'kpi' : ''} accent="slate" subtitle={hasAirComprime ? 'Moyenne des 4 derniers relevés air comprimé' : 'Non applicable pour ce site'} />
+        </div>
+
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-xs font-black text-emerald-800 uppercase mb-3 flex items-center">
+                <Target size={12} className="mr-2 text-emerald-600" />
+                Vision 2030
+              </h4>
+              <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm space-y-2">
+                <div>
+                  <div className="text-[9px] uppercase font-bold text-slate-400">Objectif réduction</div>
+                  <div className="text-lg font-black text-emerald-800">
+                    -{currentData.targets?.reduction2030 || 10}% <span className="text-[10px] font-normal text-slate-500">Conso</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[9px] uppercase font-bold text-slate-400">Objectif renouvelable</div>
+                  <div className="text-lg font-black text-emerald-800">
+                    {currentData.targets?.renewable2030 || 20}% <span className="text-[10px] font-normal text-slate-500">Mix</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-blue-900 uppercase mb-3 flex items-center">
+                <Lightbulb size={12} className="mr-2 text-amber-500" />
+                Bonnes pratiques
+              </h4>
+              <ul className="text-[10px] text-slate-600 space-y-1.5 list-disc pl-3 leading-relaxed">
+                {reportPracticalTips.map((tip) => (
+                  <li key={tip}>{tip}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-auto border-t-2 border-slate-100 pt-6">
+          <div className="flex justify-between items-end">
+            <div className="text-[9px] text-slate-400 uppercase tracking-widest space-y-1">
+              <div>ITALCAR S.A. • Siège Social</div>
+              <div>Système de Management de l'Énergie ISO 50001</div>
+            </div>
+            <div className="flex flex-col items-end text-right">
+              <div className="text-[10px] font-bold text-slate-800 uppercase mb-4 leading-tight">
+                ITALCAR S.A.<br />
+                Responsable Système Management Intégrés
+              </div>
+              <div className="text-[10px] text-slate-500 mb-3 italic">
+                Fait à Tunis, le {new Date().toLocaleDateString('fr-FR')}
+              </div>
+              <div className="h-24 w-56 rounded border border-slate-300 bg-slate-50 flex items-center justify-center">
+                <span className="text-[9px] text-slate-300 font-bold uppercase tracking-widest">Signature & Cachet</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20 relative font-sans text-slate-600">
@@ -3193,157 +3346,14 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                         </div>
                     </div>
 
+                    <div className="pointer-events-none fixed -left-[99999px] top-0 opacity-100">
+                        {renderMonthlyReportSheet(reportPrintRef)}
+                    </div>
+
                     <div className="no-print mt-4 origin-top" style={{ zoom: 0.5 }}>
-                    <div ref={reportPrintRef} className="print-scale relative flex min-h-[21cm] w-full max-w-[29.7cm] flex-col overflow-hidden bg-white shadow-2xl">
-                    <div className="flex flex-1 flex-col bg-white px-7 py-6">
-                        <div className="mb-5 flex items-center justify-between border-b-4 border-blue-900 pb-4">
-                            <div className="flex items-center gap-6">
-                                <BrandLogo size="h-16" />
-                                <div className="h-12 w-px bg-slate-200" />
-                                <div>
-                                    <h1 className="mb-1 text-3xl font-black uppercase leading-none tracking-tight text-slate-900">Rapport Mensuel</h1>
-                                    <div className="text-sm font-bold uppercase tracking-widest text-blue-900">Performance Énergétique & ISO 50001</div>
-                                </div>
-                            </div>
-                            <div className="rounded-xl border border-slate-100 bg-slate-50 px-6 py-3 text-right">
-                                <div className="mb-1 text-xs font-bold uppercase text-slate-400">Période concernée</div>
-                                <div className="text-2xl font-black capitalize text-slate-800">
-                                    {reportMonthDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-                                </div>
-                                <div className="mt-1 ml-auto flex w-fit items-center justify-end rounded border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-500">
-                                    <MapPin size={10} className="mr-1" /> {currentData.name}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                                <div className="mb-4 flex items-center gap-2">
-                                    <Factory size={16} className="text-slate-500" />
-                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Fiche technique</h3>
-                                </div>
-                                <div className="flex items-end gap-2">
-                                    <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentData.area)}</span>
-                                    <span className="pb-1 text-sm font-bold text-slate-400">m² total</span>
-                                </div>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Dont <span className="font-bold text-blue-900">{formatCompactNumber(currentData.covered)} m²</span> couverts et <span className="font-bold text-slate-700">{formatCompactNumber(currentData.open)} m²</span> ouverts.
-                                </p>
-                                <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                                    {(currentData.coveredBreakdown || []).map((zone, index) => (
-                                        <div key={index} className="flex items-center justify-between gap-3 text-xs">
-                                            <span className="text-slate-500">{zone.label}</span>
-                                            <span className="font-bold text-slate-700">{formatCompactNumber(zone.value)} m²</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                                <div className="mb-4 flex items-center gap-2">
-                                    <TrendingUp size={16} className="text-slate-500" />
-                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Gains consommation</h3>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div>
-                                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Mois analysé ({reportMonthDate.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })})</div>
-                                                <div className="mt-1 text-2xl font-black text-slate-900">
-                                                    {reportConsumption > 0 ? formatCompactNumber(reportConsumption, 0) : '--'} <span className="text-xs font-bold text-slate-400">kWh</span>
-                                                </div>
-                                                <div className="mt-1 text-[11px] text-slate-500">Réf. {reportReferenceValue > 0 ? formatCompactNumber(reportReferenceValue, 0) : '--'} kWh</div>
-                                            </div>
-                                            <span className={`rounded-xl px-3 py-2 text-xs font-black ${reportReferenceValue > 0 && reportDiffPercent <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                                {reportReferenceValue > 0 ? `${reportDiffPercent > 0 ? '+' : ''}${formatCompactNumber(reportDiffPercent, 1)}%` : '--'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div>
-                                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cumul YTD</div>
-                                                <div className="mt-1 text-2xl font-black text-slate-900">
-                                                    {reportCurrentYtd > 0 ? formatCompactNumber(reportCurrentYtd, 0) : '--'} <span className="text-xs font-bold text-slate-400">kWh</span>
-                                                </div>
-                                                <div className="mt-1 text-[11px] text-slate-500">Réf. {reportReferenceYtd > 0 ? formatCompactNumber(reportReferenceYtd, 0) : '--'} kWh</div>
-                                            </div>
-                                            <span className={`rounded-xl px-3 py-2 text-xs font-black ${reportReferenceYtd > 0 && reportYtdDiffPercent <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                                {reportReferenceYtd > 0 ? `${reportYtdDiffPercent > 0 ? '+' : ''}${formatCompactNumber(reportYtdDiffPercent, 1)}%` : '--'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-4 gap-4">
-                            <ReviewMetricCard title="Performance globale" value={formatCompactNumber(reportKpiSnapshot.total, 3)} unit="kWh/m²" accent="blue" subtitle="kWh consommés par site / surface totale m2" />
-                            <ReviewMetricCard title="IPE eclairage" value={formatCompactNumber(reportKpiSnapshot.lighting, 3)} unit="kWh/m²" accent="amber" subtitle="kWh consommés × % usage eclairage / surface totale" />
-                            <ReviewMetricCard title="IPE CVC" value={formatCompactNumber(reportKpiSnapshot.cvc, 3)} unit="kWh/m²" accent="indigo" subtitle="kWh consommés × % usage clim / surface totale" />
-                            <ReviewMetricCard title={hasAirComprime ? 'IPE air comprime' : 'Air comprime'} value={hasAirComprime ? formatCompactNumber(reportKpiSnapshot.air, 3) : 'N/A'} unit={hasAirComprime ? 'kpi' : ''} accent="slate" subtitle={hasAirComprime ? 'Moyenne des 4 derniers relevés air comprimé' : 'Non applicable pour ce site'} />
-                        </div>
-
-                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <h4 className="text-xs font-black text-emerald-800 uppercase mb-3 flex items-center">
-                                        <Target size={12} className="mr-2 text-emerald-600" />
-                                        Vision 2030
-                                    </h4>
-                                    <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm space-y-2">
-                                        <div>
-                                            <div className="text-[9px] uppercase font-bold text-slate-400">Objectif réduction</div>
-                                            <div className="text-lg font-black text-emerald-800">
-                                                -{currentData.targets?.reduction2030 || 10}% <span className="text-[10px] font-normal text-slate-500">Conso</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="text-[9px] uppercase font-bold text-slate-400">Objectif renouvelable</div>
-                                            <div className="text-lg font-black text-emerald-800">
-                                                {currentData.targets?.renewable2030 || 20}% <span className="text-[10px] font-normal text-slate-500">Mix</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-black text-blue-900 uppercase mb-3 flex items-center">
-                                        <Lightbulb size={12} className="mr-2 text-amber-500" />
-                                        Bonnes pratiques
-                                    </h4>
-                                    <ul className="text-[10px] text-slate-600 space-y-1.5 list-disc pl-3 leading-relaxed">
-                                        {reportPracticalTips.map((tip) => (
-                                            <li key={tip}>{tip}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-auto border-t-2 border-slate-100 pt-6">
-                            <div className="flex justify-between items-end">
-                                <div className="text-[9px] text-slate-400 uppercase tracking-widest space-y-1">
-                                    <div>ITALCAR S.A. • Siège Social</div>
-                                    <div>Système de Management de l'Énergie ISO 50001</div>
-                                </div>
-                                <div className="flex flex-col items-end text-right">
-                                    <div className="text-[10px] font-bold text-slate-800 uppercase mb-4 leading-tight">
-                                        ITALCAR S.A.<br />
-                                        Responsable Système Management Intégrés
-                                    </div>
-                                    <div className="text-[10px] text-slate-500 mb-3 italic">
-                                        Fait à Tunis, le {new Date().toLocaleDateString('fr-FR')}
-                                    </div>
-                                    <div className="h-24 w-56 rounded border border-slate-300 bg-slate-50 flex items-center justify-center">
-                                        <span className="text-[9px] text-slate-300 font-bold uppercase tracking-widest">Signature & Cachet</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        {renderMonthlyReportSheet(null, 'shadow-2xl')}
                     </div>
-                    </div>
-                    </div>
-                </div>
+            </div>
             </div>
         )}
 
