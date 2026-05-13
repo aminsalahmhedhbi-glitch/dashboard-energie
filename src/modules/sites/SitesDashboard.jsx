@@ -80,19 +80,19 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
 
       {error ? (
         <div className="rounded-xl border border-amber-300/50 bg-amber-100/10 px-4 py-3 text-sm font-medium text-amber-200">
-          Mesures temps r?el momentan?ment indisponibles pour {siteKey}. Le suivi reprendra d?s que les donn?es seront accessibles.
+          Mesures temps réel momentanément indisponibles pour {siteKey}. Le suivi reprendra dès que les données seront accessibles.
         </div>
       ) : null}
 
       {!error && !lastEnergy ? (
         <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm font-medium text-slate-300">
-          Aucune mesure instantan?e n'a encore ?t? re?ue pour {siteKey}.
+          Aucune mesure instantanée n'a encore été reçue pour {siteKey}.
         </div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div className={cardClass}>
-          <p className={titleClass}>P max enregistr?e</p>
+          <p className={titleClass}>P max enregistrée</p>
           <p className="mt-2 break-words text-[2rem] font-medium leading-none text-yellow-300">
             {maxActivePower ?? '--'}
             <span className={unitClass}>kW</span>
@@ -134,7 +134,7 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
         </div>
 
         <div className="ml-auto w-full max-w-sm self-end rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3">
-          <p className={titleClass}>Derni?re lecture</p>
+          <p className={titleClass}>Dernière lecture</p>
           <p className="mt-2 break-words text-sm font-medium text-slate-200">
             {lastTimestamp ? String(lastTimestamp) : `en attente de mesure pour ${siteKey}`}
           </p>
