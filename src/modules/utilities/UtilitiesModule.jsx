@@ -877,11 +877,11 @@ function TunisiaNetworkMapCard({ className = '' }) {
           <MapPin className="h-3.5 w-3.5" />
           Carte du reseau en Tunisie
         </div>
-        <div className="flex h-[440px] w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white leading-none lg:h-[500px]">
+        <div className="flex h-[520px] w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white leading-none lg:h-[620px]">
           <img
             src={reseauPropreMockup}
             alt="Reseau ITALCAR en Tunisie"
-            className="block h-full w-full object-contain object-center"
+            className="block h-[112%] w-[112%] max-w-none object-contain object-center"
           />
         </div>
       </div>
