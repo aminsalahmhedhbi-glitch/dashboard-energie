@@ -633,8 +633,8 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   // Pour simplifier l'historique sur le serveur simple, on charge tout 'site_history'
   const { data: allHistory } = useData('site_history', { intervalMs: 0 });
   const { data: airLogs } = useData('air_logs', { initialData: [], intervalMs: 0 });
-  const { factures: siteFactures, loading: facturesLoading } = useFactures({
-      site: activeSiteTab,
+  const { factures: allFactures, loading: facturesLoading } = useFactures({
+      site: null,
       intervalMs: 15000,
       limit: 500,
   });
@@ -1191,6 +1191,47 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const currentData = sitesDataState[activeSiteTab];
   const currentYear = new Date().getFullYear(); 
   const currentMonthIdx = new Date().getMonth() - 1; 
+  const siteFactures = useMemo(() => {
+    const siteIdMap = {
+      MEGRINE: ['1', '1.0'],
+      ELKHADHRA: ['2', '2.0'],
+      NAASSEN: ['3', '3.0'],
+      LAC: ['4', '4.0'],
+      AZUR: ['5', '5.0'],
+      CARTHAGE: ['6', '6.0'],
+      CHARGUEYAA: ['7', '7.0'],
+    };
+    const targetDisplay = getSiteDisplayName(activeSiteTab);
+    const targetIdValues = siteIdMap[activeSiteTab] || [];
+
+    const normalize = (value) =>
+      String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toUpperCase();
+
+    const targetTokens = new Set([
+      normalize(activeSiteTab),
+      normalize(targetDisplay),
+      ...targetIdValues.map((value) => normalize(value)),
+    ]);
+
+    return (allFactures || []).filter((facture) => {
+      const candidates = [
+        facture?.site,
+        facture?.siteKey,
+        facture?.siteName,
+        facture?.siteId,
+        getSiteDisplayName(facture?.site),
+        getSiteDisplayName(facture?.siteName),
+      ]
+        .filter(Boolean)
+        .map(normalize);
+
+      return candidates.some((candidate) => targetTokens.has(candidate));
+    });
+  }, [activeSiteTab, allFactures]);
   const factureInsights = useMemo(
     () => buildFactureInsights(siteFactures, { currentDate: new Date() }),
     [siteFactures]
@@ -3186,6 +3227,42 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                             <ReviewMetricCard title="IPE eclairage" value={formatCompactNumber(reportKpiSnapshot.lighting, 3)} unit="kWh/m²" accent="amber" subtitle="kWh consommés × % usage eclairage / surface totale" />
                             <ReviewMetricCard title="IPE CVC" value={formatCompactNumber(reportKpiSnapshot.cvc, 3)} unit="kWh/m²" accent="indigo" subtitle="kWh consommés × % usage clim / surface totale" />
                             <ReviewMetricCard title={hasAirComprime ? 'IPE air comprime' : 'Air comprime'} value={hasAirComprime ? formatCompactNumber(reportKpiSnapshot.air, 3) : 'N/A'} unit={hasAirComprime ? 'kpi' : ''} accent="slate" subtitle={hasAirComprime ? 'Moyenne des 4 derniers relevés air comprimé' : 'Non applicable pour ce site'} />
+                        </div>
+
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <h4 className="text-xs font-black text-emerald-800 uppercase mb-3 flex items-center">
+                                        <Target size={12} className="mr-2 text-emerald-600" />
+                                        Vision 2030
+                                    </h4>
+                                    <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm space-y-2">
+                                        <div>
+                                            <div className="text-[9px] uppercase font-bold text-slate-400">Objectif réduction</div>
+                                            <div className="text-lg font-black text-emerald-800">
+                                                -{currentData.targets?.reduction2030 || 10}% <span className="text-[10px] font-normal text-slate-500">Conso</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[9px] uppercase font-bold text-slate-400">Objectif renouvelable</div>
+                                            <div className="text-lg font-black text-emerald-800">
+                                                {currentData.targets?.renewable2030 || 20}% <span className="text-[10px] font-normal text-slate-500">Mix</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-black text-blue-900 uppercase mb-3 flex items-center">
+                                        <Lightbulb size={12} className="mr-2 text-amber-500" />
+                                        Bonnes pratiques
+                                    </h4>
+                                    <ul className="text-[10px] text-slate-600 space-y-1.5 list-disc pl-3 leading-relaxed">
+                                        {reportPracticalTips.map((tip) => (
+                                            <li key={tip}>{tip}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="mt-auto border-t-2 border-slate-100 pt-6">
