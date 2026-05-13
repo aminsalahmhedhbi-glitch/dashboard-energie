@@ -626,6 +626,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const prevMonth = new Date();
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const [reportMonth, setReportMonth] = useState(prevMonth.toISOString().slice(0, 7));
+  const reportPrintRef = React.useRef(null);
   const [notif, setNotif] = useState(null);
   const HISTORY_DRAFT_KEY = 'italcar_sites_history_draft_v1';
   const TARGETS_DRAFT_KEY = 'italcar_sites_targets_draft_v1';
@@ -2091,6 +2092,72 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     "Vérifier les fuites du réseau air comprimé chaque semaine.",
     "Favoriser l'éclairage naturel dans les zones vitrées.",
   ];
+  const handlePrintMonthlyReport = () => {
+    const reportNode = reportPrintRef.current;
+    if (!reportNode) return;
+
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1600,height=1000');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const headAssets = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((node) => node.outerHTML)
+      .join('\n');
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="fr">
+        <head>
+          <meta charset="UTF-8" />
+          <title>Rapport Mensuel - ${currentData.name} - ${reportMonth}</title>
+          ${headAssets}
+          <style>
+            @page { size: A4 landscape; margin: 8mm; }
+            html, body {
+              width: 297mm;
+              min-height: 210mm;
+              margin: 0;
+              padding: 0;
+              background: #ffffff;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            body {
+              display: flex;
+              justify-content: center;
+              align-items: flex-start;
+            }
+            .report-print-root {
+              width: 281mm;
+              min-height: 194mm;
+              margin: 0;
+              padding: 0;
+              background: #ffffff;
+            }
+            .report-print-root .print-scale {
+              width: 281mm !important;
+              min-height: 194mm !important;
+              max-width: none !important;
+              box-shadow: none !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="report-print-root">${reportNode.outerHTML}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+
+    window.setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 600);
+  };
   const reportKpiSnapshot = {
     total: reportPerformance,
     lighting: totalSiteArea > 0 ? (reportConsumption * usageShareLighting) / totalSiteArea : 0,
@@ -3111,7 +3178,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
         {showReport && (
             <div className="print-container fixed inset-0 z-[70] flex items-center justify-center overflow-auto bg-slate-900/90 p-4">
-                <div className="print-scale relative flex min-h-[21cm] w-full max-w-[29.7cm] flex-col overflow-hidden bg-white shadow-2xl">
+                <div className="flex max-h-full w-full flex-col items-center overflow-auto">
                     <div className="no-print sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
                         <div className="flex items-center gap-3">
                             <label className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Mois du rapport</label>
@@ -3124,7 +3191,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                         </div>
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={() => window.print()}
+                                onClick={handlePrintMonthlyReport}
                                 className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2 text-sm font-bold text-white shadow-md transition-colors hover:bg-blue-800"
                             >
                                 <Printer size={16} />
@@ -3140,6 +3207,8 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                         </div>
                     </div>
 
+                    <div className="no-print mt-4 origin-top" style={{ zoom: 0.5 }}>
+                    <div ref={reportPrintRef} className="print-scale relative flex min-h-[21cm] w-full max-w-[29.7cm] flex-col overflow-hidden bg-white shadow-2xl">
                     <div className="flex flex-1 flex-col bg-white px-7 py-6">
                         <div className="mb-5 flex items-center justify-between border-b-4 border-blue-900 pb-4">
                             <div className="flex items-center gap-6">
@@ -3285,6 +3354,8 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    </div>
                     </div>
                 </div>
             </div>
