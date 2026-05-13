@@ -34,7 +34,7 @@ import ModuleHeader from '../../components/layout/ModuleHeader';
 import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
 import politiqueSignature from '../../assets/politique-signature.png';
 import italcarMarquesGrid from '../../assets/italcar-marques-grid.png';
-import reseauPropreMockup from '../../assets/reseau-propre-layout.jpg';
+import reseauPropreMockup from '../../assets/reseau-propre-layout-2026.jpg';
 import cartographieProcessusImage from '../../assets/cartographie-processus.png';
 
 const PARTIES_LABEL = `Parties int${String.fromCharCode(233)}ress${String.fromCharCode(233)}es`;
@@ -872,19 +872,19 @@ function buildReseauMarkers(propre = [], sousConcessionnaires = []) {
 
 function TunisiaNetworkMapCard({ className = '' }) {
   return (
-    <div className={`flex h-full flex-col rounded-2xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 p-5 shadow-sm ${className}`}>
-      <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-        <MapPin className="h-3.5 w-3.5" />
-        Carte du reseau en Tunisie
+      <div className={`flex h-full flex-col rounded-2xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 p-5 shadow-sm ${className}`}>
+        <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <MapPin className="h-3.5 w-3.5" />
+          Carte du reseau en Tunisie
+        </div>
+        <div className="flex h-[440px] w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white leading-none lg:h-[500px]">
+          <img
+            src={reseauPropreMockup}
+            alt="Reseau ITALCAR en Tunisie"
+            className="block h-full w-full object-contain object-center"
+          />
+        </div>
       </div>
-      <div className="flex h-[320px] w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white leading-none">
-        <img
-          src={reseauPropreMockup}
-          alt="Reseau ITALCAR en Tunisie"
-          className="block h-[90%] w-[90%] object-contain object-center"
-        />
-      </div>
-    </div>
   );
 }
 
@@ -2849,7 +2849,7 @@ export default function UtilitiesModule({ onBack, user }) {
                           Reseau ITALCAR
                         </div>
                         <div className="grid grid-cols-1 xl:grid-cols-3">
-                          <div className="border-b border-slate-200 pb-4 xl:border-b-0 xl:border-r xl:border-slate-300 xl:pb-0 xl:pr-5">
+                          <div className="border-b border-slate-200 p-5 xl:border-b-0 xl:border-r xl:border-slate-300">
                             <div className="flex items-center justify-between gap-3">
                               <h4 className="text-3xl font-black tracking-tight text-slate-950">
                                 Reseau propre
@@ -2873,7 +2873,7 @@ export default function UtilitiesModule({ onBack, user }) {
                               )}
                             </div>
                           </div>
-                          <div className="pt-4 xl:col-span-2 xl:pt-0 xl:pl-5">
+                          <div className="p-5 xl:col-span-2">
                             <div className="flex items-center justify-between gap-3">
                               <h4 className="text-3xl font-black tracking-tight text-slate-950">
                                 Sous-concessionnaire
