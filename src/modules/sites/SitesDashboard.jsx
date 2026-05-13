@@ -2096,18 +2096,29 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     const reportNode = reportPrintRef.current;
     if (!reportNode) return;
 
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1600,height=1000');
-    if (!printWindow) {
-      window.print();
-      return;
-    }
-
     const headAssets = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map((node) => node.outerHTML)
       .join('\n');
 
-    printWindow.document.open();
-    printWindow.document.write(`
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentWindow?.document;
+    if (!iframeDoc || !iframe.contentWindow) {
+      iframe.remove();
+      return;
+    }
+
+    iframeDoc.open();
+    iframeDoc.write(`
       <!DOCTYPE html>
       <html lang="fr">
         <head>
@@ -2150,12 +2161,14 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         </body>
       </html>
     `);
-    printWindow.document.close();
-    printWindow.focus();
+    iframeDoc.close();
 
     window.setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      window.setTimeout(() => {
+        iframe.remove();
+      }, 1000);
     }, 600);
   };
   const reportKpiSnapshot = {
