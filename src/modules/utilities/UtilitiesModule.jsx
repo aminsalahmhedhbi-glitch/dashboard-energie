@@ -2842,13 +2842,13 @@ export default function UtilitiesModule({ onBack, user }) {
                   </div>
 
                   <div className="xl:col-span-12">
-                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <div className="border-b border-slate-200 px-6 py-5">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          <MapPin className="h-3.5 w-3.5" />
-                          Reseau ITALCAR
-                        </div>
-                        <div className="grid grid-cols-1 xl:grid-cols-3">
+                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="border-b border-slate-200 px-6 py-5">
+                          <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            <MapPin className="h-3.5 w-3.5" />
+                            Reseau ITALCAR
+                          </div>
+                          <div className="-mx-6 mt-3 grid grid-cols-1 xl:grid-cols-3">
                           <div className="border-b border-slate-200 p-5 xl:border-b-0 xl:border-r xl:border-slate-300">
                             <div className="flex items-center justify-between gap-3">
                               <h4 className="text-3xl font-black tracking-tight text-slate-950">
