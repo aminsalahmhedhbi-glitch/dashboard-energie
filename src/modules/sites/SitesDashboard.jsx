@@ -62,7 +62,9 @@ const useLiveEnergy = (siteKey = 'MEGRINE') => {
 
 const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
   const { data: lastEnergy, error } = useLiveEnergy(siteKey);
-  const lastTimestamp = lastEnergy?.Timestamp || lastEnergy?.measuredAt || null;
+  const lastTimestamp = lastEnergy?.measured_at || lastEnergy?.Timestamp || lastEnergy?.measuredAt || null;
+  const maxActivePower = lastEnergy?.P_SUM_kW_MAX;
+  const maxActivePowerTimestamp = lastEnergy?.P_SUM_kW_MAX_TIMESTAMP || null;
 
   return (
     <div className="space-y-6">
@@ -84,9 +86,15 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">Puissance Active</p>
+          <p className="text-xs text-slate-500 uppercase">Dernière lecture</p>
+          <p className="text-lg font-black text-slate-900 break-words">
+            {lastTimestamp ? String(lastTimestamp) : `en attente de mesure pour ${siteKey}`}
+          </p>
+        </div>
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <p className="text-xs text-slate-500 uppercase">P_SUM_kW</p>
           <p className="text-2xl font-black text-blue-900 break-words">
             {lastEnergy ? lastEnergy.P_SUM_kW : '--'} kW
           </p>
@@ -107,7 +115,7 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
         </div>
 
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">Facteur de puissance</p>
+          <p className="text-xs text-slate-500 uppercase">PF_SUM</p>
           <p
             className={`text-2xl font-black ${
               lastEnergy && Number(lastEnergy.PF_SUM) < 0.9
@@ -120,7 +128,7 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="hidden grid-cols-1 gap-4 md:grid-cols-3">
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
           <p className="text-xs text-slate-500 uppercase">Tension moyenne</p>
           <p className="text-2xl font-black text-slate-900 break-words">
@@ -141,7 +149,17 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+        <p className="text-xs text-slate-500 uppercase">P max enregistrée</p>
+        <p className="mt-1 text-2xl font-black text-slate-900 break-words">
+          {maxActivePower ?? '--'} kW
+        </p>
+        <p className="mt-2 break-words">
+          {maxActivePowerTimestamp ? String(maxActivePowerTimestamp) : 'aucun historique disponible'}
+        </p>
+      </div>
+
+      <div className="hidden rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
         <span className="font-semibold text-slate-700">Dernière lecture :</span>{' '}
         {lastTimestamp ? String(lastTimestamp) : `en attente de mesure pour ${siteKey}`}
       </div>

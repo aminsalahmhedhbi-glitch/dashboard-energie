@@ -1266,7 +1266,19 @@ def create_app() -> Flask:
         site = get_site_key(request.args.get("site", "MEGRINE"))
         measurement = PacMeasurement.query.filter_by(site_code=site).order_by(PacMeasurement.measured_at.desc()).first()
         if measurement:
-            return json_response(measurement.to_measurement_dict())
+            payload = measurement.to_measurement_dict()
+            payload["measured_at"] = payload.get("Timestamp")
+            max_measurement = (
+                PacMeasurement.query.filter_by(site_code=site)
+                .filter(PacMeasurement.p_sum_kw.isnot(None))
+                .order_by(PacMeasurement.p_sum_kw.desc(), PacMeasurement.measured_at.desc())
+                .first()
+            )
+            payload["P_SUM_kW_MAX"] = max_measurement.p_sum_kw if max_measurement else None
+            payload["P_SUM_kW_MAX_TIMESTAMP"] = (
+                max_measurement.to_measurement_dict().get("Timestamp") if max_measurement else None
+            )
+            return json_response(payload)
 
         if legacy_enabled():
             df = read_energy_csv(site)
@@ -1275,6 +1287,17 @@ def create_app() -> Flask:
             row = sanitize_value(df.iloc[-1].to_dict())
             row["site"] = site
             row["source_file"] = str(get_energy_csv_path(site))
+            row["measured_at"] = row.get("Timestamp")
+            if "P_SUM_kW" in df.columns:
+                numeric_p = df["P_SUM_kW"].apply(safe_float)
+                valid_indices = [index for index, value in numeric_p.items() if value is not None]
+                if valid_indices:
+                    max_index = max(valid_indices, key=lambda index: numeric_p[index])
+                    row["P_SUM_kW_MAX"] = numeric_p[max_index]
+                    row["P_SUM_kW_MAX_TIMESTAMP"] = sanitize_value(df.iloc[max_index].to_dict()).get("Timestamp")
+                else:
+                    row["P_SUM_kW_MAX"] = None
+                    row["P_SUM_kW_MAX_TIMESTAMP"] = None
             return json_response(row)
 
         return json_response({"error": f"Aucune donnÃ©e Ã©nergÃ©tique disponible pour {site}"}, 404)
