@@ -147,20 +147,28 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
 const PrintStyles = () => (
     <style>{`
       @media print {
-        @page { size: landscape; margin: 0; }
-        body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; background: white; }
+        @page { size: A4 landscape; margin: 8mm; }
+        html, body { width: 297mm; height: 210mm; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; background: white; }
         .no-print { display: none !important; }
-        /* Force container to fill page */
         .print-container { 
-            position: absolute; top: 0; left: 0; 
-            width: 100vw; height: 100vh; 
-            margin: 0; padding: 0; 
+            position: static !important;
+            inset: auto !important;
+            width: auto !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important; 
             overflow: hidden; 
-            z-index: 9999; 
+            z-index: auto; 
             background: white;
         }
-        /* Ajustements pour que tout tienne */
-        .print-scale { transform: scale(0.95); transform-origin: top center; height: 100%; }
+        .print-scale {
+            width: 281mm !important;
+            height: 194mm !important;
+            transform: none !important;
+            transform-origin: top left;
+            box-shadow: none !important;
+        }
       }
     `}</style>
 );
@@ -1200,6 +1208,13 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     () => (factureInsights.recentFactures || []).slice(0, 6),
     [factureInsights]
   );
+  useEffect(() => {
+    if (!factureInsights.latestMonthKey) return;
+    const hasSelectedMonthData = (factureInsights.monthlyRows || []).some((row) => row.monthKey === reportMonth);
+    if (!hasSelectedMonthData) {
+      setReportMonth(factureInsights.latestMonthKey);
+    }
+  }, [factureInsights.latestMonthKey, factureInsights.monthlyRows, reportMonth]);
   const factureHistoryByYear = useMemo(() => {
     const createMonthSet = () => ({
       months: Array(12).fill(''),
@@ -1998,6 +2013,37 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     cvc: totalSiteArea > 0 ? (displayedCurrentMonthValue * usageShareCvc) / totalSiteArea : 0,
     air: averageAirKpi,
   };
+
+  const reportYear = Number(String(reportMonth || '').slice(0, 4));
+  const reportMonthIndex = Number(String(reportMonth || '').slice(5, 7)) - 1;
+  const reportMonthlyRow = (factureInsights.monthlyRows || []).find((row) => row.monthKey === reportMonth) || null;
+  const reportReferenceCandidates = (factureInsights.monthlyRows || [])
+    .filter((row) => row.monthIndex === reportMonthIndex && row.year < reportYear)
+    .map((row) => toNumberOrZero(row.consommationKwh))
+    .filter((value) => value > 0);
+  const reportReferenceValue = reportReferenceCandidates.length
+    ? reportReferenceCandidates.reduce((sum, value) => sum + value, 0) / reportReferenceCandidates.length
+    : 0;
+  const reportConsumption = toNumberOrZero(reportMonthlyRow?.consommationKwh);
+  const reportCost = toNumberOrZero(reportMonthlyRow?.prixDt);
+  const reportPerformance = totalSiteArea > 0 ? reportConsumption / totalSiteArea : 0;
+  const reportDiffPercent = reportReferenceValue > 0
+    ? ((reportConsumption - reportReferenceValue) / reportReferenceValue) * 100
+    : 0;
+  const reportCurrentTemp = reportMonthIndex >= 0 && reportMonthIndex < 12
+    ? toNumberOrZero(getTemperatureValues(activeSiteTab, reportYear)[reportMonthIndex])
+    : 0;
+  const reportPreviousTemp = reportMonthIndex >= 0 && reportMonthIndex < 12
+    ? toNumberOrZero(getTemperatureValues(activeSiteTab, reportYear - 1)[reportMonthIndex])
+    : 0;
+  const reportClimateDelta = reportCurrentTemp - reportPreviousTemp;
+  const reportMonthDate = reportMonth ? new Date(`${reportMonth}-01T00:00:00`) : new Date();
+  const reportPracticalTips = [
+    "Éteindre les climatiseurs et l'éclairage en zone inoccupée.",
+    "Maintenir la consigne clim à 26°C en été.",
+    "Vérifier les fuites du réseau air comprimé chaque semaine.",
+    "Favoriser l'éclairage naturel dans les zones vitrées.",
+  ];
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20 relative font-sans text-slate-600">
@@ -3037,7 +3083,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                             <div className="text-right bg-slate-50 px-6 py-3 rounded-xl border border-slate-100">
                                 <div className="text-xs font-bold text-slate-400 uppercase mb-1">Période concernée</div>
                                 <div className="text-2xl font-black text-slate-800 capitalize">
-                                    {new Date(reportMonth).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'})}
+                                    {reportMonthDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
                                 </div>
                                 <div className="text-xs font-bold text-slate-500 mt-1 flex items-center justify-end bg-white px-2 py-1 rounded border border-slate-200 w-fit ml-auto">
                                     <MapPin size={10} className="mr-1"/> {currentData.name}
@@ -3057,7 +3103,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                         <div>
                                             <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Consommation Totale</div>
                                             <div className="flex items-baseline gap-2">
-                                                <span className="text-4xl font-black text-slate-900">--</span>
+                                                <span className="text-4xl font-black text-slate-900">
+                                                    {reportConsumption > 0 ? formatCompactNumber(reportConsumption, 0) : '--'}
+                                                </span>
                                                 <span className="text-sm font-bold text-slate-400">kWh</span>
                                             </div>
                                         </div>
@@ -3065,7 +3113,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                         <div>
                                             <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Ratio Performance</div>
                                             <div className="flex items-baseline gap-2">
-                                                <span className="text-3xl font-black text-blue-900">--</span>
+                                                <span className="text-3xl font-black text-blue-900">
+                                                    {reportConsumption > 0 ? formatCompactNumber(reportPerformance, 3) : '--'}
+                                                </span>
                                                 <span className="text-xs font-bold text-slate-400">kWh / m²</span>
                                             </div>
                                         </div>
@@ -3073,8 +3123,12 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                         <div>
                                             <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Évolution vs Réf (N-1)</div>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-2xl font-black text-emerald-600">--%</span>
-                                                <div className="text-[10px] font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Objectif atteint</div>
+                                                <span className={`text-2xl font-black ${reportReferenceValue > 0 && reportDiffPercent <= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                                    {reportReferenceValue > 0 ? `${reportDiffPercent > 0 ? '+' : ''}${formatCompactNumber(reportDiffPercent, 1)}%` : '--'}
+                                                </span>
+                                                <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${reportReferenceValue > 0 && reportDiffPercent <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {reportReferenceValue > 0 && reportDiffPercent <= 0 ? 'Objectif atteint' : 'Suivi mensuel'}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -3083,7 +3137,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                 <div className="bg-blue-900 p-5 rounded-2xl text-white relative overflow-hidden">
                                     <div className="relative z-10">
                                         <h3 className="text-xs font-black text-blue-300 uppercase mb-2">Coût Énergétique</h3>
-                                        <div className="text-3xl font-black mb-1">-- <span className="text-sm">DT</span></div>
+                                        <div className="text-3xl font-black mb-1">
+                                            {reportCost > 0 ? formatCompactNumber(reportCost, 3) : '--'} <span className="text-sm">DT</span>
+                                        </div>
                                         <div className="text-[10px] text-blue-200">Hors TVA et Redevances</div>
                                     </div>
                                     <div className="absolute right-0 bottom-0 opacity-10"><Zap size={80}/></div>
@@ -3121,12 +3177,22 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                         <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Comparatif Température (N vs N-1)</h4>
                                         <div className="flex-1 flex flex-col justify-center items-center text-center p-4 bg-slate-50 rounded-lg">
                                             <ThermometerSun size={32} className="text-amber-500 mb-2"/>
-                                            <div className="font-bold text-slate-700 text-xs">Analyse Saisonnière</div>
+                                            <div className="font-bold text-slate-700 text-xs capitalize">
+                                                {reportMonthDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                                            </div>
+                                            <div className="mt-2 text-2xl font-black text-slate-900">
+                                                {reportCurrentTemp > 0 ? `${reportCurrentTemp.toFixed(1)} °C` : '--'}
+                                            </div>
                                             <p className="text-[10px] text-slate-500 mt-1">
-                                                Comparaison des degrés-jours et impact thermique sur la consommation CVC.
-                                                <br/>
-                                                <span className="italic">(Voir détail widget dashboard)</span>
+                                                vs N-1 {reportPreviousTemp > 0 ? `${reportPreviousTemp.toFixed(1)} °C` : '--'}
                                             </p>
+                                            <div className="mt-3 rounded-xl bg-white/70 px-3 py-2 text-[10px] text-slate-600">
+                                                {Math.abs(reportClimateDelta) < 0.1
+                                                    ? 'Aucune variation climatique significative détectée pour cette période.'
+                                                    : reportClimateDelta > 0
+                                                        ? `Mois plus chaud de ${reportClimateDelta.toFixed(1)} °C, avec impact probable sur les usages CVC.`
+                                                        : `Mois plus froid de ${Math.abs(reportClimateDelta).toFixed(1)} °C, avec influence probable sur le chauffage.`}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -3150,10 +3216,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                         <div>
                                             <h4 className="text-xs font-black text-blue-900 uppercase mb-3 flex items-center"><Lightbulb size={12} className="mr-2 text-amber-500"/> Bonnes Pratiques</h4>
                                             <ul className="text-[10px] text-slate-600 space-y-1.5 list-disc pl-3 leading-relaxed">
-                                                <li>Éteindre les climatiseur et l'éclairage en zone inoccupée (Bureaux vides).</li>
-                                                <li>Maintenir la consigne clim à 26°C en été.</li>
-                                                <li>Vérifier les fuites du réseau air comprimé chaque semaine.</li>
-                                                <li>Favoriser l'éclairage naturel dans les zones vitrées.</li>
+                                                {reportPracticalTips.map((tip) => (
+                                                    <li key={tip}>{tip}</li>
+                                                ))}
                                             </ul>
                                         </div>
                                     </div>
