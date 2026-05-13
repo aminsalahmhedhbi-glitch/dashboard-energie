@@ -35,6 +35,7 @@ import { resolveUpdater, useModuleState } from '../../hooks/useModuleState';
 import politiqueSignature from '../../assets/politique-signature.png';
 import italcarMarquesGrid from '../../assets/italcar-marques-grid.png';
 import reseauPropreMockup from '../../assets/reseau-propre-layout.jpg';
+import cartographieProcessusImage from '../../assets/cartographie-processus.png';
 
 const PARTIES_LABEL = `Parties int${String.fromCharCode(233)}ress${String.fromCharCode(233)}es`;
 const PARTIE_LABEL = `Partie int${String.fromCharCode(233)}ress${String.fromCharCode(233)}e`;
@@ -172,10 +173,10 @@ const INITIAL_PERIMETRE = {
   ],
   reseau: {
     propre: [
-      { id: 301, text: 'Siège Megrine', lieu: 'Siège Megrine' },
+      { id: 301, text: 'Siï¿½ge Megrine', lieu: 'Siï¿½ge Megrine' },
       { id: 302, text: 'Showroom les Berges du Lac', lieu: 'Les Berges du Lac' },
       { id: 303, text: 'Concept store Azur City', lieu: 'Concept store Azur City' },
-      { id: 304, text: 'SAV El Khadhra', lieu: 'Siège Megrine / SAV El Khadhra' },
+      { id: 304, text: 'SAV El Khadhra', lieu: 'Siï¿½ge Megrine / SAV El Khadhra' },
       { id: 305, text: 'Parc Nassen', lieu: 'Nassen' },
     ],
     sousConcessionnaires: [
@@ -189,7 +190,7 @@ const INITIAL_PERIMETRE = {
     { id: 2, text: 'Reparation des vehicules de marques representees' },
   ],
   sites: [
-    { id: 1, text: 'Siège Megrine' },
+    { id: 1, text: 'Siï¿½ge Megrine' },
     { id: 2, text: 'Showroom les Berges du Lac' },
     { id: 3, text: 'SAV El Khadhra' },
     { id: 4, text: 'Parc Nassen' },
@@ -316,7 +317,7 @@ const INITIAL_DOCUMENTS = [
     code: 'FF-RME',
     type: 'Fiche fonction',
     indice: '01',
-    site: 'Siège Megrine',
+    site: 'SiÃ¨ge Megrine',
     fileType: 'word',
   },
 ];
@@ -2399,7 +2400,7 @@ export default function UtilitiesModule({ onBack, user }) {
                       {[
                         PARTIE_LABEL,
                         'Impact',
-                        'N°',
+                        'Nï¿½',
                         'Attente / Exigence',
                         'Responsable',
                         'Pertinence',
@@ -3413,21 +3414,6 @@ export default function UtilitiesModule({ onBack, user }) {
                 isAdmin={isAdmin}
                 onMetaChange={(field, value) => updateSectionMeta('cartographie', field, value)}
                 hideReference
-                actions={
-                  isAdmin ? (
-                    <button
-                      type="button"
-                      onClick={() => setCartographieEditing((prev) => !prev)}
-                      className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-                        cartographieEditing
-                          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                          : 'bg-[#233876] text-white hover:bg-[#1a2f64]'
-                      }`}
-                    >
-                      {cartographieEditing ? "Quitter l'edition" : 'Modifier la cartographie'}
-                    </button>
-                  ) : null
-                }
               />
 
               <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-slate-600">
@@ -3436,37 +3422,13 @@ export default function UtilitiesModule({ onBack, user }) {
                 satisfaction des parties int?ress?es.
               </div>
 
-              <div className="mb-5 flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
-                <span className="inline-flex items-center gap-2 rounded-full border border-[#233876]/20 bg-[#233876]/5 px-3 py-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#233876]" />
-                  Pilotage
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
-                  Realisation
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-amber-600" />
-                  Support
-                </span>
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-inner">
+                <img
+                  src={cartographieProcessusImage}
+                  alt="Cartographie des processus ITALCAR"
+                  className="block h-auto w-full"
+                />
               </div>
-
-              <CartographieCanvas
-                data={cartographie}
-                isEditing={Boolean(isAdmin && cartographieEditing)}
-                onUpdateProcesses={(newProcesses) =>
-                  setCartographie((prev) => ({
-                    ...(prev || {}),
-                    processus: newProcesses,
-                  }))
-                }
-                onUpdateConnexions={(newConnexions) =>
-                  setCartographie((prev) => ({
-                    ...(prev || {}),
-                    connexions: newConnexions,
-                  }))
-                }
-              />
             </div>
           </section>
         )}
@@ -3801,7 +3763,7 @@ export default function UtilitiesModule({ onBack, user }) {
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-[#233876]"
                   >
                     <option>Tous sites</option>
-                    <option>Siège Megrine</option>
+                    <option>Siï¿½ge Megrine</option>
                     <option>Showroom Berges du Lac</option>
                     <option>SAV El Khadhra</option>
                     <option>Parc Nassen</option>
