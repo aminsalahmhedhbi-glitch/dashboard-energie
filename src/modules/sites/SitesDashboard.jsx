@@ -66,102 +66,79 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
   const maxActivePower = lastEnergy?.P_SUM_kW_MAX;
   const maxActivePowerTimestamp = lastEnergy?.P_SUM_kW_MAX_TIMESTAMP || null;
 
+  const cardClass = 'rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-4';
+  const titleClass = 'text-[11px] uppercase tracking-[0.18em] text-slate-300';
+  const unitClass = 'ml-1 text-sm font-medium text-slate-300';
+
   return (
     <div className="space-y-6">
       {title && (
-        <div className="border-b border-slate-100 pb-3">
-          <h4 className="text-base font-black text-slate-800">{title}</h4>
+        <div className="border-b border-slate-700/70 pb-3">
+          <h4 className="text-base font-black text-white">{title}</h4>
         </div>
       )}
 
       {error ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-          Mesures temps réel momentanément indisponibles pour {siteKey}. Le suivi reprendra dès que les données seront accessibles.
+        <div className="rounded-xl border border-amber-300/50 bg-amber-100/10 px-4 py-3 text-sm font-medium text-amber-200">
+          Mesures temps r?el momentan?ment indisponibles pour {siteKey}. Le suivi reprendra d?s que les donn?es seront accessibles.
         </div>
       ) : null}
 
       {!error && !lastEnergy ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
-          Aucune mesure instantanée n’a encore été reçue pour {siteKey}.
+        <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm font-medium text-slate-300">
+          Aucune mesure instantan?e n'a encore ?t? re?ue pour {siteKey}.
         </div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">Dernière lecture</p>
-          <p className="text-lg font-black text-slate-900 break-words">
-            {lastTimestamp ? String(lastTimestamp) : `en attente de mesure pour ${siteKey}`}
+        <div className={cardClass}>
+          <p className={titleClass}>P max enregistr?e</p>
+          <p className="mt-2 break-words text-[2rem] font-medium leading-none text-yellow-300">
+            {maxActivePower ?? '--'}
+            <span className={unitClass}>kW</span>
           </p>
-        </div>
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">P_SUM_kW</p>
-          <p className="text-2xl font-black text-blue-900 break-words">
-            {lastEnergy ? lastEnergy.P_SUM_kW : '--'} kW
-          </p>
-        </div>
-
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">Puissance Réactive</p>
-          <p className="text-2xl font-black text-red-600 break-words">
-            {lastEnergy ? lastEnergy.Q_SUM_kvar : '--'} kvar
+          <p className="mt-3 break-words text-sm text-slate-300">
+            {maxActivePowerTimestamp ? String(maxActivePowerTimestamp) : 'aucun historique disponible'}
           </p>
         </div>
 
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">Puissance Apparente</p>
-          <p className="text-2xl font-black text-slate-900 break-words">
-            {lastEnergy ? lastEnergy.S_SUM_kVA : '--'} kVA
+        <div className={cardClass}>
+          <p className={titleClass}>Puissance Active</p>
+          <p className="mt-2 break-words text-[2rem] font-medium leading-none text-sky-300">
+            {lastEnergy ? lastEnergy.P_SUM_kW : '--'}
+            <span className={unitClass}>kW</span>
           </p>
         </div>
 
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">PF_SUM</p>
-          <p
-            className={`text-2xl font-black ${
-              lastEnergy && Number(lastEnergy.PF_SUM) < 0.9
-                ? 'text-red-600'
-                : 'text-green-600'
-            }`}
-          >
+        <div className={cardClass}>
+          <p className={titleClass}>Puissance R?active</p>
+          <p className="mt-2 break-words text-[2rem] font-medium leading-none text-red-400">
+            {lastEnergy ? lastEnergy.Q_SUM_kvar : '--'}
+            <span className={unitClass}>kvar</span>
+          </p>
+        </div>
+
+        <div className={cardClass}>
+          <p className={titleClass}>Puissance Apparente</p>
+          <p className="mt-2 break-words text-[2rem] font-medium leading-none text-white">
+            {lastEnergy ? lastEnergy.S_SUM_kVA : '--'}
+            <span className={unitClass}>kVA</span>
+          </p>
+        </div>
+
+        <div className={cardClass}>
+          <p className={titleClass}>Facteur de Puissance</p>
+          <p className="mt-2 break-words text-[2rem] font-medium leading-none text-orange-300">
             {lastEnergy ? lastEnergy.PF_SUM : '--'}
           </p>
         </div>
-      </div>
 
-      <div className="hidden grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">Tension moyenne</p>
-          <p className="text-2xl font-black text-slate-900 break-words">
-            {lastEnergy ? lastEnergy.V_AVG_V : '--'} V
+        <div className="ml-auto w-full max-w-sm self-end rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3">
+          <p className={titleClass}>Derni?re lecture</p>
+          <p className="mt-2 break-words text-sm font-medium text-slate-200">
+            {lastTimestamp ? String(lastTimestamp) : `en attente de mesure pour ${siteKey}`}
           </p>
         </div>
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">Courant moyen</p>
-          <p className="text-2xl font-black text-slate-900 break-words">
-            {lastEnergy ? lastEnergy.I_AVG_A : '--'} A
-          </p>
-        </div>
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase">Fréquence</p>
-          <p className="text-2xl font-black text-slate-900 break-words">
-            {lastEnergy ? lastEnergy.FREQ_Hz : '--'} Hz
-          </p>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-        <p className="text-xs text-slate-500 uppercase">P max enregistrée</p>
-        <p className="mt-1 text-2xl font-black text-slate-900 break-words">
-          {maxActivePower ?? '--'} kW
-        </p>
-        <p className="mt-2 break-words">
-          {maxActivePowerTimestamp ? String(maxActivePowerTimestamp) : 'aucun historique disponible'}
-        </p>
-      </div>
-
-      <div className="hidden rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        <span className="font-semibold text-slate-700">Dernière lecture :</span>{' '}
-        {lastTimestamp ? String(lastTimestamp) : `en attente de mesure pour ${siteKey}`}
       </div>
     </div>
   );
