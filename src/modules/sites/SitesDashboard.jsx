@@ -721,6 +721,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   );
   const reviewUsageHydratedRef = React.useRef(false);
   const reviewUsageSignatureRef = React.useRef('');
+  const reviewUsageImmediateSaveRef = React.useRef(false);
 
   useEffect(() => {
     if (!reviewUsageState.isReady || reviewUsageHydratedRef.current) return;
@@ -745,6 +746,36 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     reviewUsageSignatureRef.current = signature;
     reviewUsageState.setData(payload);
   }, [reviewUsageState, sitesDataState]);
+
+  useEffect(() => {
+    if (!reviewUsageHydratedRef.current || !reviewUsageImmediateSaveRef.current) return;
+
+    const payload = buildReviewUsageModulePayload(sitesDataState);
+    const signature = JSON.stringify(payload);
+    reviewUsageSignatureRef.current = signature;
+    reviewUsageImmediateSaveRef.current = false;
+
+    let cancelled = false;
+
+    const persistImmediately = async () => {
+      try {
+        await apiFetch(`/api/module-states/${REVIEW_USAGES_MODULE_KEY}`, {
+          method: 'PUT',
+          body: JSON.stringify({ data: payload }),
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Erreur sauvegarde immédiate usages revue :', error);
+        }
+      }
+    };
+
+    persistImmediately();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sitesDataState]);
 
   useEffect(() => {
     try {
@@ -773,6 +804,10 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   }, []);
 
   // --- GESTION DES USAGES PRINCIPAUX ---
+  const requestImmediateReviewUsageSave = () => {
+    reviewUsageImmediateSaveRef.current = true;
+  };
+
   const handleUsageAdd = () => {
     setSitesDataState(prev => {
         const newData = { ...prev };
@@ -780,6 +815,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         site.elecUsage = [...site.elecUsage, { name: "Nouvel Usage", value: 0, ratio: "-", significant: false, subUsages: [] }];
         return newData;
     });
+    requestImmediateReviewUsageSave();
   };
 
   const handleUsageDelete = (usageIndex) => {
@@ -789,6 +825,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         site.elecUsage = site.elecUsage.filter((_, i) => i !== usageIndex);
         return newData;
     });
+    requestImmediateReviewUsageSave();
   };
 
   const handleUsageChange = (index, field, value) => {
@@ -813,6 +850,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         site.elecUsage = newUsages;
         return newData;
     });
+    requestImmediateReviewUsageSave();
   };
 
   const handleSubUsageDelete = (usageIndex, subIndex) => {
@@ -824,6 +862,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         site.elecUsage = newUsages;
         return newData;
     });
+    requestImmediateReviewUsageSave();
   };
 
   const handleSubUsageChange = (usageIndex, subIndex, field, value) => {
@@ -988,6 +1027,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       return next;
     });
 
+    requestImmediateReviewUsageSave();
     closeUsageActionModal();
   };
 
@@ -3103,7 +3143,15 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                         ))}
                     </div>
                     <div className="mt-6 pt-4 border-t flex justify-end">
-                        <button onClick={() => setShowUsageConfig(false)} className="bg-blue-900 text-white px-8 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-800">Enregistrer les modifications</button>
+                        <button
+                          onClick={() => {
+                            requestImmediateReviewUsageSave();
+                            setShowUsageConfig(false);
+                          }}
+                          className="bg-blue-900 text-white px-8 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-800"
+                        >
+                          Enregistrer les modifications
+                        </button>
                     </div>
                 </div>
             </div>
