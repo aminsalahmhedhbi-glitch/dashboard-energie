@@ -73,7 +73,7 @@ const PacMonitoringPanel = ({ title = null, siteKey = 'MEGRINE' }) => {
   const unitClass = 'ml-1 text-sm font-medium text-slate-300';
 
   return (
-    <div className="space-y-6">
+    <div className="grid auto-rows-fr gap-6">
       {title && (
         <div className="border-b border-slate-700/70 pb-3">
           <h4 className="text-base font-black text-white">{title}</h4>
@@ -614,7 +614,7 @@ const ReviewTrendChart = ({ title, data, color, unit, emptyText }) => (
 );
 
 const ReviewUsageDonutCard = ({ title, label, data, emptyText }) => (
-  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+  <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
     <div className="mb-4 flex items-center justify-between gap-3">
       <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-700">{title}</h3>
     </div>
@@ -2337,7 +2337,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <Factory size={16} className="text-slate-500" />
               <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Fiche technique</h3>
@@ -2349,7 +2349,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             <p className="mt-1 text-xs text-slate-500">
               Dont <span className="font-bold text-blue-900">{formatCompactNumber(currentData.covered)} m²</span> couverts et <span className="font-bold text-slate-700">{formatCompactNumber(currentData.open)} m²</span> ouverts.
             </p>
-            <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <div className="mt-4 flex-1 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
               {(currentData.coveredBreakdown || []).map((zone, index) => (
                 <div key={index} className="flex items-center justify-between gap-3 text-xs">
                   <span className="text-slate-500">{zone.label}</span>
@@ -2359,7 +2359,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <TrendingUp size={16} className="text-slate-500" />
               <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Gains consommation</h3>
@@ -2659,8 +2659,8 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                 />
 
                 <div className={`grid grid-cols-1 gap-6 md:grid-cols-2 ${hasVehicleCountCard ? 'xl:grid-cols-[1.1fr_1fr_1fr_1fr]' : 'xl:grid-cols-4'}`}>
-                  <div className="space-y-6">
-                    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="grid auto-rows-fr gap-6">
+                    <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                       <div className="mb-4 flex items-center gap-2">
                         <Factory size={16} className="text-slate-500" />
                         <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Fiche technique</h3>
@@ -2672,7 +2672,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                       <p className="mt-1 text-xs text-slate-500">
                         Dont <span className="font-bold text-blue-900">{formatCompactNumber(currentData.covered)} m²</span> couverts et <span className="font-bold text-slate-700">{formatCompactNumber(currentData.open)} m²</span> ouverts.
                       </p>
-                      <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                      <div className="mt-4 flex-1 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
                         {(currentData.coveredBreakdown || []).map((zone, index) => (
                           <div key={index} className="flex items-center justify-between gap-3 text-xs">
                             <span className="text-slate-500">{zone.label}</span>
@@ -2683,7 +2683,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     </div>
 
                     {hasVehicleCountCard && (
-                      <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                         <div className="mb-4 flex items-start justify-between gap-3">
                           <div className="flex items-center gap-2">
                             <ClipboardList size={16} className="text-slate-500" />
@@ -2705,7 +2705,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                           Total des véhicules entrés pour {currentSiteName} sur la période sélectionnée.
                         </p>
 
-                        <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="mt-4 flex-1 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
                           {currentVehicleCountEntries.map((entry, index) => (
                             <div key={`${entry.label}-${index}`} className="flex items-center justify-between gap-3 text-xs">
                               <span className="text-slate-500">{entry.label}</span>
@@ -2740,7 +2740,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     )}
                   </div>
 
-                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="mb-4 flex items-center gap-2">
                       <TrendingUp size={16} className="text-slate-500" />
                       <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Gains consommation</h3>
@@ -2777,7 +2777,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     </div>
                   </div>
 
-                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="mb-4 flex items-center gap-2">
                       <ThermometerSun size={16} className="text-slate-500" />
                       <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Climat & saisonnalite</h3>
@@ -2799,7 +2799,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     </div>
                   </div>
 
-                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="mb-4 flex items-center gap-2">
                       <Leaf size={16} className="text-slate-500" />
                       <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Vecteurs energetiques</h3>
