@@ -2658,7 +2658,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                   subtitle={`Vue consolidee du site ${currentSiteName}, alimentee par les factures, l'historique energetique et les objectifs 2030 deja enregistres.`}
                 />
 
-                <div className={`grid grid-cols-1 gap-6 md:grid-cols-2 ${hasVehicleCountCard ? 'xl:grid-cols-[1.1fr_1fr_1fr_1fr]' : 'xl:grid-cols-4'}`}>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
                   <div className="grid auto-rows-fr gap-6">
                     <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm xl:aspect-square xl:min-h-0">
                       <div className="mb-4 flex items-center gap-2">
