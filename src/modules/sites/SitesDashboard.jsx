@@ -195,6 +195,40 @@ const mergeHistoryEntry = (base = {}, override = {}) => ({
 });
 
 const REVIEW_USAGES_MODULE_KEY = 'pilotage-review-usage-matrix-v1';
+const VEHICLE_COUNT_MODULE_KEY = 'pilotage-review-vehicle-counts-v1';
+const VEHICLE_COUNT_SITE_KEYS = ['MEGRINE', 'ELKHADHRA', 'NAASSEN'];
+
+const getVehicleCountDefaultEntries = (siteState = {}) =>
+  Array.isArray(siteState?.coveredBreakdown)
+    ? siteState.coveredBreakdown.map((zone) => ({
+        label: zone?.label || 'Zone',
+        count: 0,
+      }))
+    : [];
+
+const normalizeVehicleCountEntries = (siteState = {}, entries = []) => {
+  const defaultEntries = getVehicleCountDefaultEntries(siteState);
+  const safeEntries = Array.isArray(entries) ? entries : [];
+  const persistedMap = new Map(
+    safeEntries.map((entry) => [String(entry?.label || '').trim(), Math.max(0, toNumberOrZero(entry?.count))])
+  );
+
+  const normalizedDefaults = defaultEntries.map((entry) => ({
+    label: entry.label,
+    count: persistedMap.has(entry.label) ? persistedMap.get(entry.label) : 0,
+  }));
+
+  safeEntries.forEach((entry) => {
+    const label = String(entry?.label || '').trim();
+    if (!label || normalizedDefaults.some((item) => item.label === label)) return;
+    normalizedDefaults.push({
+      label,
+      count: Math.max(0, toNumberOrZero(entry?.count)),
+    });
+  });
+
+  return normalizedDefaults;
+};
 
 const normalizeReviewUsageRows = (usages = []) =>
   (Array.isArray(usages) ? usages : []).map((usage) => {
@@ -224,6 +258,21 @@ const buildReviewUsageModulePayload = (sitesState = {}) =>
         ? normalizeReviewUsageRows(sitesState[siteKey].elecUsage)
         : [],
     };
+    return accumulator;
+  }, {});
+
+const buildVehicleCountModulePayload = (sitesState = {}, persistedState = {}) =>
+  VEHICLE_COUNT_SITE_KEYS.reduce((accumulator, siteKey) => {
+    const siteState = sitesState?.[siteKey] || {};
+    const persistedMonths = persistedState?.[siteKey]?.months || {};
+
+    accumulator[siteKey] = {
+      months: Object.keys(persistedMonths).reduce((monthAccumulator, monthKey) => {
+        monthAccumulator[monthKey] = normalizeVehicleCountEntries(siteState, persistedMonths[monthKey]);
+        return monthAccumulator;
+      }, {}),
+    };
+
     return accumulator;
   }, {});
 
@@ -628,6 +677,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const prevMonth = new Date();
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const [reportMonth, setReportMonth] = useState(prevMonth.toISOString().slice(0, 7));
+  const [vehicleCountMonth, setVehicleCountMonth] = useState(prevMonth.toISOString().slice(0, 7));
   const reportPrintRef = React.useRef(null);
   const [notif, setNotif] = useState(null);
   const HISTORY_DRAFT_KEY = 'italcar_sites_history_draft_v1';
@@ -717,6 +767,14 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const reviewUsageState = useModuleState(
     REVIEW_USAGES_MODULE_KEY,
     initialReviewUsageStateRef.current,
+    { seedOnMissing: true, debounceMs: 700 }
+  );
+  const initialVehicleCountStateRef = React.useRef(
+    buildVehicleCountModulePayload(sitesDataState)
+  );
+  const vehicleCountState = useModuleState(
+    VEHICLE_COUNT_MODULE_KEY,
+    initialVehicleCountStateRef.current,
     { seedOnMissing: true, debounceMs: 700 }
   );
   const reviewUsageHydratedRef = React.useRef(false);
@@ -1729,6 +1787,57 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   );
 
   const currentSiteName = getSiteDisplayName(activeSiteTab) || currentData.name;
+  const hasVehicleCountCard = VEHICLE_COUNT_SITE_KEYS.includes(activeSiteTab);
+  const currentVehicleCountEntries = useMemo(() => {
+    if (!hasVehicleCountCard) return [];
+    const persistedMonths = vehicleCountState.data?.[activeSiteTab]?.months || {};
+    return normalizeVehicleCountEntries(currentData, persistedMonths[vehicleCountMonth] || []);
+  }, [activeSiteTab, currentData, hasVehicleCountCard, vehicleCountMonth, vehicleCountState.data]);
+  const currentVehicleCountTotal = useMemo(
+    () => currentVehicleCountEntries.reduce((sum, entry) => sum + Math.max(0, toNumberOrZero(entry.count)), 0),
+    [currentVehicleCountEntries]
+  );
+
+  const updateVehicleCountEntry = (entryIndex, nextValue) => {
+    if (!hasVehicleCountCard) return;
+    vehicleCountState.setData((prev) => {
+      const next = { ...(prev || {}) };
+      const siteState = { ...(next[activeSiteTab] || { months: {} }) };
+      const months = { ...(siteState.months || {}) };
+      const entries = normalizeVehicleCountEntries(currentData, months[vehicleCountMonth] || []);
+      entries[entryIndex] = {
+        ...entries[entryIndex],
+        count: Math.max(0, toNumberOrZero(nextValue)),
+      };
+      months[vehicleCountMonth] = entries;
+      siteState.months = months;
+      next[activeSiteTab] = siteState;
+      return next;
+    });
+  };
+
+  const handleSaveVehicleCountMonth = async () => {
+    if (!hasVehicleCountCard) return;
+
+    const payload = buildVehicleCountModulePayload(
+      sitesDataState,
+      vehicleCountState.data || {}
+    );
+
+    try {
+      await apiFetch(`/api/module-states/${VEHICLE_COUNT_MODULE_KEY}`, {
+        method: 'PUT',
+        body: JSON.stringify({ data: payload }),
+      });
+      setNotif('Nombre de voitures enregistré');
+      window.setTimeout(() => setNotif(null), 2500);
+    } catch (error) {
+      console.error('Erreur sauvegarde nombre de voitures :', error);
+      setNotif("Erreur lors de l'enregistrement");
+      window.setTimeout(() => setNotif(null), 2500);
+    }
+  };
+
   const historySeriesType = getHistorySeriesType(activeSiteTab);
   const referenceHistoryValues = getSiteData(activeSiteTab, 'REF', historySeriesType);
   const currentHistoryValues = getFactureBackedHistoryValues(currentYear, historySeriesType);
@@ -2538,7 +2647,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                   subtitle={`Vue consolidee du site ${currentSiteName}, alimentee par les factures, l'historique energetique et les objectifs 2030 deja enregistres.`}
                 />
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                <div className={`grid grid-cols-1 gap-6 md:grid-cols-2 ${hasVehicleCountCard ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
                   <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="mb-4 flex items-center gap-2">
                       <Factory size={16} className="text-slate-500" />
@@ -2597,6 +2706,63 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                       </div>
                     </div>
                   </div>
+
+                  {hasVehicleCountCard && (
+                    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <ClipboardList size={16} className="text-slate-500" />
+                          <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Nombre de voiture</h3>
+                        </div>
+                        <input
+                          type="month"
+                          value={vehicleCountMonth}
+                          onChange={(e) => setVehicleCountMonth(e.target.value)}
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none transition-colors focus:border-blue-900"
+                        />
+                      </div>
+
+                      <div className="flex items-end gap-2">
+                        <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentVehicleCountTotal, 0)}</span>
+                        <span className="pb-1 text-sm font-bold text-slate-400">véhicules total</span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Total des véhicules entrés pour {currentSiteName} sur la période sélectionnée.
+                      </p>
+
+                      <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        {currentVehicleCountEntries.map((entry, index) => (
+                          <div key={`${entry.label}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                            <span className="text-slate-500">{entry.label}</span>
+                            {userRole === 'ADMIN' ? (
+                              <input
+                                type="number"
+                                min="0"
+                                value={entry.count}
+                                onChange={(e) => updateVehicleCountEntry(index, e.target.value)}
+                                className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1 text-right font-bold text-slate-700 outline-none transition-colors focus:border-blue-900"
+                              />
+                            ) : (
+                              <span className="font-bold text-slate-700">{formatCompactNumber(entry.count, 0)}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {userRole === 'ADMIN' && (
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={handleSaveVehicleCountMonth}
+                            className="inline-flex items-center gap-2 rounded-xl bg-blue-900 px-4 py-2 text-xs font-bold text-white shadow-md transition-colors hover:bg-blue-800"
+                          >
+                            <Save size={14} />
+                            Enregistrer
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="mb-4 flex items-center gap-2">
