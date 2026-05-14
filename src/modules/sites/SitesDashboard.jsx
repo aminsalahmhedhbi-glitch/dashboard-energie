@@ -197,17 +197,28 @@ const mergeHistoryEntry = (base = {}, override = {}) => ({
 const REVIEW_USAGES_MODULE_KEY = 'pilotage-review-usage-matrix-v1';
 const VEHICLE_COUNT_MODULE_KEY = 'pilotage-review-vehicle-counts-v1';
 const VEHICLE_COUNT_SITE_KEYS = ['MEGRINE', 'ELKHADHRA', 'NAASSEN'];
+const VEHICLE_COUNT_ENTRY_LABELS = {
+  MEGRINE: ['Atelier FIAT', 'Atelier IVECO'],
+  ELKHADHRA: ['Atelier FIAT'],
+  NAASSEN: ['Parc'],
+};
 
-const getVehicleCountDefaultEntries = (siteState = {}) =>
-  Array.isArray(siteState?.coveredBreakdown)
+const getVehicleCountDefaultEntries = (siteKey, siteState = {}) => {
+  const preferredLabels = VEHICLE_COUNT_ENTRY_LABELS[siteKey];
+  if (Array.isArray(preferredLabels) && preferredLabels.length > 0) {
+    return preferredLabels.map((label) => ({ label, count: 0 }));
+  }
+
+  return Array.isArray(siteState?.coveredBreakdown)
     ? siteState.coveredBreakdown.map((zone) => ({
         label: zone?.label || 'Zone',
         count: 0,
       }))
     : [];
+};
 
-const normalizeVehicleCountEntries = (siteState = {}, entries = []) => {
-  const defaultEntries = getVehicleCountDefaultEntries(siteState);
+const normalizeVehicleCountEntries = (siteKey, siteState = {}, entries = []) => {
+  const defaultEntries = getVehicleCountDefaultEntries(siteKey, siteState);
   const safeEntries = Array.isArray(entries) ? entries : [];
   const persistedMap = new Map(
     safeEntries.map((entry) => [String(entry?.label || '').trim(), Math.max(0, toNumberOrZero(entry?.count))])
@@ -268,7 +279,7 @@ const buildVehicleCountModulePayload = (sitesState = {}, persistedState = {}) =>
 
     accumulator[siteKey] = {
       months: Object.keys(persistedMonths).reduce((monthAccumulator, monthKey) => {
-        monthAccumulator[monthKey] = normalizeVehicleCountEntries(siteState, persistedMonths[monthKey]);
+        monthAccumulator[monthKey] = normalizeVehicleCountEntries(siteKey, siteState, persistedMonths[monthKey]);
         return monthAccumulator;
       }, {}),
     };
@@ -1791,7 +1802,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const currentVehicleCountEntries = useMemo(() => {
     if (!hasVehicleCountCard) return [];
     const persistedMonths = vehicleCountState.data?.[activeSiteTab]?.months || {};
-    return normalizeVehicleCountEntries(currentData, persistedMonths[vehicleCountMonth] || []);
+    return normalizeVehicleCountEntries(activeSiteTab, currentData, persistedMonths[vehicleCountMonth] || []);
   }, [activeSiteTab, currentData, hasVehicleCountCard, vehicleCountMonth, vehicleCountState.data]);
   const currentVehicleCountTotal = useMemo(
     () => currentVehicleCountEntries.reduce((sum, entry) => sum + Math.max(0, toNumberOrZero(entry.count)), 0),
@@ -1804,7 +1815,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       const next = { ...(prev || {}) };
       const siteState = { ...(next[activeSiteTab] || { months: {} }) };
       const months = { ...(siteState.months || {}) };
-      const entries = normalizeVehicleCountEntries(currentData, months[vehicleCountMonth] || []);
+      const entries = normalizeVehicleCountEntries(activeSiteTab, currentData, months[vehicleCountMonth] || []);
       entries[entryIndex] = {
         ...entries[entryIndex],
         count: Math.max(0, toNumberOrZero(nextValue)),
@@ -2647,27 +2658,86 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                   subtitle={`Vue consolidee du site ${currentSiteName}, alimentee par les factures, l'historique energetique et les objectifs 2030 deja enregistres.`}
                 />
 
-                <div className={`grid grid-cols-1 gap-6 md:grid-cols-2 ${hasVehicleCountCard ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
-                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="mb-4 flex items-center gap-2">
-                      <Factory size={16} className="text-slate-500" />
-                      <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Fiche technique</h3>
+                <div className={`grid grid-cols-1 gap-6 md:grid-cols-2 ${hasVehicleCountCard ? 'xl:grid-cols-[1.1fr_1fr_1fr_1fr]' : 'xl:grid-cols-4'}`}>
+                  <div className="space-y-6">
+                    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="mb-4 flex items-center gap-2">
+                        <Factory size={16} className="text-slate-500" />
+                        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Fiche technique</h3>
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentData.area)}</span>
+                        <span className="pb-1 text-sm font-bold text-slate-400">m² total</span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Dont <span className="font-bold text-blue-900">{formatCompactNumber(currentData.covered)} m²</span> couverts et <span className="font-bold text-slate-700">{formatCompactNumber(currentData.open)} m²</span> ouverts.
+                      </p>
+                      <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        {(currentData.coveredBreakdown || []).map((zone, index) => (
+                          <div key={index} className="flex items-center justify-between gap-3 text-xs">
+                            <span className="text-slate-500">{zone.label}</span>
+                            <span className="font-bold text-slate-700">{formatCompactNumber(zone.value)} m²</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentData.area)}</span>
-                      <span className="pb-1 text-sm font-bold text-slate-400">m² total</span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Dont <span className="font-bold text-blue-900">{formatCompactNumber(currentData.covered)} m²</span> couverts et <span className="font-bold text-slate-700">{formatCompactNumber(currentData.open)} m²</span> ouverts.
-                    </p>
-                    <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                      {(currentData.coveredBreakdown || []).map((zone, index) => (
-                        <div key={index} className="flex items-center justify-between gap-3 text-xs">
-                          <span className="text-slate-500">{zone.label}</span>
-                          <span className="font-bold text-slate-700">{formatCompactNumber(zone.value)} m²</span>
+
+                    {hasVehicleCountCard && (
+                      <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="mb-4 flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <ClipboardList size={16} className="text-slate-500" />
+                            <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Nombre de voiture</h3>
+                          </div>
+                          <input
+                            type="month"
+                            value={vehicleCountMonth}
+                            onChange={(e) => setVehicleCountMonth(e.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none transition-colors focus:border-blue-900"
+                          />
                         </div>
-                      ))}
-                    </div>
+
+                        <div className="flex items-end gap-2">
+                          <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentVehicleCountTotal, 0)}</span>
+                          <span className="pb-1 text-sm font-bold text-slate-400">véhicules total</span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Total des véhicules entrés pour {currentSiteName} sur la période sélectionnée.
+                        </p>
+
+                        <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                          {currentVehicleCountEntries.map((entry, index) => (
+                            <div key={`${entry.label}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                              <span className="text-slate-500">{entry.label}</span>
+                              {userRole === 'ADMIN' ? (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={entry.count}
+                                  onChange={(e) => updateVehicleCountEntry(index, e.target.value)}
+                                  className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1 text-right font-bold text-slate-700 outline-none transition-colors focus:border-blue-900"
+                                />
+                              ) : (
+                                <span className="font-bold text-slate-700">{formatCompactNumber(entry.count, 0)}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {userRole === 'ADMIN' && (
+                          <div className="mt-4 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={handleSaveVehicleCountMonth}
+                              className="inline-flex items-center gap-2 rounded-xl bg-blue-900 px-4 py-2 text-xs font-bold text-white shadow-md transition-colors hover:bg-blue-800"
+                            >
+                              <Save size={14} />
+                              Enregistrer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
@@ -2706,63 +2776,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                       </div>
                     </div>
                   </div>
-
-                  {hasVehicleCountCard && (
-                    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                      <div className="mb-4 flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <ClipboardList size={16} className="text-slate-500" />
-                          <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Nombre de voiture</h3>
-                        </div>
-                        <input
-                          type="month"
-                          value={vehicleCountMonth}
-                          onChange={(e) => setVehicleCountMonth(e.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none transition-colors focus:border-blue-900"
-                        />
-                      </div>
-
-                      <div className="flex items-end gap-2">
-                        <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentVehicleCountTotal, 0)}</span>
-                        <span className="pb-1 text-sm font-bold text-slate-400">véhicules total</span>
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Total des véhicules entrés pour {currentSiteName} sur la période sélectionnée.
-                      </p>
-
-                      <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                        {currentVehicleCountEntries.map((entry, index) => (
-                          <div key={`${entry.label}-${index}`} className="flex items-center justify-between gap-3 text-xs">
-                            <span className="text-slate-500">{entry.label}</span>
-                            {userRole === 'ADMIN' ? (
-                              <input
-                                type="number"
-                                min="0"
-                                value={entry.count}
-                                onChange={(e) => updateVehicleCountEntry(index, e.target.value)}
-                                className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1 text-right font-bold text-slate-700 outline-none transition-colors focus:border-blue-900"
-                              />
-                            ) : (
-                              <span className="font-bold text-slate-700">{formatCompactNumber(entry.count, 0)}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {userRole === 'ADMIN' && (
-                        <div className="mt-4 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={handleSaveVehicleCountMonth}
-                            className="inline-flex items-center gap-2 rounded-xl bg-blue-900 px-4 py-2 text-xs font-bold text-white shadow-md transition-colors hover:bg-blue-800"
-                          >
-                            <Save size={14} />
-                            Enregistrer
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="mb-4 flex items-center gap-2">
