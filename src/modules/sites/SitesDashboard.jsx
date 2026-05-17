@@ -491,6 +491,42 @@ const buildAirWeeklyKpiSeries = (airLogs = []) => {
     .sort((left, right) => right.sortValue - left.sortValue);
 };
 
+const buildAirMonthlyKpiSeries = (airLogs = []) => {
+  const weeklyReports = airLogs
+    .map(normalizeAirWeeklyLog)
+    .filter((row) => row.type === 'WEEKLY_REPORT')
+    .filter((row) => row.timestamp instanceof Date && !Number.isNaN(row.timestamp.getTime()));
+
+  const groupedByMonth = weeklyReports.reduce((accumulator, row) => {
+    const year = row.timestamp.getFullYear();
+    const monthIndex = row.timestamp.getMonth();
+    const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+    if (!accumulator[monthKey]) {
+      accumulator[monthKey] = {
+        year,
+        monthIndex,
+        totalEnergy: 0,
+        totalVolume: 0,
+      };
+    }
+
+    accumulator[monthKey].totalEnergy += toNumberOrZero(row.energyConsumedKwh);
+    accumulator[monthKey].totalVolume += toNumberOrZero(row.volumeProducedM3);
+    return accumulator;
+  }, {});
+
+  return Object.entries(groupedByMonth)
+    .map(([monthKey, entry]) => ({
+      monthKey,
+      year: entry.year,
+      monthIndex: entry.monthIndex,
+      label: `${SHORT_MONTH_NAMES[entry.monthIndex]} ${String(entry.year).slice(-2)}`,
+      value: safeDivide(entry.totalEnergy, entry.totalVolume),
+    }))
+    .filter((row) => row.value > 0)
+    .sort((left, right) => left.monthKey.localeCompare(right.monthKey));
+};
+
 const getUsageShareByKeywords = (usages = [], keywords = []) => {
   const loweredKeywords = keywords.map((keyword) => normalizeSearchText(keyword));
   const total = usages.reduce((sum, usage) => {
@@ -556,6 +592,7 @@ const ReviewMetricCard = ({
   accent = 'slate',
   subtitle = null,
   badge = null,
+  details = null,
 }) => {
   const accents = {
     slate: 'border-slate-200 bg-white text-slate-900',
@@ -575,12 +612,25 @@ const ReviewMetricCard = ({
         <span className="text-3xl font-black leading-none">{value}</span>
         {unit ? <span className="pb-1 text-sm font-bold text-slate-400">{unit}</span> : null}
       </div>
+      {Array.isArray(details) && details.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {details.map((detail) => (
+            <div key={detail.label} className="flex items-end justify-between gap-3 rounded-2xl border border-white/50 bg-white/50 px-3 py-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{detail.label}</span>
+              <div className="flex items-end gap-2">
+                <span className="text-lg font-black leading-none">{detail.value}</span>
+                {detail.unit ? <span className="pb-0.5 text-[11px] font-bold text-slate-400">{detail.unit}</span> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {subtitle ? <p className="mt-2 text-xs text-slate-500">{subtitle}</p> : null}
     </div>
   );
 };
 
-const ReviewTrendChart = ({ title, data, color, unit, emptyText }) => (
+const ReviewTrendChart = ({ title, data, color, unit, emptyText, series = null }) => (
   <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
     <div className="mb-4 flex items-center justify-between gap-3">
       <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">{title}</h3>
@@ -598,17 +648,39 @@ const ReviewTrendChart = ({ title, data, color, unit, emptyText }) => (
             <XAxis dataKey="label" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} />
             <Tooltip
-              formatter={(value) => [`${formatCompactNumber(value, 3)} ${unit}`, title]}
+              formatter={(value, dataKey) => {
+                const matchingSeries = Array.isArray(series)
+                  ? series.find((item) => item.dataKey === dataKey)
+                  : null;
+                const displayUnit = matchingSeries?.unit || unit;
+                const displayLabel = matchingSeries?.label || title;
+                return [`${formatCompactNumber(value, 3)} ${displayUnit}`, displayLabel];
+              }}
               labelFormatter={(label) => `Periode : ${label}`}
             />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={color}
-              strokeWidth={3}
-              dot={{ r: 3, strokeWidth: 0 }}
-              activeDot={{ r: 5 }}
-            />
+            {Array.isArray(series) && series.length > 0 ? (
+              series.map((line) => (
+                <Line
+                  key={line.dataKey}
+                  type="monotone"
+                  dataKey={line.dataKey}
+                  stroke={line.color}
+                  strokeWidth={3}
+                  dot={{ r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5 }}
+                  connectNulls
+                />
+              ))
+            ) : (
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={color}
+                strokeWidth={3}
+                dot={{ r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -2173,6 +2245,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   const usageShareLighting = getUsageShareByKeywords(currentData.elecUsage, ['eclairage']);
   const usageShareCvc = getUsageShareByKeywords(currentData.elecUsage, ['clim', 'cvc', 'chauffage']);
+  const usageShareAir = getUsageShareByKeywords(currentData.elecUsage, ['air comprime']);
+  const processAirEligibleSites = ['MEGRINE', 'ELKHADHRA', 'NAASSEN'];
+  const supportsAirProcessKpi = processAirEligibleSites.includes(activeSiteTab);
 
   const kpiHistorySeries = useMemo(() => {
     const factureSeries = (factureInsights.monthlyRows || []).map((row) => ({
@@ -2202,24 +2277,43 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       .slice(-6);
 
     return sourceRows.map((row) => {
+      const monthKey = `${row.year}-${String(row.monthIndex + 1).padStart(2, '0')}`;
+      const persistedMonths = vehicleCountState.data?.[activeSiteTab]?.months || {};
+      const vehicleEntries = normalizeVehicleCountEntries(
+        activeSiteTab,
+        currentData,
+        persistedMonths[monthKey] || []
+      );
+      const vehicleTotal = vehicleEntries.reduce(
+        (sum, entry) => sum + Math.max(0, toNumberOrZero(entry.count)),
+        0
+      );
       const totalRatio = totalSiteArea > 0 ? row.consommation / totalSiteArea : 0;
       const lightingRatio = totalSiteArea > 0 ? (row.consommation * usageShareLighting) / totalSiteArea : 0;
       const cvcRatio = totalSiteArea > 0 ? (row.consommation * usageShareCvc) / totalSiteArea : 0;
+      const airProcess = vehicleTotal > 0
+        ? safeDivide(row.consommation * usageShareAir, vehicleTotal)
+        : 0;
       return {
         label: `${SHORT_MONTH_NAMES[row.monthIndex]} ${String(row.year).slice(-2)}`,
+        monthKey,
         total: Number(totalRatio.toFixed(3)),
         lighting: Number(lightingRatio.toFixed(3)),
         cvc: Number(cvcRatio.toFixed(3)),
-        air: 0,
+        airProcess: Number(airProcess.toFixed(3)),
       };
     });
   }, [
+    activeSiteTab,
+    currentData,
     totalSiteArea,
     factureInsights.monthlyRows,
     getFactureBackedHistoryValues,
     historySeriesType,
+    usageShareAir,
     usageShareCvc,
     usageShareLighting,
+    vehicleCountState.data,
     yearsRange,
   ]);
 
@@ -2238,16 +2332,66 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       .slice(0, 4)
       .reverse();
   }, [airLogs, hasAirComprime]);
+  const airMonthlyMachineKpiSeries = useMemo(() => {
+    if (!hasAirComprime) {
+      return [];
+    }
+
+    return buildAirMonthlyKpiSeries(Array.isArray(airLogs) ? airLogs : []).slice(-6);
+  }, [airLogs, hasAirComprime]);
 
   const averageAirKpi = airWeeklyKpiSeries.length
     ? airWeeklyKpiSeries.reduce((sum, row) => sum + toNumberOrZero(row.value), 0) / airWeeklyKpiSeries.length
     : 0;
+  const analysisMonthKey = `${analysisYear}-${String(analysisMonthIndex + 1).padStart(2, '0')}`;
+  const analysisVehicleEntries = supportsAirProcessKpi
+    ? normalizeVehicleCountEntries(
+        activeSiteTab,
+        currentData,
+        vehicleCountState.data?.[activeSiteTab]?.months?.[analysisMonthKey] || []
+      )
+    : [];
+  const analysisVehicleTotal = analysisVehicleEntries.reduce(
+    (sum, entry) => sum + Math.max(0, toNumberOrZero(entry.count)),
+    0
+  );
+  const currentProcessAirKpi = supportsAirProcessKpi && analysisVehicleTotal > 0
+    ? safeDivide(displayedCurrentMonthValue * usageShareAir, analysisVehicleTotal)
+    : 0;
+  const airCombinedHistorySeries = useMemo(() => {
+    const monthMap = new Map();
+
+    kpiHistorySeries.forEach((row) => {
+      monthMap.set(row.monthKey, {
+        label: row.label,
+        process: row.airProcess,
+        machine: null,
+      });
+    });
+
+    airMonthlyMachineKpiSeries.forEach((row) => {
+      const existing = monthMap.get(row.monthKey) || {
+        label: row.label,
+        process: null,
+        machine: null,
+      };
+      existing.label = existing.label || row.label;
+      existing.machine = row.value;
+      monthMap.set(row.monthKey, existing);
+    });
+
+    return Array.from(monthMap.entries())
+      .sort((left, right) => left[0].localeCompare(right[0]))
+      .map(([, value]) => value);
+  }, [airMonthlyMachineKpiSeries, kpiHistorySeries]);
 
   const latestKpiSnapshot = {
     total: totalSiteArea > 0 ? displayedCurrentMonthValue / totalSiteArea : 0,
     lighting: totalSiteArea > 0 ? (displayedCurrentMonthValue * usageShareLighting) / totalSiteArea : 0,
     cvc: totalSiteArea > 0 ? (displayedCurrentMonthValue * usageShareCvc) / totalSiteArea : 0,
-    air: averageAirKpi,
+    air: supportsAirProcessKpi ? currentProcessAirKpi : averageAirKpi,
+    airProcess: currentProcessAirKpi,
+    airMachine: averageAirKpi,
   };
 
   const reportYear = Number(String(reportMonth || '').slice(0, 4));
@@ -2286,6 +2430,21 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     "Vérifier les fuites du réseau air comprimé chaque semaine.",
     "Favoriser l'éclairage naturel dans les zones vitrées.",
   ];
+  const reportMonthKey = reportMonth;
+  const reportVehicleEntries = supportsAirProcessKpi
+    ? normalizeVehicleCountEntries(
+        activeSiteTab,
+        currentData,
+        vehicleCountState.data?.[activeSiteTab]?.months?.[reportMonthKey] || []
+      )
+    : [];
+  const reportVehicleTotal = reportVehicleEntries.reduce(
+    (sum, entry) => sum + Math.max(0, toNumberOrZero(entry.count)),
+    0
+  );
+  const reportProcessAirKpi = supportsAirProcessKpi && reportVehicleTotal > 0
+    ? safeDivide(reportConsumption * usageShareAir, reportVehicleTotal)
+    : 0;
   const handlePrintMonthlyReport = async () => {
     const reportNode = reportPrintRef.current;
     if (!reportNode) return;
@@ -2340,7 +2499,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     total: reportPerformance,
     lighting: totalSiteArea > 0 ? (reportConsumption * usageShareLighting) / totalSiteArea : 0,
     cvc: totalSiteArea > 0 ? (reportConsumption * usageShareCvc) / totalSiteArea : 0,
-    air: averageAirKpi,
+    air: supportsAirProcessKpi ? reportProcessAirKpi : averageAirKpi,
+    airProcess: reportProcessAirKpi,
+    airMachine: averageAirKpi,
   };
   const renderMonthlyReportSheet = (sheetRef = null, extraClassName = '') => (
     <div
@@ -2433,7 +2594,25 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
           <ReviewMetricCard title="Performance globale" value={formatCompactNumber(reportKpiSnapshot.total, 3)} unit="kWh/m²" accent="blue" subtitle="kWh consommés par site / surface totale m2" />
           <ReviewMetricCard title="IPE eclairage" value={formatCompactNumber(reportKpiSnapshot.lighting, 3)} unit="kWh/m²" accent="amber" subtitle="kWh consommés × % usage eclairage / surface totale" />
           <ReviewMetricCard title="IPE CVC" value={formatCompactNumber(reportKpiSnapshot.cvc, 3)} unit="kWh/m²" accent="indigo" subtitle="kWh consommés × % usage clim / surface totale" />
-          <ReviewMetricCard title={hasAirComprime ? 'IPE air comprime' : 'Air comprime'} value={hasAirComprime ? formatCompactNumber(reportKpiSnapshot.air, 3) : 'N/A'} unit={hasAirComprime ? 'kpi' : ''} accent="slate" subtitle={hasAirComprime ? 'Moyenne des 4 derniers relevés air comprimé' : 'Non applicable pour ce site'} />
+          <ReviewMetricCard
+            title="IPE air comprime"
+            value={supportsAirProcessKpi ? formatCompactNumber(reportKpiSnapshot.airProcess, 3) : 'N/A'}
+            unit={supportsAirProcessKpi ? 'kWh/veh' : ''}
+            accent="slate"
+            subtitle={
+              supportsAirProcessKpi
+                ? "Process : (conso totale du site × % air comprimé) / nombre de voiture du mois"
+                : 'Non applicable pour ce site'
+            }
+            details={
+              hasAirComprime
+                ? [
+                    { label: 'KPI process', value: formatCompactNumber(reportKpiSnapshot.airProcess, 3), unit: 'kWh/veh' },
+                    { label: 'KPI machine', value: formatCompactNumber(reportKpiSnapshot.airMachine, 3), unit: 'kpi' },
+                  ]
+                : null
+            }
+          />
         </div>
 
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -2862,11 +3041,23 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                   <ReviewMetricCard title="IPE eclairage" value={formatCompactNumber(latestKpiSnapshot.lighting, 3)} unit="kWh/m²" accent="amber" subtitle="kWh consommes x % usage eclairage / surface totale" />
                   <ReviewMetricCard title="IPE CVC" value={formatCompactNumber(latestKpiSnapshot.cvc, 3)} unit="kWh/m²" accent="indigo" subtitle="kWh consommes x % usage clim / surface totale" />
                   <ReviewMetricCard
-                    title={hasAirComprime ? 'IPE air comprime' : 'Air comprime'}
-                    value={hasAirComprime ? formatCompactNumber(latestKpiSnapshot.air, 3) : 'N/A'}
-                    unit={hasAirComprime ? 'kpi' : ''}
+                    title="IPE air comprime"
+                    value={supportsAirProcessKpi ? formatCompactNumber(latestKpiSnapshot.airProcess, 3) : 'N/A'}
+                    unit={supportsAirProcessKpi ? 'kWh/veh' : ''}
                     accent="slate"
-                    subtitle={hasAirComprime ? 'Moyenne des 4 derniers releves air comprime' : 'Non applicable pour ce site'}
+                    subtitle={
+                      supportsAirProcessKpi
+                        ? "Process : (conso totale du site × % air comprimé) / nombre de voiture du mois"
+                        : 'Non applicable pour ce site'
+                    }
+                    details={
+                      hasAirComprime
+                        ? [
+                            { label: 'KPI process', value: formatCompactNumber(latestKpiSnapshot.airProcess, 3), unit: 'kWh/veh' },
+                            { label: 'KPI machine', value: formatCompactNumber(latestKpiSnapshot.airMachine, 3), unit: 'kpi' },
+                          ]
+                        : null
+                    }
                   />
                 </div>
             </section>
@@ -3106,8 +3297,24 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                 <ReviewTrendChart title="Performance globale site" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.total }))} color="#0f172a" unit="kWh/m²" emptyText="Aucune serie exploitable pour afficher l'historique global." />
                 <ReviewTrendChart title="IPE eclairage" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.lighting }))} color="#f59e0b" unit="kWh/m²" emptyText="Aucun historique eclairage disponible." />
                 <ReviewTrendChart title="IPE climatisation / CVC" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.cvc }))} color="#2563eb" unit="kWh/m²" emptyText="Aucun historique CVC disponible." />
-                {hasAirComprime ? (
-                  <ReviewTrendChart title="IPE air comprime" data={airWeeklyKpiSeries.map((item) => ({ label: item.label, value: item.value }))} color="#7c3aed" unit="kpi" emptyText="Aucun releve air comprime disponible sur les 4 dernieres semaines." />
+                {supportsAirProcessKpi ? (
+                  <ReviewTrendChart
+                    title="IPE air comprime"
+                    data={airCombinedHistorySeries}
+                    color="#7c3aed"
+                    unit={hasAirComprime ? 'mix' : 'kWh/veh'}
+                    emptyText="Aucune serie air comprime disponible pour ce site."
+                    series={
+                      hasAirComprime
+                        ? [
+                            { dataKey: 'process', label: 'KPI process', color: '#2563eb', unit: 'kWh/veh' },
+                            { dataKey: 'machine', label: 'KPI machine', color: '#7c3aed', unit: 'kpi' },
+                          ]
+                        : [
+                            { dataKey: 'process', label: 'KPI process', color: '#2563eb', unit: 'kWh/veh' },
+                          ]
+                    }
+                  />
                 ) : (
                   <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-slate-200 bg-slate-100/70 p-6 text-slate-400">
                     <Wind size={34} className="mb-3 opacity-40" />
