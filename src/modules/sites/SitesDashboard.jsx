@@ -272,6 +272,9 @@ const buildReviewUsageModulePayload = (sitesState = {}) =>
     return accumulator;
   }, {});
 
+const hasPersistedReviewUsages = (usages = []) =>
+  Array.isArray(usages) && usages.length > 0;
+
 const buildVehicleCountModulePayload = (sitesState = {}, persistedState = {}) =>
   VEHICLE_COUNT_SITE_KEYS.reduce((accumulator, siteKey) => {
     const siteState = sitesState?.[siteKey] || {};
@@ -292,7 +295,7 @@ const mergeReviewUsageModulePayload = (baseState = {}, persistedState = {}) =>
     const persistedUsage = persistedState?.[siteKey]?.elecUsage;
     accumulator[siteKey] = {
       ...baseState[siteKey],
-      elecUsage: Array.isArray(persistedUsage)
+      elecUsage: hasPersistedReviewUsages(persistedUsage)
         ? normalizeReviewUsageRows(persistedUsage)
         : normalizeReviewUsageRows(baseState[siteKey]?.elecUsage || []),
     };
@@ -713,14 +716,14 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             { label: "Zone B (Atelier IVECO)", value: 9000 },
             { label: "Showroom & Réception", value: 1000 }
         ],
-        energyMix: [{ name: "Électricité", value: 97, color: "bg-blue-900" }, { name: "Gaz", value: 3, color: "bg-orange-500" }], 
+        energyMix: [{ name: "Électricité", value: 96, color: "bg-blue-900" }, { name: "Gaz", value: 4, color: "bg-orange-500" }], 
         elecUsage: [
-            { name: "Clim/Chauffage", value: 40, ratio: "35 kWh/m²", significant: true, subUsages: [{name: "CTA", value: 60}, {name: "Split", value: 40}] }, 
-            { name: "Éclairage", value: 27, ratio: "12 kWh/m²", significant: true, subUsages: [{name: "Atelier", value: 70}, {name: "Admin", value: 30}] }, 
-            { name: "Air Comprimé", value: 17, ratio: "0.12 kWh/Nm³", significant: true, subUsages: [{name: "Comp 1", value: 50}, {name: "Comp 2", value: 50}] }, 
-            { name: "Informatique", value: 8, ratio: "-", significant: false, subUsages: [] }, 
-            { name: "Services", value: 5, ratio: "-", significant: false, subUsages: [] }, 
-            { name: "Gaz (Primaire)", value: 3, ratio: "-", significant: false, subUsages: [] } 
+            { name: "Clim/Chauffage", value: 36, ratio: "-", significant: true, subUsages: [{ name: "Central", value: 39.9 }, { name: "Splits", value: 60.1 }] },
+            { name: "Éclairage", value: 27, ratio: "-", significant: true, subUsages: [{ name: "Atelier", value: 15.4 }, { name: "Magasin", value: 14.6 }, { name: "Bureau", value: 25.1 }, { name: "Showroom", value: 22.7 }, { name: "Extérieur", value: 22.3 }] },
+            { name: "Air Comprimé", value: 21, ratio: "-", significant: true, subUsages: [{ name: "Atelier Carrosserie et peinture", value: 55 }, { name: "Atelier mécanique (récupérateur d'huile, gonfleur,etc...)", value: 40 }, { name: "Lavage et préparation", value: 5 }] },
+            { name: "Services", value: 7.5, ratio: "-", significant: false, subUsages: [{ name: "Porte industrielle", value: 20 }, { name: "Pont élévateur, petit outillage électrique d'atelier / Lavage", value: 46 }, { name: "Divers", value: 34 }] },
+            { name: "Informatique", value: 8.5, ratio: "-", significant: false, subUsages: [] },
+            { name: "Gaz (Primaire)", value: 4, ratio: "-", significant: false, subUsages: [{ name: "Chaudières four de peinture", value: 90 }, { name: "Divers", value: 10 }] }
         ],
         targets: { reduction2030: 10, renewable2030: 40 }
     },
@@ -729,46 +732,73 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         coveredBreakdown: [{ label: "Atelier FIAT", value: 3000 }, { label: "ITALCAR Gros", value: 3000 }, { label: "Réception", value: 1000 }],
         energyMix: [{ name: "Électricité", value: 100, color: "bg-blue-900" }], 
         elecUsage: [
-            { name: "Clim/Chauffage", value: 60, ratio: "45 kWh/m²", significant: true, subUsages: [] }, 
-            { name: "Éclairage", value: 25, ratio: "15 kWh/m²", significant: true, subUsages: [] }, 
-            { name: "Air Comprimé", value: 5, ratio: "-", significant: false, subUsages: [] }, 
-            { name: "Divers", value: 10, ratio: "-", significant: false, subUsages: [] }
+            { name: "Clim/Chauffage", value: 46.2, ratio: "-", significant: true, subUsages: [{ name: "Central", value: 48 }, { name: "Splits", value: 52 }] },
+            { name: "Éclairage", value: 26.2, ratio: "-", significant: true, subUsages: [{ name: "Atelier", value: 15.2 }, { name: "Magasin", value: 30.4 }, { name: "Bureau", value: 28 }, { name: "Showroom", value: 9.4 }, { name: "Extérieur", value: 17 }] },
+            { name: "Air Comprimé", value: 14.7, ratio: "-", significant: true, subUsages: [{ name: "Atelier mécanique (récupérateur d'huile, gonfleur,etc...)", value: 90 }, { name: "Lavage et préparation", value: 10 }] },
+            { name: "Services", value: 5.4, ratio: "-", significant: false, subUsages: [{ name: "Porte industrielle", value: 15 }, { name: "Pont élévateur, petit outillage électrique d'atelier / Lavage", value: 45 }, { name: "Divers", value: 40 }] },
+            { name: "Informatique", value: 7.5, ratio: "-", significant: false, subUsages: [] }
         ],
         targets: { reduction2030: 15, renewable2030: 20 }
     },
     LAC: { 
         name: getSiteDisplayName('LAC'), area: 2050, covered: 850, open: 1200, glazed: 116, 
         coveredBreakdown: [{label:"Showroom", value: 850}], 
-        energyMix: [], 
+        energyMix: [{ name: "Réseau STEG", value: 31.4, color: "bg-blue-900" }, { name: "Photovoltaïque", value: 68.6, color: "bg-emerald-500" }], 
         elecUsage: [
-             { name: "Éclairage", value: 45, ratio: "22 kWh/m²", significant: true, subUsages: [] }, 
-             { name: "Climatisation", value: 45, ratio: "25 kWh/m²", significant: true, subUsages: [] },
-             { name: "Informatique", value: 10, ratio: "-", significant: false, subUsages: [] }
+             { name: "Clim/Chauffage", value: 64, ratio: "-", significant: true, subUsages: [{ name: "Central", value: 72 }, { name: "Splits", value: 28 }] },
+             { name: "Éclairage", value: 30, ratio: "-", significant: true, subUsages: [{ name: "Bureau", value: 12.8 }, { name: "Showroom", value: 43.5 }, { name: "Extérieur", value: 43.7 }] },
+             { name: "Services", value: 3, ratio: "-", significant: false, subUsages: [] },
+             { name: "Informatique", value: 3, ratio: "-", significant: false, subUsages: [] }
         ],
         targets: { reduction2030: 30, renewable2030: 50 }
     },
     NAASSEN: { 
         name: getSiteDisplayName('NAASSEN'), area: 32500, covered: 1850, open: 30680, glazed: 0, 
         coveredBreakdown: [{label:"Réception", value: 920}, {label:"Atelier FIAT", value: 900}], 
-        energyMix: [{ name: "Élec", value: 100, color: "bg-blue-900" }], elecUsage: [],
+        energyMix: [{ name: "Électricité", value: 100, color: "bg-blue-900" }],
+        elecUsage: [
+            { name: "Clim/Chauffage", value: 30.7, ratio: "-", significant: true, subUsages: [] },
+            { name: "Éclairage", value: 43.7, ratio: "-", significant: true, subUsages: [{ name: "Bureau", value: 43.4 }, { name: "Extérieur", value: 56.6 }] },
+            { name: "Air Comprimé", value: 7.6, ratio: "-", significant: false, subUsages: [{ name: "Lavage et préparation", value: 100 }] },
+            { name: "Services", value: 13, ratio: "-", significant: false, subUsages: [{ name: "Porte industrielle", value: 16 }, { name: "Pont élévateur, petit outillage électrique d'atelier / Lavage", value: 78 }, { name: "Divers", value: 6 }] },
+            { name: "Informatique", value: 5, ratio: "-", significant: false, subUsages: [] }
+        ],
         targets: { reduction2030: 10, renewable2030: 10 }
     },
     CARTHAGE: { 
         name: getSiteDisplayName('CARTHAGE'), area: 320, covered: 320, open: 0, glazed: 70, 
         coveredBreakdown: [{label:"Showroom", value: 320}], 
-        energyMix: [{ name: "Élec", value: 100, color: "bg-blue-900" }], elecUsage: [],
+        energyMix: [{ name: "Électricité", value: 100, color: "bg-blue-900" }],
+        elecUsage: [
+            { name: "Clim/Chauffage", value: 65, ratio: "-", significant: true, subUsages: [] },
+            { name: "Éclairage", value: 31, ratio: "-", significant: true, subUsages: [{ name: "Bureau", value: 6 }, { name: "Showroom", value: 85 }, { name: "Extérieur", value: 9 }] },
+            { name: "Services", value: 2, ratio: "-", significant: false, subUsages: [] },
+            { name: "Informatique", value: 2, ratio: "-", significant: false, subUsages: [] }
+        ],
         targets: { reduction2030: 5, renewable2030: 0 }
     },
     CHARGUEYAA: { 
         name: getSiteDisplayName('CHARGUEYAA'), area: 320, covered: 320, open: 0, glazed: 70, 
         coveredBreakdown: [{label:"Showroom", value: 320}], 
-        energyMix: [{ name: "Élec", value: 100, color: "bg-blue-900" }], elecUsage: [],
+        energyMix: [{ name: "Électricité", value: 100, color: "bg-blue-900" }],
+        elecUsage: [
+            { name: "Clim/Chauffage", value: 57, ratio: "-", significant: true, subUsages: [] },
+            { name: "Éclairage", value: 38, ratio: "-", significant: true, subUsages: [{ name: "Bureau", value: 6 }, { name: "Showroom", value: 89 }, { name: "Extérieur", value: 5 }] },
+            { name: "Services", value: 2, ratio: "-", significant: false, subUsages: [] },
+            { name: "Informatique", value: 3, ratio: "-", significant: false, subUsages: [] }
+        ],
         targets: { reduction2030: 5, renewable2030: 0 }
     },
     AZUR: { 
         name: getSiteDisplayName('AZUR'), area: 130, covered: 130, open: 0, glazed: 0, 
         coveredBreakdown: [{label:"Showroom", value: 130}], 
-        energyMix: [{ name: "Élec", value: 100, color: "bg-blue-900" }], elecUsage: [],
+        energyMix: [{ name: "Électricité", value: 100, color: "bg-blue-900" }],
+        elecUsage: [
+            { name: "Clim/Chauffage", value: 0, ratio: "-", significant: false, subUsages: [] },
+            { name: "Éclairage", value: 91, ratio: "-", significant: true, subUsages: [{ name: "Showroom", value: 100 }] },
+            { name: "Services", value: 4, ratio: "-", significant: false, subUsages: [] },
+            { name: "Informatique", value: 5, ratio: "-", significant: false, subUsages: [] }
+        ],
         targets: { reduction2030: 5, renewable2030: 0 }
     }
   });
