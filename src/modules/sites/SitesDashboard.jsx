@@ -906,6 +906,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
           site.elecUsage = newUsages;
           return newData;
       });
+      requestImmediateReviewUsageSave();
   };
 
   // --- GESTION DES SOUS-USAGES ---
@@ -945,6 +946,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         site.elecUsage = newUsages;
         return newData;
     });
+    requestImmediateReviewUsageSave();
   };
 
   const toggleUsageRow = (rowKey) => {
