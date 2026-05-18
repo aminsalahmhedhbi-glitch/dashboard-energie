@@ -2274,7 +2274,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         const rightKey = `${right.year}-${String(right.monthIndex).padStart(2, '0')}`;
         return leftKey.localeCompare(rightKey);
       })
-      .slice(-6);
+      .slice(-12);
 
     return sourceRows.map((row) => {
       const monthKey = `${row.year}-${String(row.monthIndex + 1).padStart(2, '0')}`;
@@ -2337,7 +2337,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       return [];
     }
 
-    return buildAirMonthlyKpiSeries(Array.isArray(airLogs) ? airLogs : []).slice(-6);
+    return buildAirMonthlyKpiSeries(Array.isArray(airLogs) ? airLogs : []).slice(-12);
   }, [airLogs, hasAirComprime]);
 
   const averageAirKpi = airWeeklyKpiSeries.length
