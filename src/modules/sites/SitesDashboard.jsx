@@ -2321,8 +2321,16 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const visionRenewableTarget = toNumberOrZero(currentData.targets?.renewable2030 || 20);
   const referenceBase = displayedReferenceYtdValue > 0 ? displayedReferenceYtdValue : displayedCurrentYtdValue;
   const targetConso2030 = referenceBase * (1 - visionReductionTarget / 100);
-  const visionActual2024 = toNumberOrZero(factureInsights.yearlyTotals?.[2024]);
-  const visionActual2025 = toNumberOrZero(factureInsights.yearlyTotals?.[2025]);
+  const visionHistory2024Values = getSiteData(activeSiteTab, 2024, historySeriesType) || [];
+  const visionMerged2025Values = getFactureBackedHistoryValues(2025, historySeriesType) || [];
+  const visionActual2024 = visionHistory2024Values.reduce(
+    (sum, value) => sum + toNumberOrZero(value),
+    0
+  ) || toNumberOrZero(factureInsights.yearlyTotals?.[2024]);
+  const visionActual2025 = visionMerged2025Values.reduce(
+    (sum, value) => sum + toNumberOrZero(value),
+    0
+  ) || toNumberOrZero(factureInsights.yearlyTotals?.[2025]);
   const latestVisionActual = visionActual2025 > 0 ? visionActual2025 : visionActual2024;
   const observedVisionOptimizationRate = visionActual2024 > 0 && visionActual2025 > 0
     ? Math.max(-0.99, Math.min(0.99, (visionActual2024 - visionActual2025) / visionActual2024))
