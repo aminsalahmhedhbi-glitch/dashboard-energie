@@ -2467,20 +2467,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       })),
     [visionAnnualTracking]
   );
-  const visionProjectionRows = useMemo(
-    () =>
-      visionAnnualTracking
-        .filter((row) => row.year >= 2026)
-        .map((row) => {
-          const renewableRow = visionRenewableAnnualTracking.find((renewable) => renewable.year === row.year);
-          return {
-            year: row.year,
-            consumption: row.value,
-            renewable: renewableRow?.value ?? null,
-          };
-        }),
-    [visionAnnualTracking, visionRenewableAnnualTracking]
-  );
   const visionEfficiencyBarWidth = visionReductionTarget > 0
     ? Math.max(0, Math.min(100, (visionReductionAttained / visionReductionTarget) * 100))
     : 0;
@@ -3658,7 +3644,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr,1.35fr]">
+                  <div className="mt-5 grid grid-cols-1 gap-4">
                     <div className="rounded-[24px] border border-emerald-700/60 bg-emerald-950/30 p-5 shadow-inner shadow-black/20">
                       <div className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-50">Part renouvelable & projections</div>
                       <div className="mt-5 flex items-center justify-between gap-6">
@@ -3690,30 +3676,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                           <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100/70">Cible actuelle</div>
                           <div className="mt-3 text-3xl font-black text-emerald-300">{formatCompactNumber(visionRenewableCurrent, 1)}%</div>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-[24px] border border-emerald-700/60 bg-emerald-950/30 p-5 shadow-inner shadow-black/20">
-                      <div className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-50">Projection annuelle</div>
-                      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        {visionProjectionRows.map((row) => (
-                          <div key={`projection-${row.year}`} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="text-lg font-black text-white">{row.year}</div>
-                              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-100/80">Estimé</span>
-                            </div>
-                            <div className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-emerald-100/65">Consommation</div>
-                            <div className="mt-1 text-2xl font-black text-emerald-50">
-                              {row.consumption > 0 ? formatCompactNumber(row.consumption, 0) : '--'}
-                              <span className="ml-2 text-xs font-semibold text-emerald-100/65">kWh</span>
-                            </div>
-                            <div className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-emerald-100/65">Renouvelable</div>
-                            <div className="mt-1 text-2xl font-black text-amber-200">
-                              {row.renewable !== null ? formatCompactNumber(row.renewable, 1) : '--'}
-                              <span className="ml-2 text-xs font-semibold text-emerald-100/65">%</span>
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     </div>
                   </div>
