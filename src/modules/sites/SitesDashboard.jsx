@@ -11,12 +11,15 @@ import {
 } from 'lucide-react';
 import {
   CartesianGrid,
+  AreaChart,
+  Area,
   LineChart,
   Line,
   XAxis,
   YAxis,
   Tooltip,
   Legend,
+  ReferenceLine,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -2454,6 +2457,30 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
     return rows;
   }, [visionRenewableCurrent, visionRenewableTarget]);
+  const visionAnnualChartData = useMemo(
+    () =>
+      visionAnnualTracking.map((row) => ({
+        year: String(row.year),
+        actual: row.mode === 'Reel' ? row.value : null,
+        estimated: row.mode === 'Estime' || row.year === 2025 ? row.value : null,
+        progress: row.progress,
+      })),
+    [visionAnnualTracking]
+  );
+  const visionProjectionRows = useMemo(
+    () =>
+      visionAnnualTracking
+        .filter((row) => row.year >= 2026)
+        .map((row) => {
+          const renewableRow = visionRenewableAnnualTracking.find((renewable) => renewable.year === row.year);
+          return {
+            year: row.year,
+            consumption: row.value,
+            renewable: renewableRow?.value ?? null,
+          };
+        }),
+    [visionAnnualTracking, visionRenewableAnnualTracking]
+  );
   const visionEfficiencyBarWidth = visionReductionTarget > 0
     ? Math.max(0, Math.min(100, (visionReductionAttained / visionReductionTarget) * 100))
     : 0;
@@ -3525,187 +3552,169 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             )}
 
             <section>
-              <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-700 p-8 text-white shadow-lg">
-                <div className="pointer-events-none absolute -right-10 bottom-0 opacity-10">
-                  <Leaf size={220} />
-                </div>
-                <div className="relative grid grid-cols-1 gap-8 xl:grid-cols-[1.5fr,0.9fr]">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/15 bg-white/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-50">
-                      <Shield size={14} /> Strategie d&apos;entreprise
-                    </div>
-                    <div className="mt-6 flex flex-wrap items-end gap-3">
-                      <h3 className="text-4xl font-black tracking-tight">Vision 2030</h3>
-                      <div className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-100/80">
-                        ISO 50001
-                      </div>
-                    </div>
-                    <p className="mt-5 max-w-4xl text-[1.05rem] font-medium leading-8 text-emerald-50/92">
-                      Engagement formel vers l&apos;optimisation continue de la performance energetique, la reduction durable des consommations
-                      et l&apos;augmentation progressive de la part renouvelable sur le site.
-                    </p>
+              <div className="relative overflow-hidden rounded-[32px] border border-emerald-800/60 bg-[#0f2f26] p-6 text-white shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
+                <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.35) 1px, transparent 0)', backgroundSize: '10px 10px' }} />
+                <div className="pointer-events-none absolute right-0 top-0 h-56 w-56 rounded-full bg-emerald-400/10 blur-3xl" />
+                <div className="relative">
+                  <div className="rounded-[26px] border border-emerald-700/60 bg-emerald-950/30 p-4 shadow-inner shadow-black/20">
+                    <h3 className="text-[1.9rem] font-black tracking-tight text-emerald-50">Vision énergétique 2030 (ISO 50001)</h3>
+                    <p className="mt-1 text-sm font-medium text-emerald-100/75">Suivi de la Performance et Stratégie</p>
+                  </div>
 
-                    <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-400/10 text-emerald-200">
-                            <TrendingDown size={18} />
-                          </div>
-                          <div>
-                            <div className="text-3xl font-black text-white">-{visionReductionTarget}%</div>
-                            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-100/80">Cible consommation</div>
+                  <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-4">
+                    <div className="rounded-2xl border border-emerald-700/60 bg-emerald-950/30 p-4 shadow-inner shadow-black/20">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-400/10 text-emerald-300">
+                          <Target size={18} />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/70">Cible consommation</div>
+                          <div className="mt-2 text-4xl font-black text-emerald-300">-{visionReductionTarget}%</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-700/60 bg-emerald-950/30 p-4 shadow-inner shadow-black/20">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-400/10 text-emerald-300">
+                          <Sun size={18} />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/70">Cible renouvelable</div>
+                          <div className="mt-2 text-4xl font-black text-emerald-300">{visionRenewableTarget}%</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-700/60 bg-emerald-950/30 p-4 shadow-inner shadow-black/20">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-400/10 text-emerald-300">
+                          <User size={18} />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/70">Base consommation (2024)</div>
+                          <div className="mt-2 text-4xl font-black text-emerald-50">
+                            {visionActual2024 > 0 ? formatCompactNumber(visionActual2024, 0) : '--'}
+                            <span className="ml-2 text-lg font-semibold text-emerald-100/70">kWh</span>
                           </div>
                         </div>
                       </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-amber-300/20 bg-amber-400/10 text-amber-200">
-                            <Sun size={18} />
-                          </div>
-                          <div>
-                            <div className="text-3xl font-black text-amber-200">{visionRenewableTarget}%</div>
-                            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-100/80">Cible renouvelable</div>
-                          </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-700/60 bg-emerald-950/30 p-4 shadow-inner shadow-black/20">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-400/10 text-emerald-300">
+                          <Leaf size={18} />
                         </div>
-                      </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-                        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-100/80">Base 2024</div>
-                        <div className="mt-2 text-3xl font-black text-white">
-                          {visionActual2024 > 0 ? formatCompactNumber(visionActual2024, 0) : '--'}
-                          <span className="ml-2 text-sm font-semibold text-emerald-100/75">kWh</span>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/70">Part renouvelable actuelle</div>
+                          <div className="mt-2 text-4xl font-black text-emerald-50">{formatCompactNumber(visionRenewableCurrent, 1)}%</div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-[28px] border border-white/10 bg-emerald-950/30 p-6 backdrop-blur-sm">
-                    <div className="space-y-5">
-                      <div>
-                        <div className="mb-2 flex items-center justify-between gap-3 text-sm font-bold text-emerald-50">
-                          <span>EFFORT D&apos;EFFICACITE (Obj: -{visionReductionTarget}%)</span>
-                          <span>Atteint: {formatVisionReduction(visionReductionAttained)}</span>
-                        </div>
-                        <div className="h-3 overflow-hidden rounded-full bg-emerald-950/70">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-emerald-500"
-                            style={{ width: `${visionEfficiencyBarWidth}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="mb-2 flex items-center justify-between gap-3 text-sm font-bold text-emerald-50">
-                          <span>PART RENOUVELABLE (Obj: {visionRenewableTarget}%)</span>
-                          <span>Actuel: {formatCompactNumber(visionRenewableCurrent, 1)}%</span>
-                        </div>
-                        <div className="h-3 overflow-hidden rounded-full bg-emerald-950/70">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-amber-300 to-yellow-400"
-                            style={{ width: `${visionRenewableBarWidth}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 pt-2">
-                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/75">Reference de calcul</div>
-                          <div className="mt-2 text-2xl font-black text-white">
-                            {referenceBase > 0 ? formatCompactNumber(referenceBase, 0) : '--'}
-                            <span className="ml-2 text-xs font-semibold text-emerald-100/70">kWh</span>
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/75">Cible 2030</div>
-                          <div className="mt-2 text-2xl font-black text-white">
-                            {targetConso2030 > 0 ? formatCompactNumber(targetConso2030, 0) : '--'}
-                            <span className="ml-2 text-xs font-semibold text-emerald-100/70">kWh</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative mt-8 rounded-[28px] border border-white/10 bg-emerald-950/25 p-5 backdrop-blur-sm">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-emerald-50">
-                      <BarChart3 size={16} /> Suivi annuel 2024 - 2030
-                    </div>
-                    <div className="text-xs font-medium text-emerald-100/75">
-                      Reel 2024-2025 puis estimation basee sur l&apos;optimisation observee l&apos;annee precedente
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-                    {visionAnnualTracking.map((row) => (
-                      <div key={row.year} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-lg font-black text-white">{row.year}</div>
-                          <div className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-                            row.mode === 'Reel'
-                              ? 'bg-emerald-300/20 text-emerald-100'
-                              : 'bg-white/10 text-emerald-50/80'
-                          }`}>
-                            {row.mode}
-                          </div>
-                        </div>
-                        <div className="mt-4 text-2xl font-black text-white">
-                          {row.value > 0 ? formatCompactNumber(row.value, 0) : '--'}
-                        </div>
-                        <div className="text-xs font-semibold text-emerald-100/75">kWh annuels</div>
-                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-emerald-950/70">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-cyan-300"
-                            style={{ width: `${Math.max(0, Math.min(100, row.progress <= 0 ? 2 : (row.progress / Math.max(visionReductionTarget, 1)) * 100))}%` }}
-                          />
-                        </div>
-                        <div className="mt-2 text-xs font-medium text-emerald-100/80">
-                          Avancement: {formatVisionReduction(row.progress)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-6 border-t border-white/10 pt-5">
+                  <div className="mt-5 rounded-[24px] border border-emerald-700/60 bg-emerald-950/30 p-5 shadow-inner shadow-black/20">
                     <div className="mb-4 flex items-center justify-between gap-3">
-                      <div className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-emerald-50">
-                        <Sun size={16} /> Avancement part renouvelable
+                      <div className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-50">Suivi annuel de la consommation (kWh)</div>
+                      <div className="flex items-center gap-4 text-xs font-semibold text-emerald-100/75">
+                        <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-300" /> Réel</span>
+                        <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-100/60" /> Estimé</span>
                       </div>
-                      <div className="text-xs font-medium text-emerald-100/75">
-                        Valeur actuelle puis projection progressive vers l&apos;objectif 2030
+                    </div>
+                    <div className="h-[280px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={visionAnnualChartData} margin={{ top: 8, right: 18, left: 12, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="visionActualFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#6ee7b7" stopOpacity={0.65} />
+                              <stop offset="95%" stopColor="#6ee7b7" stopOpacity={0.05} />
+                            </linearGradient>
+                            <linearGradient id="visionEstimatedFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#bbf7d0" stopOpacity={0.35} />
+                              <stop offset="95%" stopColor="#bbf7d0" stopOpacity={0.04} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
+                          <XAxis dataKey="year" tick={{ fill: '#d1fae5', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.15)' }} tickLine={false} />
+                          <YAxis tick={{ fill: '#d1fae5', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.15)' }} tickLine={false} tickFormatter={(value) => `${formatCompactNumber(value / 1000, 0)}k`} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#0b221b', border: '1px solid rgba(110,231,183,0.2)', borderRadius: 16, color: '#ecfdf5' }}
+                            formatter={(value, key) => [`${formatCompactNumber(value, 0)} kWh`, key === 'actual' ? 'Réel' : 'Estimé']}
+                            labelFormatter={(label) => `Année ${label}`}
+                          />
+                          {targetConso2030 > 0 ? (
+                            <ReferenceLine
+                              y={targetConso2030}
+                              stroke="rgba(255,255,255,0.35)"
+                              strokeDasharray="5 5"
+                              label={{ value: `Référence: -${visionReductionTarget}%`, position: 'insideTopRight', fill: '#d1fae5', fontSize: 11 }}
+                            />
+                          ) : null}
+                          <Area type="monotone" dataKey="actual" stroke="#6ee7b7" strokeWidth={3} fill="url(#visionActualFill)" connectNulls />
+                          <Area type="monotone" dataKey="estimated" stroke="#bbf7d0" strokeWidth={3} strokeDasharray="5 5" fill="url(#visionEstimatedFill)" connectNulls />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr,1.35fr]">
+                    <div className="rounded-[24px] border border-emerald-700/60 bg-emerald-950/30 p-5 shadow-inner shadow-black/20">
+                      <div className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-50">Part renouvelable & projections</div>
+                      <div className="mt-5 flex items-center justify-between gap-6">
+                        <div className="text-center">
+                          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100/70">Objectif renouvelable</div>
+                          <div className="mt-3 text-3xl font-black text-emerald-50">{visionRenewableTarget}%</div>
+                        </div>
+                        <div className="relative flex h-28 w-28 items-center justify-center">
+                          <svg className="h-28 w-28 -rotate-90" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="48" stroke="rgba(255,255,255,0.1)" strokeWidth="10" fill="none" />
+                            <circle
+                              cx="60"
+                              cy="60"
+                              r="48"
+                              stroke="#6ee7b7"
+                              strokeWidth="10"
+                              fill="none"
+                              strokeLinecap="round"
+                              strokeDasharray={`${2 * Math.PI * 48}`}
+                              strokeDashoffset={`${2 * Math.PI * 48 * (1 - Math.max(0, Math.min(100, visionRenewableBarWidth)) / 100)}`}
+                            />
+                          </svg>
+                          <div className="absolute text-center">
+                            <div className="text-3xl font-black text-emerald-50">{visionRenewableTarget}%</div>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100/60">Cible</div>
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100/70">Cible actuelle</div>
+                          <div className="mt-3 text-3xl font-black text-emerald-300">{formatCompactNumber(visionRenewableCurrent, 1)}%</div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-                      {visionRenewableAnnualTracking.map((row) => (
-                        <div key={`renewable-${row.year}`} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-lg font-black text-white">{row.year}</div>
-                            <div className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-                              row.mode === 'Reel'
-                                ? 'bg-amber-300/20 text-amber-100'
-                                : row.mode === 'Estime'
-                                  ? 'bg-white/10 text-emerald-50/80'
-                                  : 'bg-white/5 text-emerald-100/50'
-                            }`}>
-                              {row.mode}
+                    <div className="rounded-[24px] border border-emerald-700/60 bg-emerald-950/30 p-5 shadow-inner shadow-black/20">
+                      <div className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-50">Projection annuelle</div>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {visionProjectionRows.map((row) => (
+                          <div key={`projection-${row.year}`} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="text-lg font-black text-white">{row.year}</div>
+                              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-100/80">Estimé</span>
+                            </div>
+                            <div className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-emerald-100/65">Consommation</div>
+                            <div className="mt-1 text-2xl font-black text-emerald-50">
+                              {row.consumption > 0 ? formatCompactNumber(row.consumption, 0) : '--'}
+                              <span className="ml-2 text-xs font-semibold text-emerald-100/65">kWh</span>
+                            </div>
+                            <div className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-emerald-100/65">Renouvelable</div>
+                            <div className="mt-1 text-2xl font-black text-amber-200">
+                              {row.renewable !== null ? formatCompactNumber(row.renewable, 1) : '--'}
+                              <span className="ml-2 text-xs font-semibold text-emerald-100/65">%</span>
                             </div>
                           </div>
-                          <div className="mt-4 text-2xl font-black text-amber-200">
-                            {row.value !== null ? formatCompactNumber(row.value, 1) : '--'}
-                          </div>
-                          <div className="text-xs font-semibold text-emerald-100/75">% renouvelable</div>
-                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-emerald-950/70">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-amber-300 to-yellow-400"
-                              style={{ width: `${row.value !== null ? row.progress : 2}%` }}
-                            />
-                          </div>
-                          <div className="mt-2 text-xs font-medium text-emerald-100/80">
-                            Avancement cible: {row.value !== null ? `${formatCompactNumber(row.progress, 0)}%` : 'N/D'}
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
