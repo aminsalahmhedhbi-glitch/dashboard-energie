@@ -2397,6 +2397,42 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     visionActual2024,
     visionActual2025,
   ]);
+  const visionRenewableAnnualTracking = useMemo(() => {
+    const rows = [];
+    const actual2025 = visionRenewableCurrent > 0 ? visionRenewableCurrent : null;
+    const yearlyRenewableStep = visionRenewableTarget > 0 && actual2025 !== null
+      ? Math.max(0, (visionRenewableTarget - actual2025) / 5)
+      : 0;
+    let previousRenewableValue = actual2025;
+
+    for (let year = 2024; year <= 2030; year += 1) {
+      let value = null;
+      let mode = 'N/D';
+
+      if (year === 2025 && actual2025 !== null) {
+        value = actual2025;
+        mode = 'Reel';
+      } else if (year > 2025 && previousRenewableValue !== null) {
+        value = Math.min(visionRenewableTarget, previousRenewableValue + yearlyRenewableStep);
+        mode = 'Estime';
+      }
+
+      rows.push({
+        year,
+        mode,
+        value,
+        progress: visionRenewableTarget > 0 && value !== null
+          ? Math.max(0, Math.min(100, (value / visionRenewableTarget) * 100))
+          : 0,
+      });
+
+      if (value !== null) {
+        previousRenewableValue = value;
+      }
+    }
+
+    return rows;
+  }, [visionRenewableCurrent, visionRenewableTarget]);
   const visionEfficiencyBarWidth = visionReductionTarget > 0
     ? Math.max(0, Math.min(100, (visionReductionAttained / visionReductionTarget) * 100))
     : 0;
@@ -3579,6 +3615,49 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  <div className="mt-6 border-t border-white/10 pt-5">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-emerald-50">
+                        <Sun size={16} /> Avancement part renouvelable
+                      </div>
+                      <div className="text-xs font-medium text-emerald-100/75">
+                        Valeur actuelle puis projection progressive vers l&apos;objectif 2030
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+                      {visionRenewableAnnualTracking.map((row) => (
+                        <div key={`renewable-${row.year}`} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-lg font-black text-white">{row.year}</div>
+                            <div className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+                              row.mode === 'Reel'
+                                ? 'bg-amber-300/20 text-amber-100'
+                                : row.mode === 'Estime'
+                                  ? 'bg-white/10 text-emerald-50/80'
+                                  : 'bg-white/5 text-emerald-100/50'
+                            }`}>
+                              {row.mode}
+                            </div>
+                          </div>
+                          <div className="mt-4 text-2xl font-black text-amber-200">
+                            {row.value !== null ? formatCompactNumber(row.value, 1) : '--'}
+                          </div>
+                          <div className="text-xs font-semibold text-emerald-100/75">% renouvelable</div>
+                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-emerald-950/70">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-amber-300 to-yellow-400"
+                              style={{ width: `${row.value !== null ? row.progress : 2}%` }}
+                            />
+                          </div>
+                          <div className="mt-2 text-xs font-medium text-emerald-100/80">
+                            Avancement cible: {row.value !== null ? `${formatCompactNumber(row.progress, 0)}%` : 'N/D'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
