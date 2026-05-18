@@ -609,8 +609,8 @@ const ReviewMetricCard = ({
         {badge ? <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{badge}</span> : null}
       </div>
       <div className="mt-3 flex items-end gap-2">
-        <span className="text-3xl font-black leading-none">{value}</span>
-        {unit ? <span className="pb-1 text-sm font-bold text-slate-400">{unit}</span> : null}
+        <span className="text-4xl font-black leading-none lg:text-[2.65rem]">{value}</span>
+        {unit ? <span className="pb-1 text-base font-bold text-slate-400">{unit}</span> : null}
       </div>
       {Array.isArray(details) && details.length > 0 ? (
         <div className="mt-3 space-y-2">
@@ -618,8 +618,8 @@ const ReviewMetricCard = ({
             <div key={detail.label} className="flex items-end justify-between gap-3 rounded-2xl border border-white/50 bg-white/50 px-3 py-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{detail.label}</span>
               <div className="flex items-end gap-2">
-                <span className="text-lg font-black leading-none">{detail.value}</span>
-                {detail.unit ? <span className="pb-0.5 text-[11px] font-bold text-slate-400">{detail.unit}</span> : null}
+                <span className="text-xl font-black leading-none">{detail.value}</span>
+                {detail.unit ? <span className="pb-0.5 text-xs font-bold text-slate-400">{detail.unit}</span> : null}
               </div>
             </div>
           ))}
@@ -1912,6 +1912,27 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     () => currentVehicleCountEntries.reduce((sum, entry) => sum + Math.max(0, toNumberOrZero(entry.count)), 0),
     [currentVehicleCountEntries]
   );
+  const vehicleCountChartData = useMemo(() => {
+    if (!hasVehicleCountCard) return [];
+
+    const persistedMonths = vehicleCountState.data?.[activeSiteTab]?.months || {};
+    return Object.entries(persistedMonths)
+      .map(([monthKey, entries]) => {
+        const total = normalizeVehicleCountEntries(activeSiteTab, currentData, entries || [])
+          .reduce((sum, entry) => sum + Math.max(0, toNumberOrZero(entry.count)), 0);
+        const [year, month] = String(monthKey).split('-');
+        const monthIndex = Number(month) - 1;
+        return {
+          monthKey,
+          label: Number.isFinite(monthIndex) && monthIndex >= 0 && monthIndex < 12
+            ? `${SHORT_MONTH_NAMES[monthIndex]} ${String(year).slice(-2)}`
+            : monthKey,
+          total,
+        };
+      })
+      .sort((left, right) => left.monthKey.localeCompare(right.monthKey))
+      .slice(-12);
+  }, [activeSiteTab, currentData, hasVehicleCountCard, vehicleCountState.data]);
 
   const updateVehicleCountEntry = (entryIndex, nextValue) => {
     if (!hasVehicleCountCard) return;
@@ -2726,14 +2747,14 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
             accent="slate"
             subtitle={
               supportsAirProcessKpi
-                ? "Process : (conso totale du site × % air comprimé) / nombre de voiture du mois"
+                ? "Usage : (conso totale du site × % air comprimé) / nombre de voiture du mois"
                 : 'Non applicable pour ce site'
             }
             details={
               hasAirComprime
                 ? [
-                    { label: 'KPI process', value: formatCompactNumber(reportKpiSnapshot.airProcess, 3), unit: 'kWh/veh' },
-                    { label: 'KPI machine', value: formatCompactNumber(reportKpiSnapshot.airMachine, 3), unit: 'kpi' },
+                    { label: 'KPI usage', value: formatCompactNumber(reportKpiSnapshot.airProcess, 3), unit: 'kWh/veh' },
+                    { label: 'KPI machine', value: formatCompactNumber(reportKpiSnapshot.airMachine, 3), unit: 'kWh/Nm³' },
                   ]
                 : null
             }
@@ -2995,85 +3016,26 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                 />
 
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="grid auto-rows-fr gap-6">
-                    <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm xl:aspect-square xl:min-h-0">
-                      <div className="mb-4 flex items-center gap-2">
-                        <Factory size={16} className="text-slate-500" />
-                        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Fiche technique</h3>
-                      </div>
-                      <div className="flex items-end gap-2">
-                        <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentData.area)}</span>
-                        <span className="pb-1 text-sm font-bold text-slate-400">m² total</span>
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Dont <span className="font-bold text-blue-900">{formatCompactNumber(currentData.covered)} m²</span> couverts et <span className="font-bold text-slate-700">{formatCompactNumber(currentData.open)} m²</span> ouverts.
-                      </p>
-                      <div className="mt-4 flex-1 space-y-2 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                        {(currentData.coveredBreakdown || []).map((zone, index) => (
-                          <div key={index} className="flex items-center justify-between gap-3 text-xs">
-                            <span className="text-slate-500">{zone.label}</span>
-                            <span className="font-bold text-slate-700">{formatCompactNumber(zone.value)} m²</span>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm xl:aspect-square xl:min-h-0">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Factory size={16} className="text-slate-500" />
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Fiche technique</h3>
                     </div>
-
-                    {hasVehicleCountCard && (
-                      <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm xl:aspect-square xl:min-h-0">
-                        <div className="mb-4 flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <ClipboardList size={16} className="text-slate-500" />
-                            <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Nombre de voiture</h3>
-                          </div>
-                          <input
-                            type="month"
-                            value={vehicleCountMonth}
-                            onChange={(e) => setVehicleCountMonth(e.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none transition-colors focus:border-blue-900"
-                          />
+                    <div className="flex items-end gap-2">
+                      <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentData.area)}</span>
+                      <span className="pb-1 text-sm font-bold text-slate-400">m² total</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Dont <span className="font-bold text-blue-900">{formatCompactNumber(currentData.covered)} m²</span> couverts et <span className="font-bold text-slate-700">{formatCompactNumber(currentData.open)} m²</span> ouverts.
+                    </p>
+                    <div className="mt-4 flex-1 space-y-2 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                      {(currentData.coveredBreakdown || []).map((zone, index) => (
+                        <div key={index} className="flex items-center justify-between gap-3 text-xs">
+                          <span className="text-slate-500">{zone.label}</span>
+                          <span className="font-bold text-slate-700">{formatCompactNumber(zone.value)} m²</span>
                         </div>
-
-                        <div className="flex items-end gap-2">
-                          <span className="text-3xl font-black text-slate-900">{formatCompactNumber(currentVehicleCountTotal, 0)}</span>
-                          <span className="pb-1 text-sm font-bold text-slate-400">véhicules total</span>
-                        </div>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Total des véhicules entrés pour {currentSiteName} sur la période sélectionnée.
-                        </p>
-
-                        <div className="mt-4 flex-1 space-y-2 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                          {currentVehicleCountEntries.map((entry, index) => (
-                            <div key={`${entry.label}-${index}`} className="flex items-center justify-between gap-3 text-xs">
-                              <span className="text-slate-500">{entry.label}</span>
-                              {userRole === 'ADMIN' ? (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={entry.count}
-                                  onChange={(e) => updateVehicleCountEntry(index, e.target.value)}
-                                  className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1 text-right font-bold text-slate-700 outline-none transition-colors focus:border-blue-900"
-                                />
-                              ) : (
-                                <span className="font-bold text-slate-700">{formatCompactNumber(entry.count, 0)}</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        {userRole === 'ADMIN' && (
-                          <div className="mt-4 flex justify-end">
-                            <button
-                              type="button"
-                              onClick={handleSaveVehicleCountMonth}
-                              className="inline-flex items-center gap-2 rounded-xl bg-blue-900 px-4 py-2 text-xs font-bold text-white shadow-md transition-colors hover:bg-blue-800"
-                            >
-                              <Save size={14} />
-                              Enregistrer
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
 
                   <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm xl:aspect-square xl:min-h-0">
@@ -3161,6 +3123,93 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                   </div>
                 </div>
 
+                {hasVehicleCountCard && (
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.25fr,1fr]">
+                      <div>
+                        <div className="mb-4 flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <ClipboardList size={16} className="text-slate-500" />
+                            <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Nombre de voiture</h3>
+                          </div>
+                          <input
+                            type="month"
+                            value={vehicleCountMonth}
+                            onChange={(e) => setVehicleCountMonth(e.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none transition-colors focus:border-blue-900"
+                          />
+                        </div>
+
+                        <div className="flex items-end gap-2">
+                          <span className="text-4xl font-black text-slate-900 lg:text-[2.65rem]">{formatCompactNumber(currentVehicleCountTotal, 0)}</span>
+                          <span className="pb-1 text-base font-bold text-slate-400">véhicules total</span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Total des véhicules entrés pour {currentSiteName} sur la période sélectionnée.
+                        </p>
+
+                        <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                          <div className="grid gap-2 md:grid-cols-2">
+                            {currentVehicleCountEntries.map((entry, index) => (
+                              <div key={`${entry.label}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                                <span className="text-slate-500">{entry.label}</span>
+                                {userRole === 'ADMIN' ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={entry.count}
+                                    onChange={(e) => updateVehicleCountEntry(index, e.target.value)}
+                                    className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1 text-right font-bold text-slate-700 outline-none transition-colors focus:border-blue-900"
+                                  />
+                                ) : (
+                                  <span className="font-bold text-slate-700">{formatCompactNumber(entry.count, 0)}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {userRole === 'ADMIN' && (
+                          <div className="mt-4 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={handleSaveVehicleCountMonth}
+                              className="inline-flex items-center gap-2 rounded-xl bg-blue-900 px-4 py-2 text-xs font-bold text-white shadow-md transition-colors hover:bg-blue-800"
+                            >
+                              <Save size={14} />
+                              Enregistrer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                        <div className="mb-3 flex items-center gap-2">
+                          <BarChart3 size={16} className="text-blue-900" />
+                          <h4 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Historique mensuel des véhicules</h4>
+                        </div>
+                        {vehicleCountChartData.length === 0 ? (
+                          <div className="flex h-[180px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-sm text-slate-400">
+                            Aucun historique véhicule disponible.
+                          </div>
+                        ) : (
+                          <div className="h-[180px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={vehicleCountChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} />
+                                <Tooltip formatter={(value) => [`${formatCompactNumber(value, 0)} véhicules`, 'Total']} />
+                                <Bar dataKey="total" name="Véhicules" fill="#1d4ed8" radius={[8, 8, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
                   <ReviewMetricCard title="Performance globale" value={formatCompactNumber(latestKpiSnapshot.total, 3)} unit="kWh/m²" accent="blue" subtitle="kWh consommes par site / surface totale m2" />
                   <ReviewMetricCard title="IPE eclairage" value={formatCompactNumber(latestKpiSnapshot.lighting, 3)} unit="kWh/m²" accent="amber" subtitle="kWh consommes x % usage eclairage / surface totale" />
@@ -3172,14 +3221,14 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     accent="slate"
                     subtitle={
                       supportsAirProcessKpi
-                        ? "Process : (conso totale du site × % air comprimé) / nombre de voiture du mois"
+                        ? "Usage : (conso totale du site × % air comprimé) / nombre de voiture du mois"
                         : 'Non applicable pour ce site'
                     }
                     details={
                       hasAirComprime
                         ? [
-                            { label: 'KPI process', value: formatCompactNumber(latestKpiSnapshot.airProcess, 3), unit: 'kWh/veh' },
-                            { label: 'KPI machine', value: formatCompactNumber(latestKpiSnapshot.airMachine, 3), unit: 'kpi' },
+                            { label: 'KPI usage', value: formatCompactNumber(latestKpiSnapshot.airProcess, 3), unit: 'kWh/veh' },
+                            { label: 'KPI machine', value: formatCompactNumber(latestKpiSnapshot.airMachine, 3), unit: 'kWh/Nm³' },
                           ]
                         : null
                     }
@@ -3432,11 +3481,11 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     series={
                       hasAirComprime
                         ? [
-                            { dataKey: 'process', label: 'KPI process', color: '#2563eb', unit: 'kWh/veh' },
-                            { dataKey: 'machine', label: 'KPI machine', color: '#7c3aed', unit: 'kpi' },
+                            { dataKey: 'process', label: 'KPI usage', color: '#2563eb', unit: 'kWh/veh' },
+                            { dataKey: 'machine', label: 'KPI machine', color: '#7c3aed', unit: 'kWh/Nm³' },
                           ]
                         : [
-                            { dataKey: 'process', label: 'KPI process', color: '#2563eb', unit: 'kWh/veh' },
+                            { dataKey: 'process', label: 'KPI usage', color: '#2563eb', unit: 'kWh/veh' },
                           ]
                     }
                   />
