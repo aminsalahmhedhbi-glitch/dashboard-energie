@@ -2091,15 +2091,15 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const displayedCurrentMonthValue = factureInsights.hasData
     ? factureInsights.currentMonthValue
     : fallbackCurrentMonthValue;
-  const displayedReferenceMonthValue = factureInsights.hasData
-    ? factureInsights.referenceMonthValue
-    : fallbackReferenceMonthValue;
+  const displayedReferenceMonthValue = fallbackReferenceMonthValue > 0
+    ? fallbackReferenceMonthValue
+    : factureInsights.referenceMonthValue;
   const displayedCurrentYtdValue = factureInsights.hasData
     ? factureInsights.currentYtdValue
     : fallbackCurrentYtdValue;
-  const displayedReferenceYtdValue = factureInsights.hasData
-    ? factureInsights.referenceYtdValue
-    : fallbackReferenceYtdValue;
+  const displayedReferenceYtdValue = fallbackReferenceYtdValue > 0
+    ? fallbackReferenceYtdValue
+    : factureInsights.referenceYtdValue;
 
   const diffMonthPercent = displayedReferenceMonthValue > 0
     ? ((displayedCurrentMonthValue - displayedReferenceMonthValue) / displayedReferenceMonthValue) * 100
