@@ -2552,7 +2552,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       visionAnnualTracking.map((row) => ({
         year: String(row.year),
         actual: row.mode === 'Reel' ? row.value : null,
-        estimated: row.mode === 'Estime' || row.year === 2025 ? row.value : null,
+        estimated: row.mode === 'Estime' ? row.value : null,
         progress: row.progress,
       })),
     [visionAnnualTracking]
