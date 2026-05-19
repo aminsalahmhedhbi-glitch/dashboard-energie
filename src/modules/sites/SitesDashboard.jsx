@@ -2423,7 +2423,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const visionReductionTarget = toNumberOrZero(currentData.targets?.reduction2030 || 10);
   const visionRenewableTarget = toNumberOrZero(currentData.targets?.renewable2030 || 20);
   const referenceBase = displayedReferenceYtdValue > 0 ? displayedReferenceYtdValue : displayedCurrentYtdValue;
-  const targetConso2030 = referenceBase * (1 - visionReductionTarget / 100);
   const visionHistory2024Values = getSiteData(activeSiteTab, 2024, historySeriesType) || [];
   const visionMerged2025Values = getFactureBackedHistoryValues(2025, historySeriesType) || [];
   const visionActual2024 = visionHistory2024Values.reduce(
@@ -2434,16 +2433,27 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     (sum, value) => sum + toNumberOrZero(value),
     0
   ) || toNumberOrZero(factureInsights.yearlyTotals?.[2025]);
-  const latestVisionActual = visionActual2025 > 0 ? visionActual2025 : visionActual2024;
-  const observedVisionOptimizationRate = visionActual2024 > 0 && visionActual2025 > 0
-    ? Math.max(-0.99, Math.min(0.99, (visionActual2024 - visionActual2025) / visionActual2024))
-    : 0;
-  const fallbackVisionOptimizationRate = visionReductionTarget > 0
-    ? (visionReductionTarget / 100) / 5
-    : 0;
-  const annualVisionOptimizationRate = observedVisionOptimizationRate > 0
-    ? observedVisionOptimizationRate
-    : fallbackVisionOptimizationRate;
+  const visionHistoricalAnnualRows = useMemo(() => (
+    yearsRange
+      .filter((year) => year !== 'REF')
+      .map((year) => Number(year))
+      .filter((year) => Number.isFinite(year) && year <= 2030)
+      .sort((left, right) => left - right)
+      .map((year) => {
+        const annualValues = getFactureBackedHistoryValues(year, historySeriesType) || [];
+        return {
+          year,
+          value: annualValues.reduce((sum, value) => sum + toNumberOrZero(value), 0),
+        };
+      })
+      .filter((row) => row.value > 0)
+  ), [getFactureBackedHistoryValues, historySeriesType, yearsRange]);
+  const latestVisionHistoricalRow = visionHistoricalAnnualRows[visionHistoricalAnnualRows.length - 1] || null;
+  const latestVisionActualYear = latestVisionHistoricalRow?.year || (visionActual2025 > 0 ? 2025 : 2024);
+  const latestVisionActual = latestVisionHistoricalRow?.value || (visionActual2025 > 0 ? visionActual2025 : visionActual2024);
+  const targetConso2030 = latestVisionActual > 0
+    ? latestVisionActual * (1 - visionReductionTarget / 100)
+    : referenceBase * (1 - visionReductionTarget / 100);
   const visionReductionAttained = visionActual2024 > 0 && latestVisionActual > 0
     ? ((visionActual2024 - latestVisionActual) / visionActual2024) * 100
     : 0;
@@ -2457,48 +2467,46 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     return isRenewableSource ? sum + toNumberOrZero(source?.value) : sum;
   }, 0);
   const visionAnnualTracking = useMemo(() => {
-    const rows = [];
-    let previousValue = 0;
+    const rows = visionHistoricalAnnualRows.map((row) => ({
+      year: row.year,
+      mode: 'Reel',
+      value: row.value,
+      progress: visionActual2024 > 0 && row.value > 0
+        ? ((visionActual2024 - row.value) / visionActual2024) * 100
+        : 0,
+    }));
 
-    for (let year = 2024; year <= 2030; year += 1) {
-      let value = 0;
-      let mode = 'Estime';
-
-      if (year === 2024 && visionActual2024 > 0) {
-        value = visionActual2024;
-        mode = 'Reel';
-      } else if (year === 2025 && visionActual2025 > 0) {
-        value = visionActual2025;
-        mode = 'Reel';
-      } else if (previousValue > 0) {
-        value = previousValue * (1 - annualVisionOptimizationRate);
-      } else if (targetConso2030 > 0) {
-        const stepsRemaining = Math.max(1, 2030 - year + 1);
-        value = targetConso2030 + ((targetConso2030 * annualVisionOptimizationRate) * stepsRemaining);
-      }
-
-      const progress = visionActual2024 > 0 && value > 0
-        ? ((visionActual2024 - value) / visionActual2024) * 100
-        : 0;
-
-      rows.push({
-        year,
-        mode,
-        value,
-        progress,
-      });
-
-      if (value > 0) {
-        previousValue = value;
-      }
+    const stepsRemaining = Math.max(0, 2030 - latestVisionActualYear);
+    if (latestVisionActual <= 0 || stepsRemaining === 0) {
+      return rows;
     }
+
+    const geometricWeights = Array.from({ length: stepsRemaining }, (_, index) => Math.pow(0.5, index));
+    const weightSum = geometricWeights.reduce((sum, value) => sum + value, 0) || 1;
+    let cumulativeReductionRatio = 0;
+
+    geometricWeights.forEach((weight, index) => {
+      cumulativeReductionRatio += (visionReductionTarget / 100) * (weight / weightSum);
+      const projectedYear = latestVisionActualYear + index + 1;
+      const projectedValue = latestVisionActual * Math.max(0, 1 - cumulativeReductionRatio);
+      rows.push({
+        year: projectedYear,
+        mode: 'Estime',
+        value: projectedValue,
+        progress: visionActual2024 > 0 && projectedValue > 0
+          ? ((visionActual2024 - projectedValue) / visionActual2024) * 100
+          : 0,
+      });
+    });
 
     return rows;
   }, [
-    annualVisionOptimizationRate,
+    latestVisionActual,
+    latestVisionActualYear,
     targetConso2030,
     visionActual2024,
-    visionActual2025,
+    visionHistoricalAnnualRows,
+    visionReductionTarget,
   ]);
   const visionRenewableAnnualTracking = useMemo(() => {
     const rows = [];
