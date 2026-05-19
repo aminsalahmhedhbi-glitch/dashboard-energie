@@ -633,63 +633,109 @@ const ReviewMetricCard = ({
   );
 };
 
-const ReviewTrendChart = ({ title, data, color, unit, emptyText, series = null }) => (
-  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-    <div className="mb-4 flex items-center justify-between gap-3">
-      <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">{title}</h3>
-      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{unit}</span>
-    </div>
-    {data.length === 0 ? (
-      <div className="flex h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">
-        {emptyText}
+const ReviewTrendChart = ({ title, data, color, unit, emptyText, series = null, zoneConfig = null }) => {
+  const zoneEnabled =
+    zoneConfig &&
+    data.some(
+      (item) =>
+        toNumberOrZero(item?.[zoneConfig.greenKey]) > 0 &&
+        toNumberOrZero(item?.[zoneConfig.redKey]) > 0
+    );
+
+  const zoneChartMax = zoneEnabled
+    ? Math.max(
+        ...data.map((item) =>
+          Math.max(
+            toNumberOrZero(item?.value),
+            toNumberOrZero(item?.[zoneConfig.greenKey]),
+            toNumberOrZero(item?.[zoneConfig.redKey])
+          )
+        ),
+        0
+      ) * 1.12
+    : null;
+
+  const chartData = zoneEnabled
+    ? data.map((item) => {
+        const greenLimit = toNumberOrZero(item?.[zoneConfig.greenKey]);
+        const redLimit = Math.max(greenLimit, toNumberOrZero(item?.[zoneConfig.redKey]));
+        return {
+          ...item,
+          __zoneGreen: greenLimit,
+          __zoneOrange: Math.max(0, redLimit - greenLimit),
+          __zoneRed: Math.max(0, (zoneChartMax || 0) - redLimit),
+        };
+      })
+    : data;
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">{title}</h3>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{unit}</span>
       </div>
-    ) : (
-      <div className="h-[260px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip
-              formatter={(value, dataKey) => {
-                const matchingSeries = Array.isArray(series)
-                  ? series.find((item) => item.dataKey === dataKey)
-                  : null;
-                const displayUnit = matchingSeries?.unit || unit;
-                const displayLabel = matchingSeries?.label || title;
-                return [`${formatCompactNumber(value, 3)} ${displayUnit}`, displayLabel];
-              }}
-              labelFormatter={(label) => `Periode : ${label}`}
-            />
-            {Array.isArray(series) && series.length > 0 ? (
-              series.map((line) => (
+      {data.length === 0 ? (
+        <div className="flex h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">
+          {emptyText}
+        </div>
+      ) : (
+        <div className="h-[260px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} domain={zoneEnabled ? [0, zoneChartMax] : ['auto', 'auto']} />
+              <Tooltip
+                formatter={(value, dataKey) => {
+                  if (String(dataKey).startsWith('__zone')) {
+                    return null;
+                  }
+                  const matchingSeries = Array.isArray(series)
+                    ? series.find((item) => item.dataKey === dataKey)
+                    : null;
+                  const displayUnit = matchingSeries?.unit || unit;
+                  const displayLabel = matchingSeries?.label || title;
+                  return [`${formatCompactNumber(value, 3)} ${displayUnit}`, displayLabel];
+                }}
+                labelFormatter={(label) => `Periode : ${label}`}
+              />
+              {zoneEnabled ? (
+                <>
+                  <Area type="linear" dataKey="__zoneGreen" stackId="zones" stroke="none" fill="rgba(34,197,94,0.10)" isAnimationActive={false} />
+                  <Area type="linear" dataKey="__zoneOrange" stackId="zones" stroke="none" fill="rgba(249,115,22,0.10)" isAnimationActive={false} />
+                  <Area type="linear" dataKey="__zoneRed" stackId="zones" stroke="none" fill="rgba(239,68,68,0.10)" isAnimationActive={false} />
+                </>
+              ) : null}
+              {Array.isArray(series) && series.length > 0 ? (
+                series.map((line) => (
+                  <Line
+                    key={line.dataKey}
+                    type="monotone"
+                    dataKey={line.dataKey}
+                    stroke={line.color}
+                    strokeWidth={3}
+                    dot={{ r: 3, strokeWidth: 0 }}
+                    activeDot={{ r: 5 }}
+                    connectNulls
+                  />
+                ))
+              ) : (
                 <Line
-                  key={line.dataKey}
                   type="monotone"
-                  dataKey={line.dataKey}
-                  stroke={line.color}
+                  dataKey="value"
+                  stroke={color}
                   strokeWidth={3}
                   dot={{ r: 3, strokeWidth: 0 }}
                   activeDot={{ r: 5 }}
-                  connectNulls
                 />
-              ))
-            ) : (
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke={color}
-                strokeWidth={3}
-                dot={{ r: 3, strokeWidth: 0 }}
-                activeDot={{ r: 5 }}
-              />
-            )}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    )}
-  </div>
-);
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ReviewUsageDonutCard = ({ title, label, data, emptyText }) => (
   <div className="flex min-h-[260px] flex-col rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
@@ -2358,6 +2404,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       monthIndex: row.monthIndex,
       consommation: toNumberOrZero(row.consommationKwh),
     }));
+    const referenceValues = getSiteData(activeSiteTab, 'REF', historySeriesType) || [];
+    const dynamicMarginEnabled = activeSiteTab === 'MEGRINE';
+    const monthlyOptimizationRate = toNumberOrZero(currentData.targets?.reduction2030 || 10);
 
     const fallbackSeries = yearsRange
       .filter((year) => year !== 'REF')
@@ -2391,12 +2440,28 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         (sum, entry) => sum + Math.max(0, toNumberOrZero(entry.count)),
         0
       );
+      const referenceMonthConsumption = toNumberOrZero(referenceValues[row.monthIndex]);
+      const optimizedMonthConsumption = referenceMonthConsumption * (1 - monthlyOptimizationRate / 100);
       const totalRatio = totalSiteArea > 0 ? row.consommation / totalSiteArea : 0;
       const lightingRatio = totalSiteArea > 0 ? (row.consommation * usageShareLighting) / totalSiteArea : 0;
       const cvcRatio = totalSiteArea > 0 ? (row.consommation * usageShareCvc) / totalSiteArea : 0;
       const airProcess = vehicleTotal > 0
         ? safeDivide(row.consommation * usageShareAir, vehicleTotal)
         : 0;
+      const totalGreen = dynamicMarginEnabled && totalSiteArea > 0 ? optimizedMonthConsumption / totalSiteArea : null;
+      const totalRed = dynamicMarginEnabled && totalSiteArea > 0 ? referenceMonthConsumption / totalSiteArea : null;
+      const lightingGreen =
+        dynamicMarginEnabled && totalSiteArea > 0 ? (optimizedMonthConsumption * usageShareLighting) / totalSiteArea : null;
+      const lightingRed =
+        dynamicMarginEnabled && totalSiteArea > 0 ? (referenceMonthConsumption * usageShareLighting) / totalSiteArea : null;
+      const cvcGreen =
+        dynamicMarginEnabled && totalSiteArea > 0 ? (optimizedMonthConsumption * usageShareCvc) / totalSiteArea : null;
+      const cvcRed =
+        dynamicMarginEnabled && totalSiteArea > 0 ? (referenceMonthConsumption * usageShareCvc) / totalSiteArea : null;
+      const airGreen =
+        dynamicMarginEnabled && vehicleTotal > 0 ? safeDivide(optimizedMonthConsumption * usageShareAir, vehicleTotal) : null;
+      const airRed =
+        dynamicMarginEnabled && vehicleTotal > 0 ? safeDivide(referenceMonthConsumption * usageShareAir, vehicleTotal) : null;
       return {
         label: `${SHORT_MONTH_NAMES[row.monthIndex]} ${String(row.year).slice(-2)}`,
         monthKey,
@@ -2404,6 +2469,14 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         lighting: Number(lightingRatio.toFixed(3)),
         cvc: Number(cvcRatio.toFixed(3)),
         airProcess: Number(airProcess.toFixed(3)),
+        totalGreen: totalGreen !== null ? Number(totalGreen.toFixed(3)) : null,
+        totalRed: totalRed !== null ? Number(totalRed.toFixed(3)) : null,
+        lightingGreen: lightingGreen !== null ? Number(lightingGreen.toFixed(3)) : null,
+        lightingRed: lightingRed !== null ? Number(lightingRed.toFixed(3)) : null,
+        cvcGreen: cvcGreen !== null ? Number(cvcGreen.toFixed(3)) : null,
+        cvcRed: cvcRed !== null ? Number(cvcRed.toFixed(3)) : null,
+        airGreen: airGreen !== null ? Number(airGreen.toFixed(3)) : null,
+        airRed: airRed !== null ? Number(airRed.toFixed(3)) : null,
       };
     });
   }, [
@@ -2623,6 +2696,8 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         label: row.label,
         process: row.airProcess,
         machine: null,
+        greenLimit: row.airGreen,
+        redLimit: row.airRed,
       });
     });
 
@@ -3579,9 +3654,30 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
               <ReviewSectionHeader icon={BarChart3} title="Suivi des Indicateurs (IPE) - Historique" subtitle="Les historiques ci-dessous sont derives des factures enregistrees et de l'historique de site deja sauvegarde." />
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <ReviewTrendChart title="Performance globale site" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.total }))} color="#0f172a" unit="kWh/m²" emptyText="Aucune serie exploitable pour afficher l'historique global." />
-                <ReviewTrendChart title="IPE eclairage" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.lighting }))} color="#f59e0b" unit="kWh/m²" emptyText="Aucun historique eclairage disponible." />
-                <ReviewTrendChart title="IPE climatisation / CVC" data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.cvc }))} color="#2563eb" unit="kWh/m²" emptyText="Aucun historique CVC disponible." />
+                <ReviewTrendChart
+                  title="Performance globale site"
+                  data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.total, greenLimit: item.totalGreen, redLimit: item.totalRed }))}
+                  color="#0f172a"
+                  unit="kWh/m²"
+                  emptyText="Aucune serie exploitable pour afficher l'historique global."
+                  zoneConfig={activeSiteTab === 'MEGRINE' ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
+                />
+                <ReviewTrendChart
+                  title="IPE eclairage"
+                  data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.lighting, greenLimit: item.lightingGreen, redLimit: item.lightingRed }))}
+                  color="#f59e0b"
+                  unit="kWh/m²"
+                  emptyText="Aucun historique eclairage disponible."
+                  zoneConfig={activeSiteTab === 'MEGRINE' ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
+                />
+                <ReviewTrendChart
+                  title="IPE climatisation / CVC"
+                  data={kpiHistorySeries.map((item) => ({ label: item.label, value: item.cvc, greenLimit: item.cvcGreen, redLimit: item.cvcRed }))}
+                  color="#2563eb"
+                  unit="kWh/m²"
+                  emptyText="Aucun historique CVC disponible."
+                  zoneConfig={activeSiteTab === 'MEGRINE' ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
+                />
                 {supportsAirProcessKpi ? (
                   <ReviewTrendChart
                     title="IPE air comprime"
@@ -3589,6 +3685,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     color="#7c3aed"
                     unit={hasAirComprime ? 'mix' : 'kWh/veh'}
                     emptyText="Aucune serie air comprime disponible pour ce site."
+                    zoneConfig={activeSiteTab === 'MEGRINE' ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
                     series={
                       hasAirComprime
                         ? [
