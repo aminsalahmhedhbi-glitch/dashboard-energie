@@ -2454,6 +2454,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
   const latestVisionHistoricalRow = visionHistoricalAnnualRows[visionHistoricalAnnualRows.length - 1] || null;
   const latestVisionActualYear = latestVisionHistoricalRow?.year || (visionActual2025 > 0 ? 2025 : 2024);
   const latestVisionActual = latestVisionHistoricalRow?.value || (visionActual2025 > 0 ? visionActual2025 : visionActual2024);
+  const visionCurrentYearCumulative = displayedCurrentYtdValue > 0 ? displayedCurrentYtdValue : null;
   const targetConso2030 = latestVisionActual > 0
     ? latestVisionActual * (1 - visionReductionTarget / 100)
     : referenceBase * (1 - visionReductionTarget / 100);
@@ -2553,11 +2554,11 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         year: String(row.year),
         actual: row.mode === 'Reel' ? row.value : null,
         estimated: row.mode === 'Estime' || row.year === latestVisionActualYear ? row.value : null,
-        cumulativeActual: row.year >= latestVisionActualYear && latestVisionActual > 0 ? latestVisionActual : null,
+        cumulativeActual: row.year >= currentYear && visionCurrentYearCumulative !== null ? visionCurrentYearCumulative : null,
         hideEstimatedTooltip: row.mode === 'Reel',
         progress: row.progress,
       })),
-    [latestVisionActual, latestVisionActualYear, visionAnnualTracking]
+    [currentYear, latestVisionActualYear, visionAnnualTracking, visionCurrentYearCumulative]
   );
   const visionEfficiencyBarWidth = visionReductionTarget > 0
     ? Math.max(0, Math.min(100, (visionReductionAttained / visionReductionTarget) * 100))
