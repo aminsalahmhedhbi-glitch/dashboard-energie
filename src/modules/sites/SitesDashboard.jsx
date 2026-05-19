@@ -703,8 +703,8 @@ const ReviewTrendChart = ({ title, data, color, unit, emptyText, series = null, 
               {zoneEnabled ? (
                 <>
                   <Area type="monotone" dataKey="__zoneGreen" stackId="zones" stroke="none" fill="rgba(34,197,94,0.22)" isAnimationActive={false} />
-                  <Area type="monotone" dataKey="__zoneOrange" stackId="zones" stroke="none" fill="rgba(249,115,22,0.18)" isAnimationActive={false} />
-                  <Area type="monotone" dataKey="__zoneRed" stackId="zones" stroke="none" fill="rgba(239,68,68,0.18)" isAnimationActive={false} />
+                  <Area type="monotone" dataKey="__zoneOrange" stackId="zones" stroke="none" fill="rgba(249,115,22,0.28)" isAnimationActive={false} />
+                  <Area type="monotone" dataKey="__zoneRed" stackId="zones" stroke="none" fill="rgba(239,68,68,0.26)" isAnimationActive={false} />
                 </>
               ) : null}
               {Array.isArray(series) && series.length > 0 ? (
