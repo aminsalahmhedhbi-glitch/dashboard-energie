@@ -893,6 +893,9 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
     initialVehicleCountStateRef.current,
     { seedOnMissing: true, debounceMs: 700 }
   );
+  const vehicleCountHydratedRef = React.useRef(false);
+  const vehicleCountSignatureRef = React.useRef('');
+  const vehicleCountImmediateSaveRef = React.useRef(false);
   const reviewUsageHydratedRef = React.useRef(false);
   const reviewUsageSignatureRef = React.useRef('');
   const reviewUsageImmediateSaveRef = React.useRef(false);
@@ -950,6 +953,70 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       cancelled = true;
     };
   }, [sitesDataState]);
+
+  useEffect(() => {
+    if (!vehicleCountState.isReady || vehicleCountHydratedRef.current) return;
+
+    const normalizedPayload = buildVehicleCountModulePayload(
+      sitesDataState,
+      vehicleCountState.data || {}
+    );
+    const signature = JSON.stringify(normalizedPayload);
+    vehicleCountSignatureRef.current = signature;
+
+    if (signature !== JSON.stringify(vehicleCountState.data || {})) {
+      vehicleCountState.setData(normalizedPayload);
+    }
+
+    vehicleCountHydratedRef.current = true;
+  }, [sitesDataState, vehicleCountState]);
+
+  useEffect(() => {
+    if (!vehicleCountHydratedRef.current) return;
+
+    const payload = buildVehicleCountModulePayload(
+      sitesDataState,
+      vehicleCountState.data || {}
+    );
+    const signature = JSON.stringify(payload);
+
+    if (signature === vehicleCountSignatureRef.current) return;
+
+    vehicleCountSignatureRef.current = signature;
+    vehicleCountState.setData(payload);
+  }, [sitesDataState, vehicleCountState]);
+
+  useEffect(() => {
+    if (!vehicleCountHydratedRef.current || !vehicleCountImmediateSaveRef.current) return;
+
+    const payload = buildVehicleCountModulePayload(
+      sitesDataState,
+      vehicleCountState.data || {}
+    );
+    vehicleCountSignatureRef.current = JSON.stringify(payload);
+    vehicleCountImmediateSaveRef.current = false;
+
+    let cancelled = false;
+
+    const persistImmediately = async () => {
+      try {
+        await apiFetch(`/api/module-states/${VEHICLE_COUNT_MODULE_KEY}`, {
+          method: 'PUT',
+          body: JSON.stringify({ data: payload }),
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Erreur sauvegarde immédiate nombre de voitures :', error);
+        }
+      }
+    };
+
+    persistImmediately();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sitesDataState, vehicleCountState.data]);
 
   useEffect(() => {
     try {
@@ -1939,6 +2006,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
   const updateVehicleCountEntry = (entryIndex, nextValue) => {
     if (!hasVehicleCountCard) return;
+    vehicleCountImmediateSaveRef.current = true;
     vehicleCountState.setData((prev) => {
       const next = { ...(prev || {}) };
       const siteState = { ...(next[activeSiteTab] || { months: {} }) };
@@ -1960,7 +2028,16 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
 
     const payload = buildVehicleCountModulePayload(
       sitesDataState,
-      vehicleCountState.data || {}
+      {
+        ...(vehicleCountState.data || {}),
+        [activeSiteTab]: {
+          ...((vehicleCountState.data || {})[activeSiteTab] || {}),
+          months: {
+            ...(((vehicleCountState.data || {})[activeSiteTab] || {}).months || {}),
+            [vehicleCountMonth]: currentVehicleCountEntries,
+          },
+        },
+      }
     );
 
     try {
@@ -1968,6 +2045,8 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         method: 'PUT',
         body: JSON.stringify({ data: payload }),
       });
+      vehicleCountSignatureRef.current = JSON.stringify(payload);
+      vehicleCountState.setData(payload);
       setNotif('Nombre de voitures enregistré');
       window.setTimeout(() => setNotif(null), 2500);
     } catch (error) {
