@@ -2406,7 +2406,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       consommation: toNumberOrZero(row.consommationKwh),
     }));
     const referenceValues = getSiteData(activeSiteTab, 'REF', historySeriesType) || [];
-    const dynamicMarginEnabled = activeSiteTab === 'MEGRINE';
+    const dynamicMarginEnabled = ['MEGRINE', 'ELKHADHRA'].includes(activeSiteTab);
     const monthlyOptimizationRate = toNumberOrZero(currentData.targets?.reduction2030 || 10);
 
     const fallbackSeries = yearsRange
@@ -3661,7 +3661,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                   color="#0f172a"
                   unit="kWh/m²"
                   emptyText="Aucune serie exploitable pour afficher l'historique global."
-                  zoneConfig={activeSiteTab === 'MEGRINE' ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
+                  zoneConfig={['MEGRINE', 'ELKHADHRA'].includes(activeSiteTab) ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
                 />
                 <ReviewTrendChart
                   title="IPE eclairage"
@@ -3669,7 +3669,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                   color="#f59e0b"
                   unit="kWh/m²"
                   emptyText="Aucun historique eclairage disponible."
-                  zoneConfig={activeSiteTab === 'MEGRINE' ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
+                  zoneConfig={['MEGRINE', 'ELKHADHRA'].includes(activeSiteTab) ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
                 />
                 <ReviewTrendChart
                   title="IPE climatisation / CVC"
@@ -3677,7 +3677,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                   color="#2563eb"
                   unit="kWh/m²"
                   emptyText="Aucun historique CVC disponible."
-                  zoneConfig={activeSiteTab === 'MEGRINE' ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
+                  zoneConfig={['MEGRINE', 'ELKHADHRA'].includes(activeSiteTab) ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
                 />
                 {supportsAirProcessKpi ? (
                   <ReviewTrendChart
@@ -3686,7 +3686,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     color="#7c3aed"
                     unit={hasAirComprime ? 'mix' : 'kWh/veh'}
                     emptyText="Aucune serie air comprime disponible pour ce site."
-                    zoneConfig={activeSiteTab === 'MEGRINE' ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
+                    zoneConfig={['MEGRINE', 'ELKHADHRA'].includes(activeSiteTab) ? { greenKey: 'greenLimit', redKey: 'redLimit' } : null}
                     series={
                       hasAirComprime
                         ? [
