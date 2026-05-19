@@ -2441,12 +2441,15 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       .sort((left, right) => left - right)
       .map((year) => {
         const annualValues = getFactureBackedHistoryValues(year, historySeriesType) || [];
+        const billedMonths = annualValues.filter((value) => toNumberOrZero(value) > 0).length;
         return {
           year,
           value: annualValues.reduce((sum, value) => sum + toNumberOrZero(value), 0),
+          billedMonths,
+          isCompleteYear: billedMonths === 12,
         };
       })
-      .filter((row) => row.value > 0)
+      .filter((row) => row.isCompleteYear && row.value > 0)
   ), [getFactureBackedHistoryValues, historySeriesType, yearsRange]);
   const latestVisionHistoricalRow = visionHistoricalAnnualRows[visionHistoricalAnnualRows.length - 1] || null;
   const latestVisionActualYear = latestVisionHistoricalRow?.year || (visionActual2025 > 0 ? 2025 : 2024);
