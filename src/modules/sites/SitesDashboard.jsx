@@ -2552,10 +2552,11 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
       visionAnnualTracking.map((row) => ({
         year: String(row.year),
         actual: row.mode === 'Reel' ? row.value : null,
-        estimated: row.mode === 'Estime' ? row.value : null,
+        estimated: row.mode === 'Estime' || row.year === latestVisionActualYear ? row.value : null,
+        hideEstimatedTooltip: row.mode === 'Reel',
         progress: row.progress,
       })),
-    [visionAnnualTracking]
+    [latestVisionActualYear, visionAnnualTracking]
   );
   const visionEfficiencyBarWidth = visionReductionTarget > 0
     ? Math.max(0, Math.min(100, (visionReductionAttained / visionReductionTarget) * 100))
@@ -3715,9 +3716,43 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                           <XAxis dataKey="year" tick={{ fill: '#d1fae5', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.15)' }} tickLine={false} />
                           <YAxis tick={{ fill: '#d1fae5', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.15)' }} tickLine={false} tickFormatter={(value) => `${formatCompactNumber(value / 1000, 0)}k`} />
                           <Tooltip
-                            contentStyle={{ backgroundColor: '#0b221b', border: '1px solid rgba(110,231,183,0.2)', borderRadius: 16, color: '#ecfdf5' }}
-                            formatter={(value, key) => [`${formatCompactNumber(value, 0)} kWh`, key === 'actual' ? 'Réel' : 'Estimé']}
-                            labelFormatter={(label) => `Année ${label}`}
+                            content={({ active, payload, label }) => {
+                              if (!active || !Array.isArray(payload) || payload.length === 0) {
+                                return null;
+                              }
+
+                              const visibleItems = payload.filter((entry) => {
+                                if (entry?.value == null) return false;
+                                if (entry?.dataKey === 'estimated' && entry?.payload?.hideEstimatedTooltip) {
+                                  return false;
+                                }
+                                return true;
+                              });
+
+                              if (visibleItems.length === 0) {
+                                return null;
+                              }
+
+                              return (
+                                <div className="rounded-2xl border border-emerald-400/20 bg-[#0b221b] px-4 py-3 text-emerald-50 shadow-xl">
+                                  <div className="mb-2 text-sm font-bold">{`Année ${label}`}</div>
+                                  <div className="space-y-1.5 text-sm">
+                                    {visibleItems.map((entry) => (
+                                      <div key={entry.dataKey} className="flex items-center gap-2">
+                                        <span
+                                          className="inline-block h-2.5 w-2.5 rounded-full"
+                                          style={{ backgroundColor: entry.color }}
+                                        />
+                                        <span className="font-semibold">
+                                          {entry.dataKey === 'actual' ? 'Réel' : 'Estimé'} :
+                                        </span>
+                                        <span>{`${formatCompactNumber(entry.value, 0)} kWh`}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            }}
                           />
                           {targetConso2030 > 0 ? (
                             <ReferenceLine
