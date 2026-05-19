@@ -3644,41 +3644,6 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-1 gap-4">
-                    <div className="rounded-[24px] border border-emerald-700/60 bg-emerald-950/30 p-5 shadow-inner shadow-black/20">
-                      <div className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-50">Part renouvelable & projections</div>
-                      <div className="mt-5 flex items-center justify-between gap-6">
-                        <div className="text-center">
-                          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100/70">Objectif renouvelable</div>
-                          <div className="mt-3 text-3xl font-black text-emerald-50">{visionRenewableTarget}%</div>
-                        </div>
-                        <div className="relative flex h-28 w-28 items-center justify-center">
-                          <svg className="h-28 w-28 -rotate-90" viewBox="0 0 120 120">
-                            <circle cx="60" cy="60" r="48" stroke="rgba(255,255,255,0.1)" strokeWidth="10" fill="none" />
-                            <circle
-                              cx="60"
-                              cy="60"
-                              r="48"
-                              stroke="#6ee7b7"
-                              strokeWidth="10"
-                              fill="none"
-                              strokeLinecap="round"
-                              strokeDasharray={`${2 * Math.PI * 48}`}
-                              strokeDashoffset={`${2 * Math.PI * 48 * (1 - Math.max(0, Math.min(100, visionRenewableBarWidth)) / 100)}`}
-                            />
-                          </svg>
-                          <div className="absolute text-center">
-                            <div className="text-3xl font-black text-emerald-50">{visionRenewableTarget}%</div>
-                            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100/60">Cible</div>
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100/70">Cible actuelle</div>
-                          <div className="mt-3 text-3xl font-black text-emerald-300">{formatCompactNumber(visionRenewableCurrent, 1)}%</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </section>
