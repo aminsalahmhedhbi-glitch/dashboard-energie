@@ -2553,10 +2553,11 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         year: String(row.year),
         actual: row.mode === 'Reel' ? row.value : null,
         estimated: row.mode === 'Estime' || row.year === latestVisionActualYear ? row.value : null,
+        cumulativeActual: row.year >= latestVisionActualYear && latestVisionActual > 0 ? latestVisionActual : null,
         hideEstimatedTooltip: row.mode === 'Reel',
         progress: row.progress,
       })),
-    [latestVisionActualYear, visionAnnualTracking]
+    [latestVisionActual, latestVisionActualYear, visionAnnualTracking]
   );
   const visionEfficiencyBarWidth = visionReductionTarget > 0
     ? Math.max(0, Math.min(100, (visionReductionAttained / visionReductionTarget) * 100))
@@ -3696,6 +3697,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                       <div className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-50">Suivi annuel de la consommation (kWh)</div>
                       <div className="flex items-center gap-4 text-xs font-semibold text-emerald-100/75">
                         <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-300" /> Réel</span>
+                        <span className="inline-flex items-center gap-2"><span className="h-0.5 w-5 rounded-full bg-emerald-200/70" /> Cumul réel</span>
                         <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-100/60" /> Estimé</span>
                       </div>
                     </div>
@@ -3744,7 +3746,11 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                           style={{ backgroundColor: entry.color }}
                                         />
                                         <span className="font-semibold">
-                                          {entry.dataKey === 'actual' ? 'Réel' : 'Estimé'} :
+                                          {entry.dataKey === 'actual'
+                                            ? 'Réel'
+                                            : entry.dataKey === 'cumulativeActual'
+                                              ? 'Cumul réel'
+                                              : 'Estimé'} :
                                         </span>
                                         <span>{`${formatCompactNumber(entry.value, 0)} kWh`}</span>
                                       </div>
@@ -3763,6 +3769,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                             />
                           ) : null}
                           <Area type="monotone" dataKey="actual" stroke="#6ee7b7" strokeWidth={3} fill="url(#visionActualFill)" connectNulls />
+                          <Line type="monotone" dataKey="cumulativeActual" stroke="rgba(209,250,229,0.7)" strokeWidth={2} dot={false} connectNulls />
                           <Area type="monotone" dataKey="estimated" stroke="#bbf7d0" strokeWidth={3} strokeDasharray="5 5" fill="url(#visionEstimatedFill)" connectNulls />
                         </AreaChart>
                       </ResponsiveContainer>
