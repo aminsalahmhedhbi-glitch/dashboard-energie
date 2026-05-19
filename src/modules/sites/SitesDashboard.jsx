@@ -3633,7 +3633,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                 <div className="pointer-events-none absolute right-0 top-0 h-56 w-56 rounded-full bg-emerald-400/10 blur-3xl" />
                 <div className="relative">
                   <div className="rounded-[26px] border border-emerald-700/60 bg-emerald-950/30 p-4 shadow-inner shadow-black/20">
-                    <h3 className="text-[1.9rem] font-black tracking-tight text-emerald-50">Vision énergétique 2030 (ISO 50001)</h3>
+                    <h3 className="text-[1.9rem] font-black tracking-tight text-emerald-50">Vision énergétique 2030 (Consommation Future)</h3>
                     <p className="mt-1 text-sm font-medium text-emerald-100/75">Suivi de la Performance et Stratégie</p>
                   </div>
 
@@ -3644,7 +3644,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                           <Target size={18} />
                         </div>
                         <div>
-                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/70">Cible consommation</div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/70">Cible optimisation d'ici 2030</div>
                           <div className="mt-2 text-4xl font-black text-emerald-300">-{visionReductionTarget}%</div>
                         </div>
                       </div>
@@ -3656,7 +3656,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                           <Sun size={18} />
                         </div>
                         <div>
-                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/70">Cible renouvelable</div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/70">Cible renouvelable d'ici 2030</div>
                           <div className="mt-2 text-4xl font-black text-emerald-300">{visionRenewableTarget}%</div>
                         </div>
                       </div>
