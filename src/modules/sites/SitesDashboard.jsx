@@ -2554,7 +2554,12 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
         year: String(row.year),
         actual: row.mode === 'Reel' ? row.value : null,
         estimated: row.mode === 'Estime' || row.year === latestVisionActualYear ? row.value : null,
-        cumulativeActual: row.year >= currentYear && visionCurrentYearCumulative !== null ? visionCurrentYearCumulative : null,
+        cumulativeActual:
+          row.year >= currentYear - 1 &&
+          row.year <= currentYear &&
+          visionCurrentYearCumulative !== null
+            ? visionCurrentYearCumulative
+            : null,
         hideEstimatedTooltip: row.mode === 'Reel',
         progress: row.progress,
       })),
