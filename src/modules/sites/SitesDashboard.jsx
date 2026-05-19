@@ -3451,7 +3451,7 @@ const SitesDashboard = ({ onBack, userRole, user }) => {
                                 <React.Fragment key={`${group.id}-${row.name}-${rowIndex}`}>
                                   {(() => {
                                     const rowKey = `${group.id}-${rowIndex}`;
-                                    const isCollapsed = Boolean(collapsedUsageRows[rowKey]);
+                                    const isCollapsed = collapsedUsageRows[rowKey] ?? true;
                                     const isGasSubUsageRow = Boolean(row.isGasSubUsageRow);
                                     return (
                                       <>
