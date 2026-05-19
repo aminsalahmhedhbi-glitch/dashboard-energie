@@ -13,6 +13,7 @@ import {
   CartesianGrid,
   AreaChart,
   Area,
+  ComposedChart,
   LineChart,
   Line,
   XAxis,
@@ -681,7 +682,7 @@ const ReviewTrendChart = ({ title, data, color, unit, emptyText, series = null, 
       ) : (
         <div className="h-[260px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+            <ComposedChart data={chartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} domain={zoneEnabled ? [0, zoneChartMax] : ['auto', 'auto']} />
@@ -701,9 +702,9 @@ const ReviewTrendChart = ({ title, data, color, unit, emptyText, series = null, 
               />
               {zoneEnabled ? (
                 <>
-                  <Area type="linear" dataKey="__zoneGreen" stackId="zones" stroke="none" fill="rgba(34,197,94,0.10)" isAnimationActive={false} />
-                  <Area type="linear" dataKey="__zoneOrange" stackId="zones" stroke="none" fill="rgba(249,115,22,0.10)" isAnimationActive={false} />
-                  <Area type="linear" dataKey="__zoneRed" stackId="zones" stroke="none" fill="rgba(239,68,68,0.10)" isAnimationActive={false} />
+                  <Bar dataKey="__zoneGreen" stackId="zones" fill="rgba(34,197,94,0.20)" stroke="none" barSize={28} isAnimationActive={false} />
+                  <Bar dataKey="__zoneOrange" stackId="zones" fill="rgba(249,115,22,0.18)" stroke="none" barSize={28} isAnimationActive={false} />
+                  <Bar dataKey="__zoneRed" stackId="zones" fill="rgba(239,68,68,0.18)" stroke="none" barSize={28} isAnimationActive={false} />
                 </>
               ) : null}
               {Array.isArray(series) && series.length > 0 ? (
@@ -729,7 +730,7 @@ const ReviewTrendChart = ({ title, data, color, unit, emptyText, series = null, 
                   activeDot={{ r: 5 }}
                 />
               )}
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}
